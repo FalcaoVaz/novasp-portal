@@ -92,6 +92,10 @@ def main():
     con = psycopg2.connect(a.dsn); con.autocommit = False
     cur = con.cursor()
     cur.execute("set session_replication_role = 'replica';")   # desliga FK durante a carga
+    # Trunca TUDO de uma vez no início — senão o cascade de uma tabela-pai
+    # (ex.: usuarios) apagaria filhas já carregadas neste mesmo loop.
+    tabelas = [os.path.basename(f)[:-5] for f in arquivos]
+    cur.execute('truncate table ' + ', '.join(tabelas) + ' cascade;')
     total = 0
     for f in arquivos:
         t = os.path.basename(f)[:-5]
@@ -99,26 +103,32 @@ def main():
         if not dados:
             continue
         cols = list(dados[0].keys())
-        cur.execute(f'truncate table {t} cascade;')
         linhas = [mascara_linha(t, r) for r in dados]
-        vals = [[r.get(c) for c in cols] for r in linhas]
+        # colunas jsonb chegam como dict/list do backup → embrulha em Json
+        # (o schema não tem arrays do Postgres, só jsonb, então é seguro)
+        def _cell(v):
+            return psycopg2.extras.Json(v) if isinstance(v, (dict, list)) else v
+        vals = [[_cell(r.get(c)) for c in cols] for r in linhas]
         collist = ','.join(f'"{c}"' for c in cols)
         psycopg2.extras.execute_values(
             cur, f'insert into {t} ({collist}) values %s', vals, page_size=1000)
         total += len(vals)
         print(f'  {t:34} {len(vals):>5} linhas' + ('  · mascarada' if t in MASK else ''))
     cur.execute("set session_replication_role = 'origin';")
-    # reajusta sequences (ids inseridos explicitamente)
-    cur.execute("""select seqrelid::regclass::text, refobjid::regclass::text, a.attname
-                   from pg_depend d join pg_attribute a on a.attrelid=d.refobjid and a.attnum=d.refobjsubid
-                   join pg_class s on s.oid=d.seqrelid
-                   where d.deptype='a'""")
+    con.commit()                      # SALVA os dados primeiro (o resto é best-effort)
+    # reajusta sequences (ids inseridos explicitamente vêm do backup)
+    cur.execute("""select s.relname, t.relname, a.attname
+                   from pg_class s
+                   join pg_depend d on d.objid=s.oid and d.deptype='a'
+                   join pg_class t on t.oid=d.refobjid
+                   join pg_attribute a on a.attrelid=t.oid and a.attnum=d.refobjsubid
+                   where s.relkind='S'""")
     for seq, tab, col in cur.fetchall():
         try:
             cur.execute(f'select setval(%s, coalesce((select max("{col}") from {tab}),1))', (seq,))
+            con.commit()
         except Exception:
             con.rollback()
-    con.commit()
     print(f'\nOK — {total} linhas carregadas no sandbox (terceiros mascarados; staff preservado).')
     con.close()
 
