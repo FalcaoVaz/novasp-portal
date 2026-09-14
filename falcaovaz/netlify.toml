@@ -1,0 +1,19 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+[functions."gerar-documento"]
+  timeout = 26
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Permite embed APENAS pelo portal (iframe do juridico dentro do novasp).
+    # X-Frame-Options DENY foi trocado por CSP frame-ancestors — mesmo efeito
+    # de seguranca, mas com whitelist.
+    Content-Security-Policy = "frame-ancestors 'self' https://novasp.netlify.app"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

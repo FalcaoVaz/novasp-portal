@@ -1,0 +1,1799 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Nova São Paulo — Portal</title>
+
+<!-- PWA -->
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0f172a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NovaSP">
+<link rel="apple-touch-icon" href="/icons/icon-192.svg">
+<link rel="icon" type="image/svg+xml" href="/icons/icon-192.svg">
+
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script>
+  // Registra o service worker para virar PWA instalável
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(()=>{});
+    });
+  }
+
+  // ── Botao "Instalar aplicativo" na tela de login ──────────────
+  // Chrome/Edge/Android: captura beforeinstallprompt e mostra o botao.
+  // iOS Safari: nao tem prompt programatico — mostra instrucoes.
+  // Ja instalado (standalone): nao mostra nada.
+  let _pwaPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    _pwaPrompt = e;
+    const btn = document.getElementById('btn-instalar-app');
+    if (btn) btn.style.display = 'block';
+  });
+  async function instalarApp(){
+    if (!_pwaPrompt) return;
+    _pwaPrompt.prompt();
+    const escolha = await _pwaPrompt.userChoice.catch(()=>null);
+    if (escolha?.outcome === 'accepted') {
+      const btn = document.getElementById('btn-instalar-app');
+      if (btn) btn.style.display = 'none';
+    }
+    _pwaPrompt = null;
+  }
+  window.addEventListener('load', () => {
+    const standalone = window.matchMedia('(display-mode: standalone)').matches
+                    || window.navigator.standalone === true;
+    if (standalone) return;   // ja esta rodando como app
+    // iOS: sem beforeinstallprompt — mostra a dica manual
+    const ehIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    // Safari no Mac tambem nao tem prompt programatico — o caminho e
+    // Arquivo > Adicionar a Dock. (Chrome no Mac cai no botao normal.)
+    const ehMacSafari = /Macintosh/.test(navigator.userAgent)
+                     && /Safari\//.test(navigator.userAgent)
+                     && !/Chrome|Chromium|Edg\//.test(navigator.userAgent);
+    const hint = document.getElementById('ios-install-hint');
+    if (ehIos && hint) {
+      hint.style.display = 'block';
+    } else if (ehMacSafari && hint) {
+      hint.innerHTML = '💻 <b>Instalar no Mac (Safari):</b> com o portal aberto, use o menu <b>Arquivo → Adicionar à Dock…</b>. O portal vira um app com ícone próprio.';
+      hint.style.display = 'block';
+    }
+    // Ja aceitou instalar antes? O navegador simplesmente nao dispara
+    // beforeinstallprompt de novo — botao fica oculto sozinho.
+  });
+</script>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="ls">
+  <div class="lc">
+    <div class="llogo">
+      <img src="icons/logo-nsp.png?v=20260911d" alt="Imobiliária Nova São Paulo — Desde 1969" style="display:block;margin:0 auto 6px;width:78%;max-width:240px;height:auto">
+      <div class="lsub">Portal Interno</div>
+    </div>
+    <div id="lerr" class="lerr">—</div>
+
+    <!-- Passo 1: informar email ou nome -->
+    <div id="step1">
+      <div class="fg"><label>Email ou nome</label>
+        <input type="text" class="fc" id="lemail" placeholder="seu email ou nome (ex: Cibele)" autocomplete="username" onkeydown="if(event.key==='Enter')checkUser()">
+      </div>
+      <button class="btn-login" onclick="checkUser()">Continuar →</button>
+      <div style="text-align:center;margin-top:12px;font-size:11px;color:var(--muted)">
+        Pode usar email cadastrado ou seu nome (ex: "Mikaeli", "Renata Navarro").
+      </div>
+      <!-- Instalar como app (PWA) — aparece so quando o navegador suporta -->
+      <button id="btn-instalar-app" onclick="instalarApp()" style="display:none;width:100%;margin-top:14px;padding:11px;background:#f0f4fa;border:1.5px dashed #3B82F6;border-radius:10px;color:#1E2D4A;font-size:13px;font-weight:600;cursor:pointer">
+        📲 Instalar aplicativo no dispositivo
+      </button>
+      <div id="ios-install-hint" style="display:none;margin-top:14px;padding:10px 13px;background:#f0f4fa;border-radius:10px;font-size:12px;color:#334155;line-height:1.5">
+        📲 <b>Instalar no iPhone/iPad:</b> toque em <b>Compartilhar</b> (□↑) na barra do Safari e depois em <b>"Adicionar à Tela de Início"</b>.
+      </div>
+    </div>
+
+    <!-- Passo 2: senha -->
+    <div id="step2" style="display:none">
+      <div style="text-align:center;margin-bottom:18px">
+        <div id="login-av" style="width:48px;height:48px;font-size:18px;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;border-radius:50%;color:#fff;font-weight:700">R</div>
+        <div style="font-weight:600" id="login-nome-lbl">—</div>
+        <div style="font-size:12px;color:var(--muted)" id="login-dept-lbl">—</div>
+      </div>
+      <!-- Primeiro acesso -->
+      <div id="s2-nova" style="display:none">
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 13px;font-size:13px;color:#166534;margin-bottom:14px">
+          👋 Primeiro acesso! Crie sua senha para continuar.
+        </div>
+        <div class="fg"><label>Criar senha</label>
+          <input type="password" class="fc" id="lsen-nova" placeholder="Mínimo 6 caracteres">
+        </div>
+        <div class="fg"><label>Confirmar senha</label>
+          <input type="password" class="fc" id="lsen-conf" placeholder="Repita a senha">
+        </div>
+      </div>
+      <!-- Acesso normal -->
+      <div id="s2-exist" style="display:none">
+        <div class="fg"><label>Senha</label>
+          <input type="password" class="fc" id="lsen" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin:-4px 0 10px;gap:8px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;user-select:none">
+            <input type="checkbox" id="lmanter" style="margin:0"> Manter-me conectado
+          </label>
+          <a href="#" onclick="esqueciSenha();return false" style="font-size:12px;color:var(--muted);text-decoration:none">Esqueci minha senha</a>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-login" style="background:transparent;border:1.5px solid var(--borda);color:var(--txt);flex:0 0 44px;padding:0" onclick="voltarStep1()">←</button>
+        <button class="btn-login" style="flex:1" id="lbtn" onclick="doLogin()">Entrar</button>
+      </div>
+    </div>
+
+    <!-- Passo 3: recuperação de senha por código -->
+    <div id="step3" style="display:none">
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:30px;margin-bottom:4px">🔑</div>
+        <div style="font-weight:600">Recuperar senha</div>
+        <div style="font-size:12px;color:var(--muted)" id="reset-dest-lbl">Enviamos um código ao seu email</div>
+      </div>
+      <div class="fg"><label>Código recebido por email</label>
+        <input type="text" class="fc" id="reset-codigo" inputmode="numeric" maxlength="6" placeholder="6 dígitos" autocomplete="one-time-code">
+      </div>
+      <div class="fg"><label>Nova senha</label>
+        <input type="password" class="fc" id="reset-nova" placeholder="Mínimo 6 caracteres">
+      </div>
+      <div class="fg"><label>Confirmar nova senha</label>
+        <input type="password" class="fc" id="reset-conf" placeholder="Repita a senha" onkeydown="if(event.key==='Enter')confirmarReset()">
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-login" style="background:transparent;border:1.5px solid var(--borda);color:var(--txt);flex:0 0 44px;padding:0" onclick="voltarStep1()">←</button>
+        <button class="btn-login" style="flex:1" id="reset-btn" onclick="confirmarReset()">Redefinir senha</button>
+      </div>
+      <div style="text-align:center;margin-top:12px;font-size:11px;color:var(--muted)">
+        Não recebeu? <a href="#" onclick="reenviarCodigoReset();return false" style="color:#2563eb;text-decoration:none">Reenviar código</a>
+      </div>
+    </div>
+
+    <div id="dbg" style="font-size:11px;color:var(--muted);margin-top:10px;text-align:center"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<button class="mntgl" onclick="toggleSB()">☰</button>
+<div class="sbo" id="sbo" onclick="closeSB()"></div>
+<div id="app" style="display:none">
+  <aside class="sidebar">
+    <div class="sbh">
+      <!-- chip branco: o logo tem azul-marinho, ilegivel direto no fundo escuro -->
+      <div style="background:#fff;border-radius:10px;padding:7px 10px 6px;margin-bottom:4px">
+        <img src="icons/logo-nsp.png?v=20260911d" alt="Imobiliária Nova São Paulo" style="display:block;width:100%;height:auto">
+      </div>
+      <div class="sbs">Portal Interno</div>
+    </div>
+    <div class="sbu">
+      <div class="sbav" id="sbav">R</div>
+      <div><div class="sbn" id="sbn">—</div><div class="sbd" id="sbd">—</div></div>
+    </div>
+    <div class="mtabs">
+      <button class="mtab" id="t-jur" onclick="setMod('juridico')" title="Jurídico"><i data-icon="scale"></i></button>
+      <button class="mtab" id="t-int" onclick="setMod('interno')" title="Sistema Interno"><i data-icon="building"></i></button>
+      <button class="mtab" id="t-cal" onclick="setMod('calendar')" title="Calendar"><i data-icon="calendar"></i></button>
+      <button class="mtab" id="t-ges" onclick="setMod('gestao')" title="Gestão"><i data-icon="users"></i></button>
+      <button class="mtab" id="t-reg" onclick="setMod('regras')" title="Regras e Processos"><i data-icon="book"></i></button>
+      <button class="mtab" id="t-vnd" onclick="setMod('vendas')" title="Gestão de Vendas"><i data-icon="briefcase"></i></button>
+    </div>
+    <nav id="nav"></nav>
+    <div class="sbb"><button class="btn-out" onclick="doLogout()"><i data-icon="logout" data-size="16"></i><span>Sair</span></button></div>
+  </aside>
+  <div class="main">
+    <div class="topbar">
+      <div class="tbt" id="tbt">Portal</div>
+      <div style="display:flex;align-items:center;gap:14px">
+        <button id="btn-avisos" onclick="goTo('avisos')" title="Avisos de envio (emails que falharam)" style="position:relative;background:none;border:none;color:var(--muted);cursor:pointer;padding:6px;border-radius:8px;display:flex;align-items:center">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          <span id="badge-avisos" style="display:none;position:absolute;top:2px;right:2px;background:var(--danger);color:#fff;font-size:9px;font-weight:700;border-radius:999px;min-width:16px;height:16px;padding:0 4px;display:none;align-items:center;justify-content:center">0</span>
+        </button>
+        <div class="tbch" id="tbch">—</div>
+      </div>
+    </div>
+    <div class="content">
+
+      <!-- HOME -->
+      <div class="page active" id="p-home">
+        <div class="ph">
+          <div><h1 class="pt">Bom dia, <span id="h-nome">—</span></h1>
+          <div class="pst" id="h-data">—</div></div>
+        </div>
+        <div class="pgrid" id="pgrid"></div>
+      </div>
+
+      <!-- JURÍDICO — embed do falcaovaz num iframe (sidebar do portal fica visível) -->
+      <div class="page" id="p-juridico-embed" style="padding:0">
+        <div style="padding:10px 16px;background:linear-gradient(90deg,#1E2D4A 0%,#3B82F6 100%);color:#fff;display:flex;justify-content:space-between;align-items:center;gap:10px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:18px">⚖️</span>
+            <div>
+              <div style="font-weight:700;font-size:14px">Sistema Jurídico — FalcãoVaz</div>
+              <div style="font-size:11px;color:rgba(255,255,255,.7)">Acesso integrado. Use a barra lateral do portal pra ir pra outro módulo.</div>
+            </div>
+          </div>
+          <a id="juridico-link-externo" href="https://falcaovaz.netlify.app" target="_blank" rel="noopener" style="background:rgba(255,255,255,.15);color:#fff;padding:6px 12px;border-radius:6px;text-decoration:none;font-size:12px;font-weight:600;white-space:nowrap">🔗 Abrir em nova aba</a>
+        </div>
+        <iframe id="juridico-iframe" src="about:blank" style="display:block;width:100%;height:calc(100vh - 130px);border:none;background:#fff" allow="clipboard-read; clipboard-write"></iframe>
+      </div>
+
+      <!-- SISTEMA INTERNO (sub-tela com 4 módulos) -->
+      <div class="page" id="p-interno-home">
+        <div class="ph">
+          <div><h1 class="pt">Sistema Interno</h1><div class="pst">Selecione um módulo</div></div>
+        </div>
+        <div class="pgrid">
+          <div class="pc" data-tone="emerald" onclick="goTo('manutencao')">
+            <div class="pci"><i data-icon="home" data-size="32"></i></div>
+            <div class="pct">Manutenção Predial</div>
+            <div class="pcd">Chamados de manutenção dos imóveis.</div>
+            <div class="pcb">Disponível</div>
+          </div>
+          <div class="pc" data-tone="blue" onclick="goTo('req-ti')">
+            <div class="pci"><i data-icon="monitor" data-size="32"></i></div>
+            <div class="pct">Chamados T.I.</div>
+            <div class="pcd">Solicitações de tecnologia para o Fabio.</div>
+            <div class="pcb">Disponível</div>
+          </div>
+          <div class="pc" data-tone="amber" onclick="goTo('req-manut')">
+            <div class="pci"><i data-icon="wrench" data-size="32"></i></div>
+            <div class="pct">Manutenção Interna</div>
+            <div class="pcd">Solicitações internas (escritório/agências) para o Marcelo.</div>
+            <div class="pcb">Disponível</div>
+          </div>
+          <div class="pc" data-tone="slate" onclick="goTo('entrega')">
+            <div class="pci"><i data-icon="key" data-size="32"></i></div>
+            <div class="pct">Entrega de Chaves</div>
+            <div class="pcd">Agendamento, vistoria, reparos e liberação de chaves.</div>
+            <div class="pcb">Disponível</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- REGRAS E PROCESSOS — Home com 4 cards -->
+      <div class="page" id="p-regras-home">
+        <div class="ph">
+          <div><h1 class="pt">Regras e Processos</h1><div class="pst">Padronização das diretrizes de cada departamento</div></div>
+        </div>
+        <div class="pgrid">
+          <div class="pc" data-tone="slate" onclick="goTo('processos-bpmn')">
+            <div class="pci"><i data-icon="clipboardList" data-size="32"></i></div>
+            <div class="pct">Processos (BPMN)</div>
+            <div class="pcd">Mapeamento visual dos processos da empresa — diagrama vivo mantido pelo gestor.</div>
+            <div class="pcb">diagrams.net</div>
+          </div>
+          <div class="pc" data-tone="blue" onclick="goTo('reg-vendas')">
+            <div class="pci"><i data-icon="briefcase" data-size="32"></i></div>
+            <div class="pct">Vendas</div>
+            <div class="pcd">Atendimento, angariação, exclusividade, propostas, parcerias.</div>
+            <div class="pcb">Atualizado Jun/2026</div>
+          </div>
+          <div class="pc" data-tone="emerald" onclick="goTo('reg-locacao')">
+            <div class="pci"><i data-icon="home" data-size="32"></i></div>
+            <div class="pct">Locação</div>
+            <div class="pcd">FACs NIDO, fichas, qualidade, exclusividade, propostas, plantões.</div>
+            <div class="pcb">Atualizado Mar/2026</div>
+          </div>
+          <div class="pc" data-tone="amber" onclick="goTo('reg-financeiro')">
+            <div class="pci"><i data-icon="dollar" data-size="32"></i></div>
+            <div class="pct">Financeiro</div>
+            <div class="pcd">Pagamentos, alçadas, inquilinos, repasses, seguros, atendimento, LGPD.</div>
+            <div class="pcb">Atualizado Mar/2026</div>
+          </div>
+          <div class="pc" data-tone="purple" onclick="goTo('reg-rh')">
+            <div class="pci"><i data-icon="user" data-size="32"></i></div>
+            <div class="pct">RH</div>
+            <div class="pcd">Divisão de responsabilidades, recrutamento, eventos, cadastro de corretores.</div>
+            <div class="pcb">Atualizado Jun/2026</div>
+          </div>
+          <div class="pc" data-tone="blue" onclick="goTo('reg-adm')">
+            <div class="pci"><i data-icon="building" data-size="32"></i></div>
+            <div class="pct">Administração</div>
+            <div class="pcd">Renovação de contratos, manutenção/mediação, entrega de chaves, encargos e rotinas.</div>
+            <div class="pcb">Atualizado Jul/2026</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AVISOS DE ENVIO (bounces) -->
+      <div class="page" id="p-avisos">
+        <div class="ph">
+          <div><h1 class="pt">Avisos de Envio</h1><div class="pst">Emails que não foram entregues — corrija o cadastro de origem</div></div>
+          <div style="display:flex;gap:8px">
+            <select id="avisos-filtro-status" onchange="carregarAvisos()" style="padding:7px 12px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px">
+              <option value="aberto">Abertos</option>
+              <option value="">Todos</option>
+              <option value="resolvido">Resolvidos</option>
+              <option value="ignorado">Ignorados</option>
+            </select>
+          </div>
+        </div>
+        <div class="card">
+          <div class="tw tbl"><table>
+            <thead><tr>
+              <th>Destinatário</th>
+              <th>Erro</th>
+              <th>Origem</th>
+              <th>Cadastrado por</th>
+              <th>Recebido</th>
+              <th>Ações</th>
+            </tr></thead>
+            <tbody id="tb-avisos"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted)">Carregando...</td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <!-- ════ GESTÃO DE VENDAS ════ -->
+
+      <!-- Gestão de Vendas — home com 4 cards -->
+      <div class="page" id="p-vendas-home">
+        <div class="ph">
+          <div><h1 class="pt">Gestão de Vendas</h1><div class="pst">Selecione um sub-módulo</div></div>
+        </div>
+        <div class="pgrid">
+          <div class="pc" data-tone="blue" id="card-vnd-selecao" onclick="goTo('vnd-selecao')">
+            <div class="pci"><i data-icon="home" data-size="32"></i></div>
+            <div class="pct">Seleção de Imóveis</div>
+            <div class="pcd">Envio pelas equipes, peneira pelos gerentes, validade de 3 meses.</div>
+            <div class="pcb">Disponível</div>
+          </div>
+          <div class="pc" data-tone="amber" id="card-vnd-peneira" onclick="goTo('vnd-peneira')" style="display:none">
+            <div class="pci"><i data-icon="check-square" data-size="32"></i></div>
+            <div class="pct">Peneira</div>
+            <div class="pcd">Aprovar/reprovar pendentes das suas equipes (só gerentes).</div>
+            <div class="pcb">Disponível</div>
+          </div>
+          <div class="pc" data-tone="emerald" id="card-vnd-presenca" onclick="goTo('vnd-presenca')">
+            <div class="pci"><i data-icon="check" data-size="32"></i></div>
+            <div class="pct">Controle de Presença</div>
+            <div class="pcd">Atividades do mês + marcação de presença + estatísticas.</div>
+            <div class="pcb">Disponível</div>
+          </div>
+          <div class="pc" data-tone="amber" id="card-vnd-cotas" onclick="goTo('vnd-cotas')">
+            <div class="pci"><i data-icon="target" data-size="32"></i></div>
+            <div class="pct">Cotas de Anúncios</div>
+            <div class="pcd">Super Destaque e Destaque Comum por corretor (mensal).</div>
+            <div class="pcb">Disponível</div>
+          </div>
+          <div class="pc" data-tone="purple" id="card-vnd-fotografo" onclick="goTo('vnd-fotografo')">
+            <div class="pci"><i data-icon="calendar" data-size="32"></i></div>
+            <div class="pct">Agenda do Fotógrafo</div>
+            <div class="pcd">Grid semanal de slots — clique no horário pra agendar.</div>
+            <div class="pcb">Disponível</div>
+          </div>
+          <div class="pc" data-tone="teal" onclick="goTo('vnd-forum')" id="card-vnd-forum" style="display:none">
+            <div class="pci"><i data-icon="users" data-size="32"></i></div>
+            <div class="pct">Fórum dos Representantes</div>
+            <div class="pcd">Pauta trimestral — propor tópicos, comentar e priorizar. Restrito aos 5 representantes + gerentes.</div>
+            <div class="pcb">Disponível</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Avaliação de Imóveis (motor em lote → dossiê + link) -->
+      <div class="page" id="p-aval-imoveis">
+        <div id="aval-imoveis-root">Carregando…</div>
+      </div>
+
+      <!-- Seleção de Imóveis -->
+      <div class="page" id="p-vnd-selecao">
+        <div class="ph">
+          <div>
+            <h1 class="pt">Seleção de Imóveis</h1>
+            <div class="pst">Envio pelas equipes · peneira pelos gerentes · 3 meses de vida útil</div>
+          </div>
+          <div class="flex" style="gap:6px;flex-wrap:wrap">
+            <button class="btn btn-o" onclick="exportarSelecaoExcel()" title="Exporta a lista filtrada (status/equipe/ciclo) em Excel">📊 Exportar Excel</button>
+            <button class="btn btn-o" onclick="baixarModeloSelecao()" title="Baixa o XLSX modelo pra preencher e importar">📥 Baixar modelo</button>
+            <button class="btn btn-o" onclick="gerarPdfSelecao()" title="Gera PDF dos aprovados ativos pra envio aos corretores">📄 Gerar PDF</button>
+            <button class="btn btn-p" onclick="abrirUploadSelecao()">📤 Upload do mês</button>
+          </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="sg" style="grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+          <div class="sc"><div class="sa" style="background:#f59e0b"></div><div class="sl">Pendentes</div><div class="sv" id="kpi-sel-pend">—</div></div>
+          <div class="sc"><div class="sa" style="background:#10b981"></div><div class="sl">Aprovados ativos</div><div class="sv" id="kpi-sel-ativos">—</div></div>
+          <div class="sc"><div class="sa" style="background:#3b82f6"></div><div class="sl">Vendidos</div><div class="sv" id="kpi-sel-vendidos">—</div></div>
+          <div class="sc"><div class="sa" style="background:#94a3b8"></div><div class="sl">Expirados/reprovados</div><div class="sv" id="kpi-sel-fora">—</div></div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="card" style="padding:12px 14px;margin-bottom:14px">
+          <div class="flex" style="gap:8px;flex-wrap:wrap">
+            <select id="filt-sel-status" onchange="carregarSelecaoImoveis()" style="padding:8px 12px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px">
+              <option value="">Todos status</option>
+              <option value="pendente">Pendentes</option>
+              <option value="aprovado" selected>Aprovados ativos</option>
+              <option value="vendido">Vendidos</option>
+              <option value="reprovado">Reprovados</option>
+              <option value="expirado">Expirados</option>
+            </select>
+            <select id="filt-sel-equipe" onchange="carregarSelecaoImoveis()" style="padding:8px 12px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px">
+              <option value="">Todas equipes</option>
+            </select>
+            <select id="filt-sel-mes" onchange="carregarSelecaoImoveis()" title="Ciclo mensal (dia 10 → dia 9)" style="padding:8px 12px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px">
+              <option value="">Todos ciclos</option>
+            </select>
+            <input type="text" id="filt-sel-busca" placeholder="🔍 Buscar por código, corretor, endereço..." oninput="carregarSelecaoImoveis()" style="flex:1;min-width:200px;padding:8px 12px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px">
+          </div>
+        </div>
+
+        <!-- Tabela -->
+        <div class="card">
+          <div class="tw tbl"><table>
+            <thead><tr>
+              <th>Código</th>
+              <th>Endereço</th>
+              <th>M²</th>
+              <th>Tempo venda</th>
+              <th>Corretor</th>
+              <th>Equipe</th>
+              <th>Status</th>
+              <th>Ciclo</th>
+              <th>Ações</th>
+            </tr></thead>
+            <tbody id="tb-vnd-selecao"><tr><td colspan="9" style="text-align:center;padding:24px;color:#94a3b8">Carregando...</td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+
+
+      <!-- Peneira de Imóveis (votação 5 votantes) -->
+      <div class="page" id="p-vnd-peneira">
+        <div class="ph">
+          <div>
+            <h1 class="pt">Peneira de Imóveis</h1>
+            <div class="pst">5 votantes · ≥3 aprovações = entra (3 meses) · ≥3 reprovações = sai</div>
+          </div>
+        </div>
+
+        <div class="sg" id="pen-kpis" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:14px"></div>
+
+        <div class="card" style="padding:12px 14px;margin-bottom:14px">
+          <div class="flex" style="gap:8px;flex-wrap:wrap;align-items:center">
+            <select id="pen-equipe" onchange="carregarPeneiraSelecao()" style="padding:8px 12px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px">
+              <option value="">Todas equipes</option>
+            </select>
+            <input type="text" id="pen-busca" placeholder="🔍 Buscar por código, corretor, endereço..." oninput="renderPeneira()" style="flex:1;min-width:200px;padding:8px 12px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px">
+          </div>
+        </div>
+
+        <div id="pen-grupos"><div style="text-align:center;color:#94a3b8;padding:32px">Carregando...</div></div>
+      </div>
+
+      <!-- Controle de Presença -->
+      <div class="page" id="p-vnd-presenca">
+        <div class="ph">
+          <div><h1 class="pt">Controle de Presença</h1><div class="pst">Atividades do mês com marcação de presença + estatísticas</div></div>
+          <div class="flex" style="gap:6px;flex-wrap:wrap">
+            <button class="btn btn-o" onclick="gerarRelatorioPresenca()" title="Relatório imprimível do mês filtrado (presença por corretor, equipe e atividade)">📊 Gerar Relatório</button>
+            <button class="btn btn-o" id="btn-gerenciar-corretores" style="display:none" onclick="abrirGerenciarCorretores()" title="Adicionar / remover corretores das equipes">⚙️ Corretores</button>
+            <button class="btn btn-p" onclick="abrirNovaAtividadeVendas()">+ Nova Atividade</button>
+          </div>
+        </div>
+
+        <!-- Filtros mês / aba -->
+        <div class="card" style="padding:12px 14px;margin-bottom:14px">
+          <div class="flex aic" style="gap:8px;flex-wrap:wrap">
+            <input type="month" id="pres-mes" onchange="carregarVendasPresenca()" style="padding:8px 12px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px">
+            <select id="pres-equipe" onchange="carregarVendasPresenca()" style="padding:8px 12px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px">
+              <option value="">Todas as equipes</option>
+              <option>Aguia</option>
+              <option>Fenix</option>
+              <option>Chris</option>
+              <option>Felippe</option>
+              <option>Emilia</option>
+            </select>
+            <div style="margin-left:auto;display:flex;gap:6px">
+              <button class="btn btn-o bsm" id="pres-tab-ativ" onclick="_presTab('ativ')">📋 Atividades</button>
+              <button class="btn btn-o bsm" id="pres-tab-stats" onclick="_presTab('stats')">📊 Estatísticas</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="sg" style="grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px">
+          <div class="sc"><div class="sa" style="background:#3b82f6"></div><div class="sl">Atividades</div><div class="sv" id="kpi-pres-atv">—</div></div>
+          <div class="sc"><div class="sa" style="background:#10b981"></div><div class="sl">Presenças</div><div class="sv" id="kpi-pres-pre">—</div></div>
+          <div class="sc"><div class="sa" style="background:#f59e0b"></div><div class="sl">Ausências</div><div class="sv" id="kpi-pres-aus">—</div></div>
+          <div class="sc"><div class="sa" style="background:#8b5cf6"></div><div class="sl">% Presença (geral)</div><div class="sv" id="kpi-pres-pct">—</div></div>
+        </div>
+
+        <!-- % por equipe -->
+        <div class="sg" id="kpi-pres-equipes" style="grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px"></div>
+
+        <!-- Aba ATIVIDADES -->
+        <div id="pres-pane-ativ">
+          <div id="pres-lista-atividades">
+            <div style="text-align:center;padding:24px;color:#94a3b8">Carregando...</div>
+          </div>
+        </div>
+
+        <!-- Aba ESTATÍSTICAS -->
+        <div id="pres-pane-stats" style="display:none">
+          <div class="card" style="padding:16px 18px;margin-bottom:14px">
+            <div style="font-weight:700;font-size:14px;margin-bottom:10px">Por equipe (mês selecionado)</div>
+            <div id="stats-por-equipe"><div style="color:#94a3b8;font-size:13px">Carregando...</div></div>
+          </div>
+          <div class="card" style="padding:16px 18px;margin-bottom:14px">
+            <div style="font-weight:700;font-size:14px;margin-bottom:10px">Por corretor (mês selecionado)</div>
+            <div id="stats-por-corretor"><div style="color:#94a3b8;font-size:13px">Carregando...</div></div>
+          </div>
+          <div class="card" style="padding:16px 18px">
+            <div style="font-weight:700;font-size:14px;margin-bottom:10px">Trimestre atual</div>
+            <div style="font-size:12px;color:#64748b;margin-bottom:10px" id="stats-tri-rotulo">—</div>
+            <div id="stats-trimestre"><div style="color:#94a3b8;font-size:13px">Carregando...</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cotas de Anúncios -->
+      <div class="page" id="p-vnd-cotas">
+        <div class="ph">
+          <div><h1 class="pt">Cotas de Anúncios</h1><div class="pst">Super Destaque + Destaque Comum por corretor (mensal)</div></div>
+          <button class="btn btn-p" onclick="abrirNovaCotaCorretor()">+ Corretor</button>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="card" style="padding:12px 14px;margin-bottom:14px">
+          <div class="flex aic" style="gap:8px;flex-wrap:wrap">
+            <input type="month" id="cota-mes" onchange="carregarVendasCotas()" style="padding:8px 12px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px">
+            <select id="cota-equipe" onchange="carregarVendasCotas()" style="padding:8px 12px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px">
+              <option value="">Todas equipes</option>
+              <option>Aguia</option>
+              <option>Fenix</option>
+              <option>Chris</option>
+              <option>Felippe</option>
+              <option>Emilia</option>
+            </select>
+            <input type="text" id="cota-busca" placeholder="🔍 Buscar corretor..." oninput="renderCotasTabela()" style="flex:1;min-width:200px;padding:8px 12px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px">
+            <button class="btn btn-o bsm" onclick="copiarCotasDoMesAnterior()" title="Cria automaticamente as linhas do mês anterior pra ajustar">📋 Copiar mês anterior</button>
+          </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="sg" style="grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+          <div class="sc"><div class="sa" style="background:#3b82f6"></div><div class="sl">Super Destaque (mês)</div><div class="sv" id="kpi-cot-sd">—</div></div>
+          <div class="sc"><div class="sa" style="background:#10b981"></div><div class="sl">Destaque Comum</div><div class="sv" id="kpi-cot-dc">—</div></div>
+          <div class="sc"><div class="sa" style="background:#8b5cf6"></div><div class="sl">Total anúncios</div><div class="sv" id="kpi-cot-tot">—</div></div>
+          <div class="sc"><div class="sa" style="background:#f59e0b"></div><div class="sl">Corretores cadastrados</div><div class="sv" id="kpi-cot-corr">—</div></div>
+        </div>
+
+        <!-- Tabela editável -->
+        <div class="card">
+          <div class="tw tbl"><table>
+            <thead><tr>
+              <th>Corretor</th>
+              <th>Equipe</th>
+              <th style="text-align:center" title="Super Destaque">Super Dest.</th>
+              <th style="text-align:center" title="Destaque Comum">Destaque</th>
+              <th style="text-align:center">Total</th>
+              <th style="text-align:center" title="Comparação com mês anterior">Δ vs mês ant.</th>
+              <th>Obs.</th>
+              <th></th>
+            </tr></thead>
+            <tbody id="tb-vnd-cotas"><tr><td colspan="8" style="text-align:center;padding:24px;color:#94a3b8">Carregando...</td></tr></tbody>
+          </table></div>
+        </div>
+
+        <!-- Ranking por equipe -->
+        <div class="card" style="padding:16px 18px;margin-top:14px">
+          <div style="font-weight:700;font-size:14px;margin-bottom:10px">Ranking por equipe</div>
+          <div id="cota-ranking-equipe"><div style="color:#94a3b8;font-size:13px">—</div></div>
+        </div>
+      </div>
+
+      <!-- Agenda do Fotógrafo -->
+      <div class="page" id="p-vnd-fotografo">
+        <div class="ph">
+          <div><h1 class="pt">Agenda do Fotógrafo</h1><div class="pst">Slots por dia · clique no horário para agendar</div></div>
+          <button class="btn btn-p" onclick="abrirNovoAgendaFoto()">+ Agendamento</button>
+        </div>
+
+        <!-- Navegação de semana + filtros -->
+        <div class="card" style="padding:12px 14px;margin-bottom:14px">
+          <div class="flex aic" style="gap:8px;flex-wrap:wrap">
+            <button class="btn btn-o bsm" onclick="navSemanaFoto(-1)">← Anterior</button>
+            <span id="foto-wk-label" style="font-weight:600;min-width:200px;text-align:center">—</span>
+            <button class="btn btn-o bsm" onclick="navSemanaFoto(1)">Próxima →</button>
+            <button class="btn btn-o bsm" onclick="navSemanaFoto(0)">Hoje</button>
+            <select id="foto-filtro-regiao" onchange="renderAgendaFotografo()" style="margin-left:auto;padding:8px 12px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px">
+              <option value="">Todas as regiões</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="sg" style="grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+          <div class="sc"><div class="sa" style="background:#3b82f6"></div><div class="sl">Agendados (semana)</div><div class="sv" id="kpi-foto-sem">—</div></div>
+          <div class="sc"><div class="sa" style="background:#10b981"></div><div class="sl">Realizados</div><div class="sv" id="kpi-foto-real">—</div></div>
+          <div class="sc"><div class="sa" style="background:#ef4444"></div><div class="sl">Cancelados</div><div class="sv" id="kpi-foto-canc">—</div></div>
+          <div class="sc"><div class="sa" style="background:#94a3b8"></div><div class="sl">Slots livres</div><div class="sv" id="kpi-foto-livre">—</div></div>
+        </div>
+
+        <!-- Grid de horários × dias -->
+        <div class="card" style="padding:0;overflow:hidden">
+          <div id="foto-grid" style="overflow-x:auto"></div>
+        </div>
+
+        <!-- Blocos de disponibilidade extra abertos pelo fotografo (aparecem
+             abaixo do grid principal, so quando ha slots nesta semana) -->
+        <div id="foto-extras-bloco" style="margin-top:14px"></div>
+      </div>
+
+      <!-- Fórum dos Representantes (representantes + gerentes) -->
+      <div class="page" id="p-vnd-forum">
+        <div class="ph">
+          <div>
+            <h1 class="pt">Fórum dos Representantes</h1>
+            <div class="pst" id="forum-subtitle">Pauta do trimestre — tópicos mais <b>priorizados</b> pelos representantes vão pro topo da reunião</div>
+          </div>
+          <button class="btn btn-p" onclick="abrirNovoForumTopico()">+ Novo tópico</button>
+        </div>
+
+        <!-- Ciclo (trimestre) + data reuniao + filtros -->
+        <div class="card" style="padding:14px;margin-bottom:14px">
+          <div class="flex aic" style="gap:10px;flex-wrap:wrap">
+            <div>
+              <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;font-weight:700">Trimestre</div>
+              <select id="forum-ciclo" onchange="renderForum()" style="padding:8px 12px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px;font-weight:600;margin-top:4px"></select>
+            </div>
+            <div>
+              <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;font-weight:700">Reunião</div>
+              <div id="forum-reuniao-info" style="font-size:13px;font-weight:600;margin-top:8px;color:#475569">—</div>
+            </div>
+            <button id="forum-btn-reuniao" onclick="abrirDataReuniao()" class="btn btn-o bsm" style="margin-left:8px;display:none">📅 Marcar/editar</button>
+            <button id="forum-btn-encerrar" onclick="encerrarCicloEAbrirProximo()" class="btn btn-o bsm" style="display:none" title="Encerra este trimestre e cria o próximo. Tópicos ainda em proposta ou em debate migram automaticamente.">🔄 Encerrar e abrir próximo</button>
+            <div style="margin-left:auto;display:flex;gap:8px;align-items:flex-end">
+              <div>
+                <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;font-weight:700">Status</div>
+                <select id="forum-filtro-status" onchange="renderForum()" style="padding:8px 12px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px;margin-top:4px">
+                  <option value="">Todos</option>
+                  <option value="proposta">Propostas</option>
+                  <option value="em_debate">Em debate</option>
+                  <option value="decidido">Decididos</option>
+                  <option value="arquivado">Arquivados</option>
+                </select>
+              </div>
+              <div>
+                <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;font-weight:700">Categoria</div>
+                <select id="forum-filtro-tag" onchange="renderForum()" style="padding:8px 12px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px;margin-top:4px">
+                  <option value="">Todas</option>
+                  <option value="comissao">💰 Comissão</option>
+                  <option value="treinamento">🎓 Treinamento</option>
+                  <option value="processos">⚙️ Processos</option>
+                  <option value="ferramentas">🛠️ Ferramentas</option>
+                  <option value="clima">🤝 Clima</option>
+                  <option value="outros">📎 Outros</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="sg" style="grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+          <div class="sc"><div class="sa" style="background:#3b82f6"></div><div class="sl">Propostas</div><div class="sv" id="kpi-forum-prop">—</div></div>
+          <div class="sc"><div class="sa" style="background:#f59e0b"></div><div class="sl">Em debate</div><div class="sv" id="kpi-forum-deb">—</div></div>
+          <div class="sc"><div class="sa" style="background:#10b981"></div><div class="sl">Decididos</div><div class="sv" id="kpi-forum-dec">—</div></div>
+          <div class="sc"><div class="sa" style="background:#f59e0b"></div><div class="sl">Priorizações ⭐</div><div class="sv" id="kpi-forum-apoios">—</div></div>
+        </div>
+
+        <!-- Lista de tópicos -->
+        <div id="forum-lista"><div style="color:#94a3b8;font-size:13px;padding:20px;text-align:center">Carregando…</div></div>
+      </div>
+
+      <!-- Minha Disponibilidade (so o fotografo enxerga) -->
+      <div class="page" id="p-vnd-foto-disp">
+        <div class="ph">
+          <div><h1 class="pt">Minha Disponibilidade</h1><div class="pst">Abra dias e horários extras — gerentes verão essas janelas na agenda para agendar</div></div>
+          <button class="btn btn-p" onclick="abrirNovoFotoDisp()">+ Novo dia/horário</button>
+        </div>
+        <div class="card" style="padding:14px">
+          <div id="foto-disp-lista"><div style="color:#94a3b8;font-size:13px;padding:20px;text-align:center">Carregando…</div></div>
+        </div>
+      </div>
+
+      <!-- Modal Novo/Editar Imóvel Seleção -->
+      <!-- (no fim do HTML — antes do </body>) -->
+
+      <!-- REGRAS — páginas dinâmicas, conteúdo injetado por js/12-regras.js -->
+      <div class="page" id="p-reg-vendas"></div>
+      <div class="page" id="p-reg-locacao"></div>
+      <div class="page" id="p-reg-financeiro"></div>
+      <div class="page" id="p-reg-rh"></div>
+      <div class="page" id="p-reg-adm"></div>
+
+      <!-- JURÍDICO -->
+      <div class="page" id="p-juridico">
+        <div class="ph">
+          <div><h1 class="pt">Sistema Jurídico</h1><div class="pst">FalcãoVaz — gestão completa</div></div>
+          <button class="btn btn-p" onclick="abrirJuridico()">Abrir sistema ↗</button>
+        </div>
+        <div class="card"><div class="cb" style="text-align:center;padding:48px">
+          <div style="font-size:48px;margin-bottom:16px">⚖️</div>
+          <div style="font-size:18px;font-weight:600;margin-bottom:8px">Sistema Jurídico FalcãoVaz</div>
+          <div style="color:var(--muted);font-size:13px;margin-bottom:24px">Processos, prazos, petições IA, documentos extrajudiciais, financeiro e gestão de chamados.</div>
+          <button class="btn btn-p" onclick="abrirJuridico()">Acessar ↗</button>
+        </div></div>
+      </div>
+
+      <!-- MANUTENÇÃO -->
+      <div class="page" id="p-manutencao">
+        <div class="ph">
+          <div><h1 class="pt">Manutenção Predial</h1><div class="pst">Chamados de manutenção de imóveis</div></div>
+          <button class="btn btn-g" onclick="abrirNovoChamadoMan()">+ Novo Chamado</button>
+        </div>
+        <div class="sg">
+          <div class="sc"><div class="sa" style="background:#2563EB"></div><div class="sl">Total</div><div class="sv" id="man-tot">—</div></div>
+          <div class="sc"><div class="sa" style="background:#d97706"></div><div class="sl">Em andamento</div><div class="sv" id="man-and">—</div></div>
+          <div class="sc"><div class="sa" style="background:#16a34a"></div><div class="sl">Concluídos</div><div class="sv" id="man-ok">—</div></div>
+          <div class="sc"><div class="sa" style="background:#dc2626"></div><div class="sl">Abertos</div><div class="sv" id="man-ab">—</div></div>
+        </div>
+        <!-- Chamados por mes -->
+        <div class="card" style="padding:14px 16px;margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+            <div>
+              <div style="font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#94a3b8">Chamados por mês</div>
+              <div style="font-size:11px;color:#64748b">Conta pela data de abertura do chamado · últimos 6 meses</div>
+            </div>
+            <div style="font-size:11px;color:#94a3b8" id="man-pmes-tot"></div>
+          </div>
+          <div id="man-pmes-bars" class="pmes-bars-mini"></div>
+        </div>
+        <!-- Filtro por status -->
+        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+          <button class="btn btn-p bsm" onclick="filtrarMan('todos',this)">Todos</button>
+          <button class="btn btn-o bsm" onclick="filtrarMan('Aberto',this)">🔴 Abertos</button>
+          <button class="btn btn-o bsm" onclick="filtrarMan('Em Andamento',this)">🟡 Em andamento</button>
+          <button class="btn btn-o bsm" onclick="filtrarMan('Concluído',this)">✅ Concluídos</button>
+          <input type="text" id="man-busca" class="fc" placeholder="🔍 Buscar por protocolo, nome ou imóvel..." style="max-width:280px;padding:6px 12px;font-size:13px" oninput="filtrarMan('busca',null)">
+        </div>
+        <div class="tw tbl"><table>
+          <thead><tr><th>Protocolo</th><th>Inquilino</th><th>Endereço do Imóvel</th><th>Tipo de Serviço</th><th>Status</th><th>Data</th><th>Ações</th></tr></thead>
+          <tbody id="tb-man"><tr><td colspan="7"><div class="empty"><div class="ei">⏳</div></div></td></tr></tbody>
+        </table></div>
+      </div>
+
+      <!-- REQUISIÇÕES -->
+      <div class="page" id="p-requisicoes">
+        <div class="ph">
+          <div><h1 class="pt">Requisições Internas</h1><div class="pst">TI, manutenção interna e outras solicitações</div></div>
+          <button class="btn btn-p" onclick="abrirNovaReq()">+ Nova Requisição</button>
+        </div>
+        <!-- Requisicoes por mes -->
+        <div class="card" style="padding:14px 16px;margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+            <div>
+              <div style="font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#94a3b8">Requisições por mês</div>
+              <div style="font-size:11px;color:#64748b">Conta pela data de abertura · últimos 6 meses</div>
+            </div>
+            <div style="font-size:11px;color:#94a3b8" id="req-pmes-tot"></div>
+          </div>
+          <div id="req-pmes-bars" class="pmes-bars-mini"></div>
+        </div>
+        <!-- Filtro -->
+        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+          <button class="btn btn-p bsm" onclick="filtrarReq('todos',this)">Todos</button>
+          <button class="btn btn-o bsm" onclick="filtrarReq('Aberta',this)">🔴 Abertas</button>
+          <button class="btn btn-o bsm" onclick="filtrarReq('Em Andamento',this)">🟡 Em andamento</button>
+          <button class="btn btn-o bsm" onclick="filtrarReq('Concluída',this)">✅ Concluídas</button>
+          <button class="btn btn-o bsm" onclick="filtrarReq('T.I.',this)">💻 TI</button>
+          <button class="btn btn-o bsm" onclick="filtrarReq('Manutenção',this)">🔧 Manutenção</button>
+        </div>
+        <div class="tw tbl"><table>
+          <thead><tr><th>Protocolo</th><th>Agência</th><th>Título</th><th>Setor</th><th>Prioridade</th><th>Status</th><th>Data</th><th>Ações</th></tr></thead>
+          <tbody id="tb-req"><tr><td colspan="8"><div class="empty"><div class="ei">⏳</div></div></td></tr></tbody>
+        </table></div>
+      </div>
+
+      <!-- ENTREGA DE CHAVES -->
+      <div class="page" id="p-entrega">
+        <div class="ph">
+          <div><h1 class="pt">Entrega de Chaves</h1><div class="pst">Painel de controle do departamento de entrega de chaves</div></div>
+          <button class="btn btn-g" onclick="window.open('entregaapp/cadastro.html','_blank')">+ Nova Entrega</button>
+        </div>
+        <iframe id="entrega-frame" src="entregaapp/painel.html" style="width:100%;height:calc(100vh - 180px);min-height:560px;border:1px solid #e2e8f0;border-radius:12px;background:#0f172a"></iframe>
+      </div>
+
+      <!-- TAREFAS -->
+      <div class="page" id="p-tarefas">
+        <div class="ph">
+          <div><h1 class="pt">Tarefas</h1><div class="pst" id="tar-sub">Suas demandas</div></div>
+          <button class="btn btn-p" onclick="openM('m-tar')">+ Nova Tarefa</button>
+        </div>
+        <div class="sg">
+          <div class="sc"><div class="sa" style="background:#2563EB"></div><div class="sl">Total</div><div class="sv" id="t-tot">—</div></div>
+          <div class="sc"><div class="sa" style="background:#7c3aed"></div><div class="sl">Em andamento</div><div class="sv" id="t-and">—</div></div>
+          <div class="sc"><div class="sa" style="background:#16a34a"></div><div class="sl">Concluídas</div><div class="sv" id="t-ok">—</div></div>
+          <div class="sc"><div class="sa" style="background:#dc2626"></div><div class="sl">Vencidas</div><div class="sv" id="t-ov">—</div></div>
+        </div>
+        <div class="tw tbl"><table>
+          <thead><tr><th>Tarefa</th><th>Responsável</th><th>Status</th><th>Prioridade</th><th>Prazo</th><th>Cat.</th><th></th></tr></thead>
+          <tbody id="tb-tar"><tr><td colspan="7"><div class="empty"><div class="ei">⏳</div></div></td></tr></tbody>
+        </table></div>
+      </div>
+
+      <!-- AGENDA -->
+      <div class="page" id="p-agenda">
+        <div class="ph">
+          <div><h1 class="pt">Agenda</h1><div class="pst">Compromissos da equipe</div></div>
+          <button class="btn btn-p" onclick="abrirNovoEv('')">+ Compromisso</button>
+        </div>
+        <div class="flex aic g2" style="margin-bottom:16px;flex-wrap:wrap">
+          <button class="btn btn-o bsm" onclick="chWk(-1)">← Anterior</button>
+          <span style="font-weight:600;min-width:160px;text-align:center" id="ag-lbl">—</span>
+          <button class="btn btn-o bsm" onclick="chWk(1)">Próxima →</button>
+          <select id="ag-filtro-pessoa" onchange="renderAg()" style="margin-left:auto;padding:7px 12px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px;background:#fff;cursor:pointer;min-width:200px">
+            <option value="">Todos os participantes</option>
+          </select>
+        </div>
+        <div id="ag-grid" style="display:grid;gap:12px"></div>
+      </div>
+
+      <!-- PAUTA TERÇA -->
+      <div class="page" id="p-pauta-terca">
+        <div class="ph">
+          <div><h1 class="pt">Pauta Mkt</h1><div class="pst" id="prox-ter">—</div></div>
+          <button class="btn btn-p" onclick="openPauta('terca')">+ Item</button>
+        </div>
+        <div class="flex aic g2" style="margin-bottom:16px">
+          <button class="btn btn-o bsm" onclick="chReu('terca',-1)">←</button>
+          <span style="font-weight:600;min-width:160px;text-align:center" id="rw-ter">—</span>
+          <button class="btn btn-o bsm" onclick="chReu('terca',1)">→</button>
+        </div>
+        <div id="pc-terca"></div>
+      </div>
+
+      <!-- PAUTA QUARTA -->
+      <div class="page" id="p-pauta-quarta">
+        <div class="ph">
+          <div><h1 class="pt">Pauta Adm</h1><div class="pst" id="prox-qua">—</div></div>
+          <button class="btn btn-p" onclick="openPauta('quarta')">+ Item</button>
+        </div>
+        <div class="flex aic g2" style="margin-bottom:16px">
+          <button class="btn btn-o bsm" onclick="chReu('quarta',-1)">←</button>
+          <span style="font-weight:600;min-width:160px;text-align:center" id="rw-qua">—</span>
+          <button class="btn btn-o bsm" onclick="chReu('quarta',1)">→</button>
+        </div>
+        <div id="pc-quarta"></div>
+      </div>
+
+      <!-- PAUTA JURÍDICO -->
+      <div class="page" id="p-pauta-juridico">
+        <div class="ph">
+          <div><h1 class="pt">Pauta Jurídico</h1><div class="pst" id="prox-jur">—</div></div>
+          <button class="btn btn-p" onclick="openPauta('juridico')">+ Item</button>
+        </div>
+        <div class="flex aic g2" style="margin-bottom:16px">
+          <button class="btn btn-o bsm" onclick="chReu('juridico',-1)">←</button>
+          <span style="font-weight:600;min-width:160px;text-align:center" id="rw-jur">—</span>
+          <button class="btn btn-o bsm" onclick="chReu('juridico',1)">→</button>
+        </div>
+        <div id="pc-juridico"></div>
+      </div>
+
+      <!-- PAUTA RENATA (1:1 quinzenal — segunda, paridade 0) -->
+      <div class="page" id="p-pauta-renata">
+        <div class="ph">
+          <div><h1 class="pt">Pauta Vendas — Renata (Moema)</h1><div class="pst" id="prox-renata">—</div></div>
+          <button class="btn btn-p" onclick="openPauta('renata')">+ Item</button>
+        </div>
+        <div class="flex aic g2" style="margin-bottom:16px">
+          <button class="btn btn-o bsm" onclick="chReu('renata',-1)">←</button>
+          <span style="font-weight:600;min-width:160px;text-align:center" id="rw-renata">—</span>
+          <button class="btn btn-o bsm" onclick="chReu('renata',1)">→</button>
+        </div>
+        <div id="pc-renata"></div>
+      </div>
+
+      <!-- PAUTA FELIPPE (1:1 quinzenal — segunda, paridade 1) -->
+      <div class="page" id="p-pauta-felippe">
+        <div class="ph">
+          <div><h1 class="pt">Pauta Vendas — Felippe</h1><div class="pst" id="prox-felippe">—</div></div>
+          <button class="btn btn-p" onclick="openPauta('felippe')">+ Item</button>
+        </div>
+        <div class="flex aic g2" style="margin-bottom:16px">
+          <button class="btn btn-o bsm" onclick="chReu('felippe',-1)">←</button>
+          <span style="font-weight:600;min-width:160px;text-align:center" id="rw-felippe">—</span>
+          <button class="btn btn-o bsm" onclick="chReu('felippe',1)">→</button>
+        </div>
+        <div id="pc-felippe"></div>
+      </div>
+
+      <!-- PAUTA CHRISTIANE (1:1 quinzenal — sexta, paridade 0) -->
+      <div class="page" id="p-pauta-christiane">
+        <div class="ph">
+          <div><h1 class="pt">Pauta Vendas — Christiane</h1><div class="pst" id="prox-christiane">—</div></div>
+          <button class="btn btn-p" onclick="openPauta('christiane')">+ Item</button>
+        </div>
+        <div class="flex aic g2" style="margin-bottom:16px">
+          <button class="btn btn-o bsm" onclick="chReu('christiane',-1)">←</button>
+          <span style="font-weight:600;min-width:160px;text-align:center" id="rw-christiane">—</span>
+          <button class="btn btn-o bsm" onclick="chReu('christiane',1)">→</button>
+        </div>
+        <div id="pc-christiane"></div>
+      </div>
+
+      <!-- PAUTA EMILIA (1:1 quinzenal — sexta, paridade 1) -->
+      <div class="page" id="p-pauta-emilia">
+        <div class="ph">
+          <div><h1 class="pt">Pauta Vendas — Emilia</h1><div class="pst" id="prox-emilia">—</div></div>
+          <button class="btn btn-p" onclick="openPauta('emilia')">+ Item</button>
+        </div>
+        <div class="flex aic g2" style="margin-bottom:16px">
+          <button class="btn btn-o bsm" onclick="chReu('emilia',-1)">←</button>
+          <span style="font-weight:600;min-width:160px;text-align:center" id="rw-emilia">—</span>
+          <button class="btn btn-o bsm" onclick="chReu('emilia',1)">→</button>
+        </div>
+        <div id="pc-emilia"></div>
+      </div>
+
+      <!-- ATIVIDADES SEMANAIS -->
+      <div class="page" id="p-ativ-semanais">
+        <div class="ph">
+          <div>
+            <h1 class="pt">Atividades Semanais</h1>
+            <div class="pst" id="atv-semana-label">—</div>
+          </div>
+          <button class="btn btn-p" onclick="abrirNovaAtividadeSemanal()">+ Atividade</button>
+        </div>
+        <div class="card" style="padding:14px 18px;margin-bottom:14px;background:linear-gradient(135deg,#eff6ff 0%,#fff 80%);border-left:4px solid var(--pri)">
+          <div style="font-size:12px;font-weight:700;color:var(--pri);letter-spacing:.5px;text-transform:uppercase">Como funciona</div>
+          <div style="font-size:13px;color:#475569;margin-top:4px">Lista das suas atividades fixas que se repetem toda semana. Marque conforme for concluindo. Toda segunda-feira o painel reseta automaticamente.</div>
+        </div>
+        <div id="atv-lista">
+          <div style="text-align:center;padding:24px;color:#94a3b8">Carregando...</div>
+        </div>
+        <!-- Quando admin, mostra também painel dos liderados -->
+        <div id="atv-liderados-bloco" style="display:none;margin-top:24px">
+          <div class="ph">
+            <div><h1 class="pt" style="font-size:18px">Liderados — esta semana</h1><div class="pst">Acompanhamento do check-in</div></div>
+          </div>
+          <div id="atv-liderados-lista"></div>
+        </div>
+      </div>
+
+      <!-- HORÁRIOS -->
+      <div class="page" id="p-horarios">
+        <div class="ph">
+          <div><h1 class="pt">Horários Livres</h1><div class="pst">Disponibilidade para reuniões</div></div>
+        </div>
+        <div class="flex aic g2" style="margin-bottom:16px">
+          <button class="btn btn-o bsm" onclick="chHor(-1)">←</button>
+          <span style="font-weight:600;min-width:160px;text-align:center" id="hor-lbl">—</span>
+          <button class="btn btn-o bsm" onclick="chHor(1)">→</button>
+        </div>
+        <div class="card"><div class="cb" id="hor-grid"></div></div>
+      </div>
+
+      <!-- ═════════════ GESTÃO ═════════════ -->
+
+      <!-- LIDERADOS -->
+      <div class="page" id="p-liderados">
+        <div class="ph">
+          <div><h1 class="pt">Meus Liderados</h1><div class="pst">Cadastre e gerencie sua equipe direta</div></div>
+          <button class="btn btn-p" onclick="abrirAddLiderado()">+ Adicionar Liderado</button>
+        </div>
+        <div class="card"><div class="cb" id="liderados-lista">Carregando...</div></div>
+      </div>
+
+      <!-- PROCESSOS (BPMN) — viewer do diagrams.net embarcado -->
+      <div class="page" id="p-processos-bpmn">
+        <div class="ph">
+          <div>
+            <button onclick="goTo('regras-home')" style="background:none;border:none;color:#64748b;font-size:12px;cursor:pointer;padding:0;margin-bottom:6px;display:flex;align-items:center;gap:6px"><i data-icon="arrowLeft" data-size="14"></i> Regras e Processos</button>
+            <h1 class="pt">Processos (BPMN)</h1><div class="pst">Mapeamento de processos da empresa — diagrama mantido pelo gestor no diagrams.net</div>
+          </div>
+          <a class="btn btn-o" id="bpmn-link-externo" href="#" target="_blank" rel="noopener">🔗 Abrir em tela cheia</a>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <!-- src vazio de proposito: carregarProcessosBpmn() preenche na 1ª
+               visita pra nao baixar o viewer junto com o portal -->
+          <iframe id="bpmn-iframe" frameborder="0" style="width:100%;height:calc(100vh - 220px);min-height:500px;display:block"></iframe>
+        </div>
+      </div>
+
+      <!-- ORGANOGRAMA -->
+      <div class="page" id="p-organograma">
+        <div class="ph">
+          <div><h1 class="pt">Organograma</h1><div class="pst">Estrutura líder → liderados, gerada automaticamente a partir dos vínculos cadastrados</div></div>
+          <button class="btn btn-o" onclick="imprimirOrganograma()">🖨️ Imprimir / PDF</button>
+        </div>
+        <div class="card" style="padding:20px;overflow-x:auto">
+          <div id="organograma-arvore">Carregando...</div>
+        </div>
+      </div>
+
+      <!-- AVALIAÇÕES -->
+      <div class="page" id="p-avaliacoes">
+        <div class="ph">
+          <div><h1 class="pt">Avaliações Trimestrais</h1><div class="pst">Feedback estruturado por colaborador — escolha o período no seletor</div></div>
+        </div>
+        <div class="card"><div class="cb" id="avaliacoes-lista">Carregando...</div></div>
+      </div>
+
+      <!-- METAS / TAREFAS BÔNUS -->
+      <div class="page" id="p-metas">
+        <div class="ph">
+          <div><h1 class="pt">Tarefas e Pontuação de Bônus</h1><div class="pst">Configure tarefas, pontos e frequência por colaborador</div></div>
+        </div>
+        <div class="card"><div class="cb" id="metas-lista">Carregando...</div></div>
+      </div>
+
+      <!-- APURAR BÔNUS -->
+      <div class="page" id="p-bonus">
+        <div class="ph">
+          <div><h1 class="pt">Apuração de Bônus</h1><div class="pst">Avalie pontuação e calcule valor a pagar</div></div>
+        </div>
+        <div class="card"><div class="cb" id="bonus-lista">Carregando...</div></div>
+      </div>
+
+      <!-- AVALIAR LÍDER (360) -->
+      <div class="page" id="p-av-lider">
+        <div class="ph">
+          <div><h1 class="pt">Avaliação do Líder</h1><div class="pst">Sua avaliação anônima do seu líder direto</div></div>
+        </div>
+        <div class="card"><div class="cb" id="av-lider-form">Carregando...</div></div>
+      </div>
+
+      <!-- Modais Gestão -->
+      <div class="mo" id="m-add-lid">
+        <div class="modal">
+          <div class="mh"><div class="mt">+ Adicionar Liderado</div><button class="mc" onclick="closeM('m-add-lid')">×</button></div>
+          <div class="mb">
+            <div class="fg">
+              <label>Colaborador existente</label>
+              <select id="lid-sel"></select>
+            </div>
+            <div style="text-align:center;color:#94a3b8;margin:14px 0;font-size:12px">— ou —</div>
+            <button class="btn btn-o" style="width:100%" onclick="closeM('m-add-lid');abrirNovoFuncionario()">+ Cadastrar Novo Funcionário</button>
+          </div>
+          <div class="mf">
+            <button class="btn btn-o" onclick="closeM('m-add-lid')">Cancelar</button>
+            <button class="btn btn-p" onclick="salvarLiderado()">Salvar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="mo" id="m-novo-func">
+        <div class="modal">
+          <div class="mh"><div class="mt">+ Cadastrar Novo Funcionário</div><button class="mc" onclick="closeM('m-novo-func')">×</button></div>
+          <div class="mb">
+            <div style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;border-radius:8px;padding:10px 12px;font-size:12.5px;margin-bottom:14px">ℹ️ Este cadastro é <b>somente para avaliação</b>. O funcionário entra no Portal apenas no módulo <b>Avaliação & Feedback</b> — sem acesso a Jurídico, Interno ou Calendar.</div>
+            <div class="fg"><label>Nome completo *</label><input type="text" id="nf-nome" placeholder="Ex: Maria Silva"></div>
+            <div class="fg"><label>Email <span style="color:#94a3b8;font-weight:400">(opcional)</span></label><input type="email" id="nf-email" placeholder="maria@exemplo.com"></div>
+            <div class="fg"><label>Departamento</label><input type="text" id="nf-dept" placeholder="Ex: Vendas, Marketing, etc."></div>
+            <div class="fg"><label>Nível</label>
+              <select id="nf-nivel">
+                <option value="3">3 — Vendas</option>
+                <option value="2" selected>2 — Administrativo</option>
+                <option value="1">1 — Jurídico</option>
+              </select>
+            </div>
+          </div>
+          <div class="mf">
+            <button class="btn btn-o" onclick="closeM('m-novo-func')">Cancelar</button>
+            <button class="btn btn-p" onclick="salvarNovoFuncionario()">Cadastrar e adicionar à equipe</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="mo" id="m-edit-colab">
+        <div class="modal">
+          <div class="mh"><div class="mt">✏️ Editar dados do colaborador</div><button class="mc" onclick="closeM('m-edit-colab')">×</button></div>
+          <div class="mb">
+            <div style="background:#eff6ff;border-left:3px solid #2563eb;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#1e3a8a">
+              💡 Corrija aqui o e-mail caso esteja errado — é pra ele que vão as boas-vindas e o código de recuperação de senha.
+            </div>
+            <div class="fg"><label>Nome completo *</label><input type="text" id="ec-nome" placeholder="Ex: Maria Silva"></div>
+            <div class="fg"><label>Email *</label><input type="email" id="ec-email" placeholder="maria.silva@novasaopaulo.com.br"></div>
+            <div class="fg"><label>Departamento</label><input type="text" id="ec-dept" placeholder="Ex: Vendas, Marketing, etc."></div>
+          </div>
+          <div class="mf">
+            <button class="btn btn-o" onclick="closeM('m-edit-colab')">Cancelar</button>
+            <button class="btn btn-p" onclick="salvarEditarColab()">Salvar alterações</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="mo" id="m-historico">
+        <div class="modal" style="max-width:760px">
+          <div class="mh"><div class="mt" id="hist-titulo">📈 Histórico</div><button class="mc" onclick="closeM('m-historico')">×</button></div>
+          <div class="mb"><div id="hist-conteudo">Carregando...</div></div>
+          <div class="mf"><button class="btn btn-p" onclick="closeM('m-historico')">Fechar</button></div>
+        </div>
+      </div>
+
+      <div class="mo" id="m-criterios">
+        <div class="modal" style="max-width:720px">
+          <div class="mh"><div class="mt" id="crit-titulo">📋 Critérios da Avaliação</div><button class="mc" onclick="closeM('m-criterios')">×</button></div>
+          <div class="mb">
+            <div style="background:#fef9e7;border-left:3px solid #f59e0b;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#78350f">
+              💡 Os <strong>18 critérios universais</strong> (blocos A-G) já estão na avaliação. Aqui você adiciona <strong>critérios específicos</strong> apenas para este colaborador.
+            </div>
+            <div id="crit-lista">Carregando...</div>
+            <div style="border-top:1px solid var(--borda);margin-top:18px;padding-top:14px">
+              <div style="font-size:13px;font-weight:700;margin-bottom:10px">+ Adicionar novo critério</div>
+              <div class="fg"><label>Pergunta/critério</label>
+                <textarea id="crit-pergunta" rows="2" placeholder="Ex: Atende as metas específicas do setor de Vendas?"></textarea>
+              </div>
+              <div style="display:flex;gap:10px">
+                <div class="fg" style="flex:1"><label>Tipo de resposta</label>
+                  <select id="crit-tipo">
+                    <option value="escala">Escala 1-5</option>
+                    <option value="texto">Texto livre</option>
+                    <option value="sim_nao">Sim / Não</option>
+                  </select>
+                </div>
+                <div class="fg" style="flex:1;display:flex;align-items:flex-end">
+                  <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                    <input type="checkbox" id="crit-obrig"> Resposta obrigatória
+                  </label>
+                </div>
+              </div>
+              <button class="btn btn-p" onclick="adicionarCriterio()">+ Adicionar critério</button>
+            </div>
+          </div>
+          <div class="mf"><button class="btn btn-p" onclick="closeM('m-criterios')">Fechar</button></div>
+        </div>
+      </div>
+
+      <div class="mo" id="m-avaliacao">
+        <div class="modal" style="max-width:720px">
+          <div class="mh"><div class="mt" id="aval-titulo">Avaliação</div><button class="mc" onclick="closeM('m-avaliacao')">×</button></div>
+          <div class="mb"><div id="aval-form"></div></div>
+          <div class="mf">
+            <button class="btn btn-o" onclick="closeM('m-avaliacao')">Cancelar</button>
+            <button class="btn btn-o" onclick="gerarTermoAvaliacao()">📄 Termo (PDF)</button>
+            <button class="btn btn-o" onclick="salvarAvaliacao('rascunho')">💾 Salvar rascunho</button>
+            <button class="btn btn-p" onclick="salvarAvaliacao('finalizada')">✅ Finalizar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="mo" id="m-tarefa-bonus">
+        <div class="modal">
+          <div class="mh"><div class="mt" id="tar-bonus-titulo">+ Nova Tarefa</div><button class="mc" onclick="closeM('m-tarefa-bonus')">×</button></div>
+          <div class="mb">
+            <div class="fg"><label>Descrição</label><input type="text" id="tar-bonus-desc" placeholder="Ex: Postagens redes sociais"></div>
+            <div class="fg"><label>Pontos máximos</label><input type="number" id="tar-bonus-pontos" value="50" min="0"></div>
+            <div class="fg"><label>Frequência</label>
+              <select id="tar-bonus-freq">
+                <option>Diário</option><option>Semanal</option><option>Mensal</option><option>Sob Demanda</option>
+              </select>
+            </div>
+          </div>
+          <div class="mf">
+            <button class="btn btn-o" onclick="closeM('m-tarefa-bonus')">Cancelar</button>
+            <button class="btn btn-p" onclick="salvarTarefaBonus()">Salvar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="mo" id="m-config-bonus">
+        <div class="modal">
+          <div class="mh"><div class="mt">Configurar Bônus</div><button class="mc" onclick="closeM('m-config-bonus')">×</button></div>
+          <div class="mb">
+            <div class="fg"><label><input type="checkbox" id="cfg-bonus-ativo"> Bônus ativo para este colaborador</label></div>
+            <div class="fg"><label>Valor máximo do bônus (R$)</label><input type="number" id="cfg-bonus-valor" value="500" min="0" step="50"></div>
+            <div class="fg"><label>Periodicidade</label>
+              <select id="cfg-bonus-period"><option value="mensal">Mensal</option><option value="trimestral">Trimestral</option></select>
+            </div>
+          </div>
+          <div class="mf">
+            <button class="btn btn-o" onclick="closeM('m-config-bonus')">Cancelar</button>
+            <button class="btn btn-p" onclick="salvarConfigBonus()">Salvar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="mo" id="m-apurar-bonus">
+        <div class="modal" style="max-width:720px">
+          <div class="mh"><div class="mt" id="apur-titulo">Apurar Bônus</div><button class="mc" onclick="closeM('m-apurar-bonus')">×</button></div>
+          <div class="mb"><div id="apur-form"></div></div>
+          <div class="mf">
+            <button class="btn btn-o" onclick="closeM('m-apurar-bonus')">Cancelar</button>
+            <button class="btn btn-o" onclick="salvarApuracao('rascunho')">💾 Salvar rascunho</button>
+            <button class="btn btn-p" onclick="salvarApuracao('finalizado')">✅ Finalizar</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAIS -->
+<div class="mo" id="m-man"><div class="modal">
+  <div class="mh"><div class="mt">🏠 Novo Chamado de Manutenção</div><button class="mc" onclick="closeM('m-man')">×</button></div>
+  <div class="mb">
+    <div class="frow">
+      <div class="fg"><label>Nome do Inquilino / Solicitante *</label><input class="fc" id="man-nome" placeholder="Nome completo"></div>
+      <div class="fg"><label>Telefone</label><input class="fc" id="man-tel" placeholder="(11) 9..."></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Quem está ligando?</label><select class="fc" id="man-vinculo"><option value="Locatário">Locatário</option><option value="Cônjuge">Cônjuge</option><option value="Familiar">Familiar</option><option value="Outro">Outro</option></select></div>
+      <div class="fg"><label>Email (para notificação) <span style="color:var(--danger)">*</span></label><input class="fc" id="man-email" placeholder="email@..." type="email"></div>
+    </div>
+    <div class="fg"><label>Endereço do Imóvel *</label><input class="fc" id="man-end" placeholder="Rua, número, apto, bairro, agência"></div>
+    <div class="frow">
+      <div class="fg"><label>Tipo de Serviço *</label><select class="fc" id="man-tipo"><option>Elétrica</option><option>Hidráulica</option><option>Pintura</option><option>Fechadura/Portão</option><option>Infiltração</option><option>Gás</option><option>Ar-condicionado</option><option>Outros</option></select></div>
+      <div class="fg"><label>Abertura realizada por</label><input class="fc" id="man-abertura" placeholder="Nome de quem abriu" readonly></div>
+    </div>
+    <div class="fg"><label>Descrição do Problema *</label><textarea class="fc" id="man-desc" rows="3" placeholder="Descreva o problema detalhadamente..."></textarea></div>
+  </div>
+  <div class="mf"><button class="btn btn-o" onclick="closeM('m-man')">Cancelar</button><button class="btn btn-g" onclick="savMan()">Abrir Chamado</button></div>
+</div></div>
+
+<div class="mo" id="m-req"><div class="modal">
+  <div class="mh"><div class="mt">📋 Nova Requisição</div><button class="mc" onclick="closeM('m-req')">×</button></div>
+  <div class="mb">
+    <div class="frow">
+      <div class="fg"><label>Agência/Setor</label><input class="fc" id="ra" placeholder="Ex: Moema"></div>
+      <div class="fg"><label>Tipo</label><select class="fc" id="rt"><option>TI</option><option>Manutenção</option><option>Outro</option></select></div>
+    </div>
+    <div class="fg"><label>Seu e-mail (para notificações) <span style="color:var(--danger)">*</span></label><input class="fc" id="re" type="email" placeholder="seu@email.com"></div>
+    <div class="fg"><label>Descrição *</label><textarea class="fc" id="rd" rows="3" placeholder="Descreva a necessidade..."></textarea></div>
+    <div class="fg"><label>Urgência</label><select class="fc" id="ru"><option>Normal</option><option>Urgente</option></select></div>
+  </div>
+  <div class="mf"><button class="btn btn-o" onclick="closeM('m-req')">Cancelar</button><button class="btn btn-p" onclick="saveReq()">Enviar</button></div>
+</div></div>
+
+<!-- Modal Novo/Editar Imóvel da Seleção -->
+<div class="mo" id="m-vnd-sel"><div class="modal" style="width:600px">
+  <div class="mh"><div class="mt" id="m-vnd-sel-titulo">+ Enviar Imóvel para Seleção</div><button class="mc" onclick="closeM('m-vnd-sel')">×</button></div>
+  <div class="mb">
+    <div class="frow">
+      <div class="fg"><label>Código *</label><input class="fc" id="sel-codigo" placeholder="Ex: BI50125, MO17833"></div>
+      <div class="fg"><label>Equipe</label>
+        <select class="fc" id="sel-equipe">
+          <option value="">— escolha —</option>
+          <option>Aguia</option>
+          <option>Chris</option>
+          <option>Emilia</option>
+          <option>Felippe</option>
+          <option>Fenix</option>
+        </select>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Corretor</label><input class="fc" id="sel-corretor" placeholder="Nome do corretor responsável"></div>
+      <div class="fg"><label>M²</label><input class="fc" type="number" step="0.01" id="sel-m2" placeholder="Ex: 75.5"></div>
+    </div>
+    <div class="fg"><label>Endereço</label><input class="fc" id="sel-endereco" placeholder="Rua, número, complemento"></div>
+    <div class="fg"><label>Link do imóvel <span style="color:#94a3b8;font-weight:400">(anúncio / ficha interna)</span></label><input class="fc" id="sel-link" type="url" placeholder="https://..."></div>
+    <div class="fg"><label>Tempo de venda</label><input class="fc" id="sel-tempo" placeholder="Ex: 6 meses, 1 ano..."></div>
+    <div class="fg"><label>Outras opções no prédio (ref. e valor)</label><textarea class="fc" id="sel-outras" rows="2" placeholder="Outras unidades disponíveis no mesmo prédio"></textarea></div>
+    <div class="fg"><label>Observações</label><textarea class="fc" id="sel-obs" rows="2" placeholder="Diferenciais, notas para a peneira"></textarea></div>
+  </div>
+  <div class="mf"><button class="btn btn-o" onclick="closeM('m-vnd-sel')">Cancelar</button><button class="btn btn-p" onclick="salvarImovelSelecao()">Salvar</button></div>
+</div></div>
+
+<!-- Modal Gerenciar Corretores (por equipe) -->
+<div class="mo" id="m-vnd-corretores"><div class="modal" style="width:780px;max-height:92vh">
+  <div class="mh">
+    <div>
+      <div class="mt">⚙️ Corretores por Equipe</div>
+      <div style="font-size:12px;color:#94a3b8;margin-top:2px">Adicione, mova ou desative corretores. Mudanças refletem no Controle de Presença e Seleção.</div>
+    </div>
+    <button class="mc" onclick="closeM('m-vnd-corretores')">×</button>
+  </div>
+  <div class="mb" style="max-height:72vh;overflow-y:auto" id="corr-body">
+    <div style="text-align:center;padding:32px;color:#94a3b8">Carregando…</div>
+  </div>
+  <div class="mf">
+    <button class="btn btn-o" onclick="closeM('m-vnd-corretores')">Fechar</button>
+  </div>
+</div></div>
+
+<!-- Modal Upload de Planilha do Mês (Seleção) -->
+<div class="mo" id="m-vnd-upload"><div class="modal" style="width:760px;max-height:92vh">
+  <div class="mh">
+    <div>
+      <div class="mt">📤 Upload de Imóveis do Mês</div>
+      <div style="font-size:12px;color:#94a3b8;margin-top:2px">Aceita .xlsx, .xls e .csv. Detecta as colunas pelos cabeçalhos.</div>
+    </div>
+    <button class="mc" onclick="closeM('m-vnd-upload')">×</button>
+  </div>
+  <div class="mb" style="max-height:70vh;overflow-y:auto">
+    <div class="frow">
+      <div class="fg"><label>Equipe *</label>
+        <select class="fc" id="up-sel-equipe">
+          <option value="">— escolha —</option>
+          <option>Aguia</option>
+          <option>Chris</option>
+          <option>Emilia</option>
+          <option>Felippe</option>
+          <option>Fenix</option>
+        </select>
+      </div>
+      <div class="fg"><label>Mês de referência (ciclo)</label><input class="fc" type="month" id="up-sel-mes">
+        <div style="font-size:11px;color:#94a3b8;margin-top:3px">O ciclo abre dia 10 deste mês e os imóveis valem até o dia 9 do 3º mês seguinte. Só mude se souber o que está fazendo.</div>
+      </div>
+    </div>
+    <div class="fg">
+      <label>Arquivo *</label>
+      <input class="fc" type="file" id="up-sel-arq" accept=".xlsx,.xls,.csv" onchange="parsearArquivoSelecao()">
+    </div>
+    <div style="padding:10px 12px;background:#eff6ff;border-left:3px solid #3B82F6;border-radius:6px;font-size:12px;color:#1e40af;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <div>
+        <b>💡 Nunca usou?</b> Baixe o modelo padrão — já vem com colunas certas, exemplo preenchido e instruções.
+      </div>
+      <button class="btn btn-o bsm" onclick="baixarModeloSelecao()" style="white-space:nowrap">📥 Baixar modelo</button>
+    </div>
+    <div id="up-sel-info" style="font-size:12px;color:var(--muted);margin-bottom:8px"></div>
+    <div id="up-sel-preview" style="margin-top:8px"></div>
+  </div>
+  <div class="mf">
+    <button class="btn btn-o" onclick="closeM('m-vnd-upload')">Cancelar</button>
+    <button class="btn btn-p" id="up-sel-importar" onclick="importarSelecao()" disabled>Importar como pendentes</button>
+  </div>
+</div></div>
+
+<!-- Modal Adicionar Corretor à Cota (do mês selecionado) -->
+<div class="mo" id="m-cota-novo"><div class="modal" style="width:480px">
+  <div class="mh"><div class="mt">+ Adicionar Corretor</div><button class="mc" onclick="closeM('m-cota-novo')">×</button></div>
+  <div class="mb">
+    <div class="fg"><label>Nome do corretor *</label><input class="fc" id="cot-novo-nome" placeholder="Ex: Heloisa, Wellington"></div>
+    <div class="fg"><label>Equipe</label>
+      <select class="fc" id="cot-novo-equipe">
+        <option value="">—</option>
+        <option>Aguia</option>
+        <option>Fenix</option>
+        <option>Chris</option>
+        <option>Felippe</option>
+        <option>Emilia</option>
+      </select>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Super Destaque</label><input class="fc" type="number" min="0" id="cot-novo-sd" value="0"></div>
+      <div class="fg"><label>Destaque Comum</label><input class="fc" type="number" min="0" id="cot-novo-dc" value="0"></div>
+    </div>
+  </div>
+  <div class="mf"><button class="btn btn-o" onclick="closeM('m-cota-novo')">Cancelar</button><button class="btn btn-p" onclick="salvarNovaCotaCorretor()">Adicionar</button></div>
+</div></div>
+
+<!-- Modal Novo/Editar Agendamento do Fotógrafo -->
+<div class="mo" id="m-foto"><div class="modal" style="width:580px">
+  <div class="mh"><div class="mt" id="m-foto-titulo">+ Novo Agendamento</div><button class="mc" onclick="closeM('m-foto')">×</button></div>
+  <div class="mb">
+    <div class="frow">
+      <div class="fg"><label>Data * <span style="font-size:11px;color:var(--muted);font-weight:400">(só ter/qua)</span></label><input class="fc" type="date" id="foto-data" onchange="_fotoPopularRegioes()"></div>
+      <div class="fg"><label>Hora *</label>
+        <select class="fc" id="foto-hora" onchange="_fotoAtualizarTipoDefault()">
+          <option value="09:00">09:00</option>
+          <option value="10:00">10:00</option>
+          <option value="11:00">11:00</option>
+          <option value="14:00">14:00</option>
+          <option value="15:00">15:00</option>
+          <option value="16:00">16:00</option>
+          <option value="17:00">17:00 — slot livre (extra)</option>
+        </select>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Tipo * <span style="font-size:11px;color:var(--muted);font-weight:400">(seleção ou geral)</span></label>
+        <select class="fc" id="foto-tipo">
+          <option value="selecao">⭐ Seleção de imóveis</option>
+          <option value="geral">🏠 Imóveis em geral</option>
+        </select>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Código do imóvel</label><input class="fc" id="foto-codigo" placeholder="Ex: BI50125, MO17833"></div>
+      <div class="fg"><label>Unidade</label><input class="fc" id="foto-unidade" placeholder="Ex: 102, Casa, Bl. A"></div>
+    </div>
+    <div class="fg"><label>Endereço</label><input class="fc" id="foto-endereco" placeholder="Rua, número"></div>
+    <div class="frow">
+      <div class="fg"><label>Corretor</label><input class="fc" id="foto-corretor" placeholder="Nome"></div>
+      <div class="fg"><label>Telefone</label><input class="fc" id="foto-telefone" placeholder="(11) 9..."></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Região <span style="font-size:11px;color:var(--muted);font-weight:400">(do dia escolhido)</span></label>
+        <select class="fc" id="foto-regiao">
+          <option value="">— escolha a data primeiro —</option>
+        </select>
+      </div>
+      <div class="fg"><label>Status</label>
+        <select class="fc" id="foto-status">
+          <option value="agendado">Agendado</option>
+          <option value="realizado">Realizado</option>
+          <option value="cancelado">Cancelado</option>
+          <option value="livre">Livre (entrada direta)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Logistica: imovel vago + chaves portaria -> auto-livre, dispensa confirmacao -->
+    <div class="fg" style="background:#f8fafc;padding:10px 12px;border-radius:8px;border:1px solid var(--borda)">
+      <label style="font-size:12px;font-weight:700;color:#475569;margin-bottom:8px">Logística do acesso</label>
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin:4px 0;cursor:pointer">
+        <input type="checkbox" id="foto-vago" onchange="_fotoAtualizarLogistica()">
+        🏠 Imóvel está <b>vago</b>
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin:4px 0;cursor:pointer">
+        <input type="checkbox" id="foto-chaves" onchange="_fotoAtualizarLogistica()">
+        🔑 Chaves na <b>portaria</b>
+      </label>
+      <div id="foto-logistica-hint" style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.4">Marque ambos pra liberar entrada direta (fotógrafo não precisa confirmar com ninguém).</div>
+    </div>
+
+    <!-- Confirmacao (fotografo marca apos confirmar com zelador/proprietario) -->
+    <div class="fg" style="background:#ecfdf5;padding:10px 12px;border-radius:8px;border:1px solid #a7f3d0">
+      <label style="display:flex;align-items:center;gap:8px;font-weight:600;color:#065f46;cursor:pointer;margin:0">
+        <input type="checkbox" id="foto-confirmado">
+        ✓ Confirmado <span style="font-weight:400;color:var(--muted);font-size:11px">— fotógrafo já alinhou com zelador/proprietário</span>
+      </label>
+      <div id="foto-confirmado-info" style="font-size:11px;color:var(--muted);margin-top:4px"></div>
+    </div>
+
+    <div class="fg"><label>Observações</label><textarea class="fc" id="foto-obs" rows="2" placeholder="Zelador, instruções de acesso, etc"></textarea></div>
+  </div>
+  <div class="mf">
+    <button class="btn btn-o" onclick="closeM('m-foto')">Cancelar</button>
+    <button class="btn btn-o" id="m-foto-btn-excluir" onclick="excluirAgendamentoFoto()" style="color:var(--danger);display:none">🗑️ Excluir</button>
+    <button class="btn btn-p" onclick="salvarAgendaFoto()">Salvar</button>
+  </div>
+</div></div>
+
+<!-- Modal Novo Tópico do Fórum -->
+<div class="mo" id="m-forum-novo"><div class="modal" style="width:560px">
+  <div class="mh"><div class="mt">+ Novo tópico</div><button class="mc" onclick="closeM('m-forum-novo')">×</button></div>
+  <div class="mb">
+    <div class="fg"><label>Título *</label><input class="fc" id="ft-titulo" placeholder="Ex: Ajustar comissão em locação corporativa"></div>
+    <div class="fg"><label>Tipo *</label>
+      <div style="display:flex;gap:8px">
+        <label style="flex:1;padding:10px 12px;border:1.5px solid var(--borda);border-radius:8px;cursor:pointer;display:flex;gap:8px;align-items:flex-start" id="ft-tipo-lbl-vot">
+          <input type="radio" name="ft-tipo" value="votacao" checked onchange="_atualizarTipoLbl()">
+          <div style="flex:1"><b>🗳️ Votação</b><div style="font-size:11px;color:#64748b;line-height:1.35;margin-top:2px">Aprovar/reprovar. 3 dos 5 representantes decide.</div></div>
+        </label>
+        <label style="flex:1;padding:10px 12px;border:1.5px solid var(--borda);border-radius:8px;cursor:pointer;display:flex;gap:8px;align-items:flex-start" id="ft-tipo-lbl-dis">
+          <input type="radio" name="ft-tipo" value="discussao" onchange="_atualizarTipoLbl()">
+          <div style="flex:1"><b>💬 Discussão</b><div style="font-size:11px;color:#64748b;line-height:1.35;margin-top:2px">Só debate. Sem votação de decisão.</div></div>
+        </label>
+      </div>
+    </div>
+    <div class="fg"><label>Categoria *</label>
+      <select class="fc" id="ft-tag">
+        <option value="comissao">💰 Comissão</option>
+        <option value="treinamento">🎓 Treinamento</option>
+        <option value="processos">⚙️ Processos</option>
+        <option value="ferramentas">🛠️ Ferramentas</option>
+        <option value="clima">🤝 Clima</option>
+        <option value="outros">📎 Outros</option>
+      </select>
+    </div>
+    <div class="fg" id="ft-prazo-wrap"><label>Prazo pra votar <span style="color:#94a3b8;font-weight:400">(só pra tópicos de votação)</span></label>
+      <input class="fc" type="date" id="ft-prazo">
+      <div style="font-size:11px;color:#94a3b8;margin-top:4px">Depois desta data, novos votos ficam bloqueados. Deixe em branco pra votação sem prazo.</div>
+    </div>
+    <div class="fg"><label>Descrição</label>
+      <textarea class="fc" id="ft-desc" rows="5" placeholder="Contexto, motivo, o que os colegas comentam sobre isso, qual proposta você traz…"></textarea>
+    </div>
+  </div>
+  <div class="mf">
+    <button class="btn btn-o" onclick="closeM('m-forum-novo')">Cancelar</button>
+    <button class="btn btn-p" onclick="salvarForumTopico()">Publicar</button>
+  </div>
+</div></div>
+
+<!-- Modal Detalhe do Tópico -->
+<div class="mo" id="m-forum-det"><div class="modal" style="width:720px;max-height:92vh">
+  <div class="mh">
+    <div class="mt" id="mfd-titulo">Tópico</div>
+    <button class="mc" onclick="closeM('m-forum-det')">×</button>
+  </div>
+  <div class="mb" id="mfd-body">
+    <!-- injetado por renderDetalheForum -->
+  </div>
+</div></div>
+
+<!-- Modal Marcar Data Reunião Trimestral -->
+<div class="mo" id="m-forum-reuniao"><div class="modal" style="width:400px">
+  <div class="mh"><div class="mt">Reunião do trimestre</div><button class="mc" onclick="closeM('m-forum-reuniao')">×</button></div>
+  <div class="mb">
+    <div class="fg"><label>Data prevista</label><input class="fc" type="date" id="fr-data"></div>
+    <div class="fg"><label style="display:flex;align-items:center;gap:8px;font-weight:400;cursor:pointer">
+      <input type="checkbox" id="fr-encerrado">
+      Marcar ciclo como <b>encerrado</b> (não aceita mais tópicos novos)
+    </label></div>
+  </div>
+  <div class="mf">
+    <button class="btn btn-o" onclick="closeM('m-forum-reuniao')">Cancelar</button>
+    <button class="btn btn-p" onclick="salvarDataReuniao()">Salvar</button>
+  </div>
+</div></div>
+
+<!-- Modal Nova Disponibilidade (fotografo) -->
+<div class="mo" id="m-foto-disp"><div class="modal" style="width:480px">
+  <div class="mh"><div class="mt">+ Nova disponibilidade</div><button class="mc" onclick="closeM('m-foto-disp')">×</button></div>
+  <div class="mb">
+    <div class="fg"><label>Data *</label><input class="fc" type="date" id="fdisp-data"></div>
+    <div class="frow">
+      <div class="fg"><label>Hora início *</label><input class="fc" type="time" id="fdisp-hi" value="08:00"></div>
+      <div class="fg"><label>Hora fim *</label><input class="fc" type="time" id="fdisp-hf" value="18:00"></div>
+    </div>
+    <div class="fg"><label>Região <span style="font-size:11px;color:var(--muted);font-weight:400">(opcional)</span></label><input class="fc" id="fdisp-reg" placeholder="Ex: Vila Mariana, Moema"></div>
+    <div class="fg"><label>Observações</label><textarea class="fc" id="fdisp-obs" rows="2" placeholder="Ex: janela extra, retorno de viagem, etc"></textarea></div>
+  </div>
+  <div class="mf">
+    <button class="btn btn-o" onclick="closeM('m-foto-disp')">Cancelar</button>
+    <button class="btn btn-p" onclick="salvarFotoDisp()">Salvar</button>
+  </div>
+</div></div>
+
+<!-- Modal Nova/Editar Atividade de Vendas (Presença) -->
+<div class="mo" id="m-pres-atv"><div class="modal" style="width:540px">
+  <div class="mh"><div class="mt" id="m-pres-atv-titulo">+ Nova Atividade</div><button class="mc" onclick="closeM('m-pres-atv')">×</button></div>
+  <div class="mb">
+    <div class="fg"><label>Nome da atividade *</label><input class="fc" id="pres-atv-nome" placeholder="Ex: Treinamento ITA, Reunião de Seleção, Confraternização"></div>
+    <div class="frow">
+      <div class="fg"><label>Tipo</label>
+        <select class="fc" id="pres-atv-tipo">
+          <option value="reuniao">Reunião</option>
+          <option value="treinamento">Treinamento</option>
+          <option value="selecao_imoveis">Seleção de Imóveis</option>
+          <option value="confraternizacao">Confraternização</option>
+          <option value="outro">Outro</option>
+        </select>
+      </div>
+      <div class="fg"><label>Equipe</label>
+        <select class="fc" id="pres-atv-equipe">
+          <option value="">Todas / geral</option>
+          <option>Aguia</option>
+          <option>Fenix</option>
+          <option>Chris</option>
+          <option>Felippe</option>
+          <option>Emilia</option>
+        </select>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Data</label><input class="fc" type="date" id="pres-atv-data"></div>
+      <div class="fg"><label>Hora</label><input class="fc" type="time" id="pres-atv-hora"></div>
+    </div>
+    <div class="fg"><label>Local</label><input class="fc" id="pres-atv-local" placeholder="Ex: Sede Moema, Online, Hotel ABC"></div>
+    <div class="fg"><label>Observações</label><textarea class="fc" id="pres-atv-obs" rows="2" placeholder="Tema, palestrante, agenda..."></textarea></div>
+  </div>
+  <div class="mf"><button class="btn btn-o" onclick="closeM('m-pres-atv')">Cancelar</button><button class="btn btn-p" onclick="salvarAtividadeVendas()">Salvar</button></div>
+</div></div>
+
+<!-- Modal Marcação de Presença -->
+<div class="mo" id="m-pres-marc"><div class="modal" style="width:620px;max-height:90vh">
+  <div class="mh">
+    <div>
+      <div class="mt" id="m-pres-marc-titulo">Marcar Presença</div>
+      <div style="font-size:12px;color:#94a3b8;margin-top:2px" id="m-pres-marc-sub">—</div>
+    </div>
+    <button class="mc" onclick="closeM('m-pres-marc')">×</button>
+  </div>
+  <div class="mb" style="max-height:65vh;overflow-y:auto">
+    <div id="marc-lista"><div style="text-align:center;color:#94a3b8;padding:18px;font-size:13px">Carregando lista da equipe...</div></div>
+  </div>
+  <div class="mf"><button class="btn btn-o" onclick="closeM('m-pres-marc')">Fechar</button></div>
+</div></div>
+
+<!-- Modal Nova/Editar Atividade Semanal -->
+<div class="mo" id="m-atv-sem"><div class="modal">
+  <div class="mh"><div class="mt" id="m-atv-sem-titulo">+ Nova Atividade Semanal</div><button class="mc" onclick="closeM('m-atv-sem')">×</button></div>
+  <div class="mb">
+    <div class="fg"><label>Descrição *</label><input class="fc" id="atv-sem-desc" placeholder="Ex: Atualizar Headcount, Rodar relatório mensal, Reuniao com X..."></div>
+  </div>
+  <div class="mf"><button class="btn btn-o" onclick="closeM('m-atv-sem')">Cancelar</button><button class="btn btn-p" onclick="salvarAtividadeSemanal()">Salvar</button></div>
+</div></div>
+
+<div class="mo" id="m-tar"><div class="modal">
+  <div class="mh"><div class="mt">📋 Nova Tarefa</div><button class="mc" onclick="closeM('m-tar')">×</button></div>
+  <div class="mb">
+    <div class="fg"><label>Título *</label><input class="fc" id="tt" placeholder="Descreva a tarefa..."></div>
+    <div class="frow">
+      <div class="fg"><label>Status</label><select class="fc" id="ts"><option>Não iniciado</option><option>Em andamento</option><option>Concluído</option><option>Em espera</option></select></div>
+      <div class="fg"><label>Prioridade</label><select class="fc" id="tp"><option value="URG./IMP.">🔴 Urgente/Importante</option><option value="N.U./IMP." selected>🔵 N.Urg/Importante</option><option value="URG./N.IMP.">🟡 Urgente/N.Imp.</option><option value="N.U./N.IMP.">⚪ N.Urg/N.Imp.</option></select></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Prazo</label><input type="date" class="fc" id="tpr"></div>
+      <div class="fg"><label>Categoria</label><select class="fc" id="tc"><option>Pontual</option><option>Semanal</option><option>Mensal</option></select></div>
+    </div>
+    <div class="fg"><label>Responsáveis (1 ou mais)</label>
+      <div id="tar-partic-lista" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;min-height:28px"></div>
+      <select class="fc" id="tar-partic-sel" onchange="addParticipanteTar(this.value);this.value=''">
+        <option value="">+ Adicionar responsável...</option>
+      </select>
+    </div>
+    <div class="fg"><label>Observações</label><textarea class="fc" id="to" rows="2"></textarea></div>
+  </div>
+  <div class="mf"><button class="btn btn-o" onclick="closeM('m-tar')">Cancelar</button><button class="btn btn-p" onclick="saveTar()">Salvar</button></div>
+</div></div>
+
+<div class="mo" id="m-ev"><div class="modal">
+  <div class="mh"><div class="mt">📅 Novo Compromisso</div><button class="mc" onclick="closeM('m-ev')">×</button></div>
+  <div class="mb">
+    <div class="fg"><label>Título *</label><input class="fc" id="et" placeholder="Ex: Reunião de diretoria"></div>
+    <div class="frow">
+      <div class="fg"><label>Data</label><input type="date" class="fc" id="ed"></div>
+      <div class="fg"><label>Tipo</label><select class="fc" id="ety"><option>Reunião</option><option>Reunião Adm</option><option>Reunião Jurídico</option><option>Visita</option><option>Prazo</option><option>Outro</option></select></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Início</label><select class="fc" id="ei"></select></div>
+      <div class="fg"><label>Fim</label><select class="fc" id="ef"></select></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Repetir</label>
+        <select class="fc" id="ev-repete" onchange="_toggleRepeteAte()">
+          <option value="nao">Não se repete</option>
+          <option value="diaria">Todos os dias úteis (seg–sex)</option>
+          <option value="semanal">Toda semana</option>
+          <option value="quinzenal">A cada 2 semanas</option>
+          <option value="mensal">Todo mês</option>
+        </select>
+      </div>
+      <div class="fg" id="ev-repete-ate-wrap" style="display:none"><label>Repetir até</label><input type="date" class="fc" id="ev-repete-ate"></div>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg);border-radius:8px;cursor:pointer;font-size:13px;margin-bottom:10px">
+      <input type="checkbox" id="ev-pessoal" onchange="_toggleEvPessoal()" style="width:16px;height:16px">
+      <span>🔒 Compromisso pessoal <span style="color:var(--muted)">— só você vê, não aparece pra mais ninguém</span></span>
+    </label>
+    <div class="fg" id="ev-partic-wrap"><label>Participantes</label>
+      <div id="ev-partic-lista" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;min-height:28px"></div>
+      <select class="fc" id="ev-partic-sel" onchange="addParticipante(this.value);this.value=''">
+        <option value="">+ Adicionar participante...</option>
+      </select>
+    </div>
+    <div class="fg"><label>Descrição</label><textarea class="fc" id="edesc" rows="2"></textarea></div>
+  </div>
+  <div class="mf"><button class="btn btn-o" onclick="closeM('m-ev')">Cancelar</button><button class="btn btn-p" onclick="saveEv()">Salvar</button></div>
+</div></div>
+
+<div class="mo" id="m-pauta-com"><div class="modal" style="max-width:620px">
+  <div class="mh"><div>
+    <div class="mt" id="pcom-titulo">💬 Comentários</div>
+    <div class="text-xs text-gray" style="font-size:11px;color:#94a3b8;margin-top:3px" id="pcom-subtitulo">—</div>
+  </div><button class="mc" onclick="closeM('m-pauta-com')">×</button></div>
+  <div class="mb">
+    <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px">📚 Histórico</div>
+    <div id="pcom-historico" style="max-height:280px;overflow-y:auto;margin-bottom:14px"></div>
+    <div style="border-top:1px solid var(--borda);padding-top:14px">
+      <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:6px">✏️ Novo comentário</div>
+      <textarea class="fc" id="pcom-novo" rows="3" placeholder="O que foi discutido, decidido ou acompanhado..."></textarea>
+    </div>
+  </div>
+  <div class="mf">
+    <button class="btn btn-o" onclick="closeM('m-pauta-com')">Fechar</button>
+    <button class="btn btn-p" onclick="adicionarComentarioPauta()">+ Adicionar comentário</button>
+    <button class="btn btn-g" id="pcom-concluir" style="display:none" onclick="concluirComComentario()">✅ Concluir item</button>
+  </div>
+</div></div>
+
+<div class="mo" id="m-pauta"><div class="modal" style="width:420px">
+  <div class="mh"><div class="mt" id="pm-title">Adicionar à Pauta</div><button class="mc" onclick="closeM('m-pauta')">×</button></div>
+  <div class="mb">
+    <div class="fg"><label>Item *</label><textarea class="fc" id="pi" rows="3" placeholder="Descreva o ponto..."></textarea></div>
+    <div class="fg"><label>Responsável</label><select class="fc" id="pr"></select></div>
+    <input type="hidden" id="ptipo">
+  </div>
+  <div class="mf"><button class="btn btn-o" onclick="closeM('m-pauta')">Cancelar</button><button class="btn btn-p" onclick="savePauta()">Adicionar</button></div>
+</div></div>
+
+<div id="tc"></div>
+
+<!-- Modal detalhe manutenção -->
+<div class="mo" id="m-man-det"><div class="modal" style="width:620px">
+  <div class="mh">
+    <div><div class="mt" id="man-det-titulo">Chamado</div><div style="font-size:12px;color:#94a3b8" id="man-det-sub">—</div></div>
+    <button class="mc" onclick="closeM('m-man-det')">×</button>
+  </div>
+  <div class="mb">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;background:var(--bg);border-radius:10px;padding:14px;margin-bottom:16px">
+      <div><div style="font-size:11px;color:#94a3b8">Inquilino</div><div style="font-weight:600;font-size:13px" id="man-det-nome">—</div></div>
+      <div><div style="font-size:11px;color:#94a3b8">Telefone</div><div style="font-weight:600;font-size:13px" id="man-det-tel">—</div></div>
+      <div><div style="font-size:11px;color:#94a3b8">Endereço</div><div style="font-weight:600;font-size:13px" id="man-det-end">—</div></div>
+      <div><div style="font-size:11px;color:#94a3b8">Serviço</div><div style="font-weight:600;font-size:13px" id="man-det-servico">—</div></div>
+      <div><div style="font-size:11px;color:#94a3b8">Responsabilidade</div><div style="font-weight:600;font-size:13px" id="man-det-resp">—</div></div>
+      <div><div style="font-size:11px;color:#94a3b8">Profissional</div><div style="font-weight:600;font-size:13px" id="man-det-prof">—</div></div>
+    </div>
+    <div style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:16px">
+      <div style="font-size:11px;color:#94a3b8;margin-bottom:4px">Observações</div>
+      <div style="font-size:13px" id="man-det-obs">—</div>
+    </div>
+    <!-- Atualizar -->
+    <div style="background:#fff;border:1px solid var(--borda);border-radius:10px;padding:14px;margin-bottom:14px">
+      <div style="font-weight:600;font-size:14px;margin-bottom:10px">Atualizar chamado</div>
+      <div class="frow">
+        <div class="fg"><label>Responsabilidade</label>
+          <select class="fc" id="man-upd-resp">
+            <option>Imobiliária indica profissional</option>
+            <option>Locatário contrata por conta própria</option>
+            <option>Locador contrata por conta própria</option>
+            <option>Sem necessidade de profissional</option>
+          </select>
+        </div>
+        <div class="fg"><label>Profissional</label>
+          <input class="fc" id="man-upd-prof" placeholder="Nome do profissional">
+        </div>
+      </div>
+      <div class="fg"><label>Novo status</label>
+        <select class="fc" id="man-upd-status">
+          <option>Aberto</option><option>Em Andamento</option><option>Concluído</option><option>Cancelado</option>
+        </select>
+      </div>
+      <div class="fg"><label>Mensagem para o inquilino</label>
+        <textarea class="fc" id="man-upd-msg" rows="2" placeholder="Ex: Profissional agendado para amanhã às 14h..."></textarea>
+      </div>
+      <button class="btn btn-g" style="width:100%" onclick="atualizarMan()">✅ Atualizar e notificar inquilino</button>
+    </div>
+    <!-- Andamentos -->
+    <div><div style="font-weight:600;font-size:14px;margin-bottom:8px">📋 Histórico</div>
+    <div id="man-det-andamentos"><div class="empty" style="padding:16px"><p>Carregando...</p></div></div></div>
+  </div>
+</div></div>
+
+<!-- Modal detalhe requisição -->
+<div class="mo" id="m-req-det"><div class="modal" style="width:560px">
+  <div class="mh">
+    <div><div class="mt" id="req-det-titulo">Requisição</div><div style="font-size:12px;color:#94a3b8" id="req-det-sub">—</div></div>
+    <button class="mc" onclick="closeM('m-req-det')">×</button>
+  </div>
+  <div class="mb">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;background:var(--bg);border-radius:10px;padding:14px;margin-bottom:16px">
+      <div><div style="font-size:11px;color:#94a3b8">Solicitante (Líder)</div><div style="font-weight:600;font-size:13px" id="req-det-lider">—</div></div>
+      <div><div style="font-size:11px;color:#94a3b8">Agência</div><div style="font-weight:600;font-size:13px" id="req-det-agencia">—</div></div>
+      <div><div style="font-size:11px;color:#94a3b8">Setor</div><div style="font-weight:600;font-size:13px" id="req-det-setor">—</div></div>
+      <div><div style="font-size:11px;color:#94a3b8">Prioridade</div><div style="font-weight:600;font-size:13px" id="req-det-prior">—</div></div>
+      <div><div style="font-size:11px;color:#94a3b8">Responsável</div><div style="font-weight:600;font-size:13px" id="req-det-resp">—</div></div>
+      <div><div style="font-size:11px;color:#94a3b8">Status atual</div><div style="font-weight:600;font-size:13px" id="req-det-status">—</div></div>
+    </div>
+    <div style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:16px">
+      <div style="font-size:11px;color:#94a3b8;margin-bottom:4px">Título / Descrição</div>
+      <div style="font-size:13px" id="req-det-desc">—</div>
+    </div>
+    <div style="background:#fff;border:1px solid var(--borda);border-radius:10px;padding:14px">
+      <div style="font-weight:600;font-size:14px;margin-bottom:10px">Atualizar status</div>
+      <div class="fg"><label>Novo status</label>
+        <select class="fc" id="req-upd-status">
+          <option>Aberta</option><option>Em Andamento</option><option>Concluída</option><option>Cancelada</option>
+        </select>
+      </div>
+      <div class="fg"><label>Observação</label>
+        <textarea class="fc" id="req-upd-msg" rows="2" placeholder="Detalhe o andamento..."></textarea>
+      </div>
+      <button class="btn btn-p" style="width:100%" onclick="atualizarReq()">Atualizar requisição</button>
+    </div>
+  </div>
+</div></div>
+
+<!-- SheetJS para parsing de .xlsx/.xls/.csv no upload de seleção -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<!-- Versão dos scripts: bump pra forçar reload mesmo se o SW velho estiver servindo cache -->
+<script src="js/00-icons.js?v=20260911d"></script>
+<script src="js/00-config.js?v=20260911d"></script>
+<script src="js/01-state.js?v=20260911d"></script>
+<script src="js/02-manutencao.js?v=20260911d"></script>
+<script src="js/03-auth.js?v=20260911d"></script>
+<script src="js/04-init.js?v=20260911d"></script>
+<script src="js/05-crud.js?v=20260911d"></script>
+<script src="js/06-tarefas.js?v=20260911d"></script>
+<script src="js/07-agenda.js?v=20260911d"></script>
+<script src="js/08-pauta.js?v=20260911d"></script>
+<script src="js/09-horarios.js?v=20260911d"></script>
+<script src="js/10-modais.js?v=20260911d"></script>
+<script src="js/11-gestao.js?v=20260911d"></script>
+<script src="js/12-regras.js?v=20260911d"></script>
+<script src="js/13-avisos.js?v=20260911d"></script>
+<script src="js/14-atividades-semanais.js?v=20260911d"></script>
+<script src="js/15-vendas.js?v=20260911d"></script>
+<script src="js/17-forum.js?v=20260911d"></script>
+<script src="js/18-avaliacoes.js?v=20260913b"></script>
+</body>
+</html>

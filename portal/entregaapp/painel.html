@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel Entrega de Chaves — Nova São Paulo</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--navy:#2B3A6B;--dark:#1A2542;--light:#D6E4F0;--steel:#5B8DB8;--amber:#F0A500;--red:#C0392B;--green:#1A7A4A;--gray:#64748b}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'DM Sans',sans-serif;background:#0f172a;min-height:100vh;color:#e2e8f0}
+  .topbar{background:linear-gradient(135deg,#1A2542,#2B3A6B);padding:16px 32px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.1);position:sticky;top:0;z-index:100;box-shadow:0 4px 24px rgba(0,0,0,0.3)}
+  .brand h1{font-family:'DM Serif Display',serif;font-size:18px;color:#fff}
+  .brand p{font-size:11px;color:#94a3b8;margin-top:1px}
+  .topright{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .livebadge{display:flex;align-items:center;gap:6px;background:rgba(26,122,74,0.2);border:1px solid #1A7A4A;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;color:#4ade80}
+  .dot{width:7px;height:7px;background:#4ade80;border-radius:50%;animation:pulse 1.5s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+  .btn-ref{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#e2e8f0;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;padding:6px 14px;border-radius:8px;cursor:pointer}
+  .lupd{font-size:11px;color:#475569}
+  .main{padding:24px 32px;max-width:1400px;margin:0 auto}
+  .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px}
+  .kpi{background:linear-gradient(135deg,#1e293b,#1a2440);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px 18px;transition:transform 0.2s}
+  .kpi:hover{transform:translateY(-2px)}
+  .klbl{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#64748b;margin-bottom:8px;min-height:24px}
+  .kval{font-family:'DM Serif Display',serif;font-size:30px;line-height:1}
+  .kpi.blue .kval{color:var(--steel)}
+  .kpi.amber .kval{color:var(--amber)}
+  .kpi.purple .kval{color:#a78bfa}
+  .kpi.teal .kval{color:#2dd4bf}
+  .kpi.green .kval{color:#4ade80}
+  .filters{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+  .fbtn{background:#1e293b;border:1px solid rgba(255,255,255,0.1);color:#94a3b8;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;padding:6px 14px;border-radius:20px;cursor:pointer;transition:all 0.2s}
+  .fbtn:hover{border-color:var(--steel);color:#e2e8f0}
+  .fbtn.on{background:var(--navy);border-color:var(--steel);color:#fff}
+  .sbx{margin-left:auto;background:#1e293b;border:1px solid rgba(255,255,255,0.1);color:#e2e8f0;font-family:'DM Sans',sans-serif;font-size:13px;padding:6px 14px;border-radius:20px;outline:none;width:220px}
+  .sbx::placeholder{color:#475569}
+  .sech{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .sectitle{font-size:13px;font-weight:700;color:#94a3b8;letter-spacing:1px;text-transform:uppercase}
+  .secbadge{background:rgba(91,141,184,0.2);color:var(--steel);font-size:12px;font-weight:700;padding:2px 10px;border-radius:20px}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:14px}
+  .pcard{background:#1e293b;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:18px 20px}
+  .pcard-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px}
+  .pcard-end{font-size:15px;font-weight:700;color:#e2e8f0;line-height:1.3}
+  .pcard-proto{font-family:monospace;font-size:11px;color:#64748b;margin-bottom:10px}
+  .badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
+  .b-ab{background:rgba(91,141,184,0.2);color:#93c5fd;border:1px solid rgba(91,141,184,0.3)}
+  .b-and{background:rgba(240,165,0,0.15);color:var(--amber);border:1px solid rgba(240,165,0,0.3)}
+  .b-con{background:rgba(26,122,74,0.2);color:#4ade80;border:1px solid rgba(26,122,74,0.3)}
+  .parts{font-size:12px;color:#94a3b8;margin-bottom:4px}
+  .parts b{color:#cbd5e1}
+  .fianca-tag{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:6px;background:rgba(167,139,250,0.15);color:#a78bfa;margin-bottom:12px}
+
+  .stepper{margin:14px 0;padding-left:6px}
+  .step{display:flex;gap:10px;position:relative;padding-bottom:14px}
+  .step:last-child{padding-bottom:0}
+  .step::before{content:'';position:absolute;left:8px;top:18px;bottom:0;width:2px;background:rgba(255,255,255,0.1)}
+  .step:last-child::before{display:none}
+  .step-dot{width:18px;height:18px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;border:2px solid rgba(255,255,255,0.15);background:#0f172a;color:#475569;z-index:1}
+  .step.done .step-dot{background:var(--green);border-color:var(--green);color:#fff}
+  .step.curr .step-dot{background:var(--amber);border-color:var(--amber);color:#1A2542}
+  .step-body{flex:1}
+  .step-nome{font-size:12px;font-weight:600;color:#64748b}
+  .step.done .step-nome,.step.curr .step-nome{color:#e2e8f0}
+  .step-data{font-size:11px;color:#475569}
+
+  .reparo-box{background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.3);border-radius:8px;padding:10px 12px;margin:10px 0;font-size:12px;color:#fca5a5}
+  .reparo-box b{color:#fecaca}
+  .reparo-box.ok{background:rgba(26,122,74,0.08);border-color:rgba(26,122,74,0.3);color:#86efac}
+  .reparo-box.ok b{color:#bbf7d0}
+
+  .pcard-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .btn-acao{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;padding:8px 14px;border:none;border-radius:8px;cursor:pointer;transition:all 0.2s}
+  .btn-next{background:var(--amber);color:#1A2542}
+  .btn-next:hover{background:#d4920a}
+  .btn-vist{background:rgba(91,141,184,0.2);color:#93c5fd;border:1px solid rgba(91,141,184,0.4)}
+  .btn-vist:hover{background:rgba(91,141,184,0.4)}
+  .finalizado{font-size:12px;color:#4ade80;font-weight:600}
+
+  /* Painel por mes */
+  .pmes-wrap{background:linear-gradient(135deg,#1e293b,#1a2440);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:18px 22px;margin-bottom:22px}
+  .pmes-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;flex-wrap:wrap}
+  .pmes-title{font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#94a3b8}
+  .pmes-leg{font-size:11px;color:#64748b}
+  .pmes-bars{display:flex;align-items:flex-end;gap:8px;height:110px}
+  .pmes-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
+  .pmes-bar{width:100%;background:linear-gradient(180deg,var(--steel),#3a6c95);border-radius:6px 6px 0 0;min-height:2px;position:relative;transition:opacity .2s}
+  .pmes-bar.atual{background:linear-gradient(180deg,var(--amber),#b87c00)}
+  .pmes-bar.sel{background:linear-gradient(180deg,#4ade80,#16a34a);box-shadow:0 0 0 2px rgba(74,222,128,.4)}
+  .pmes-bar:hover{opacity:.8}
+  .pmes-val{font-size:13px;font-weight:700;color:#e2e8f0;margin-bottom:2px}
+  .pmes-mes{font-size:10px;color:#64748b;text-transform:uppercase;font-weight:600;letter-spacing:.5px}
+  .pmes-tot{font-size:11px;color:#94a3b8;margin-top:8px}
+  .pmes-tot b{color:#e2e8f0;font-size:13px}
+  .empty{text-align:center;padding:50px 20px;color:#475569;grid-column:1/-1}
+  .loading{text-align:center;padding:36px;grid-column:1/-1}
+  .lspin{width:32px;height:32px;border:3px solid rgba(255,255,255,0.1);border-top-color:var(--steel);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 10px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* MODAL */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center;padding:20px}
+  .modal-overlay.show{display:flex}
+  .modal{background:#1e293b;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:28px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto}
+  .modal-title{font-family:'DM Serif Display',serif;font-size:20px;color:#e2e8f0;margin-bottom:6px}
+  .modal-sub{font-size:12px;color:#64748b;margin-bottom:16px}
+  .modal-proto{font-family:monospace;font-size:13px;color:var(--steel);background:rgba(91,141,184,0.1);padding:6px 12px;border-radius:6px;margin-bottom:16px;display:inline-block}
+  .modal-label{font-size:12px;font-weight:600;color:#94a3b8;margin-bottom:8px;display:block}
+  .modal select,.modal input,.modal textarea{width:100%;font-family:'DM Sans',sans-serif;font-size:14px;padding:10px 12px;background:#0f172a;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;color:#e2e8f0;outline:none;margin-bottom:14px}
+  .modal textarea{resize:vertical;min-height:70px}
+  .resp-options{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+  .resp-opt{border:2px solid rgba(255,255,255,0.1);border-radius:10px;padding:12px;cursor:pointer;transition:all 0.2s;text-align:center;user-select:none;font-size:13px;font-weight:600;color:#e2e8f0}
+  .resp-opt:hover{border-color:var(--steel)}
+  .resp-opt.on{border-color:var(--amber);background:rgba(240,165,0,0.1)}
+  .modal-btns{display:flex;gap:10px;justify-content:flex-end}
+  .btn-cancel{background:rgba(255,255,255,0.07);color:#94a3b8;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;padding:9px 20px;border:1px solid rgba(255,255,255,0.1);border-radius:8px;cursor:pointer}
+  .btn-confirm{background:var(--amber);color:var(--dark);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;padding:9px 20px;border:none;border-radius:8px;cursor:pointer}
+  .aviso-loc{background:rgba(240,165,0,0.08);border:1px solid rgba(240,165,0,0.3);border-radius:8px;padding:10px 12px;font-size:12px;color:#fcd34d;line-height:1.5;margin-bottom:14px;display:none}
+  .aviso-loc.show{display:block}
+
+  @media(max-width:900px){.kpis{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}.main{padding:16px}.topbar{padding:14px 16px;flex-direction:column;align-items:flex-start;gap:10px}}
+</style>
+</head>
+<body>
+
+<!-- MODAL ETAPA -->
+<div class="modal-overlay" id="modalEtapa">
+  <div class="modal">
+    <div class="modal-title">Concluir Etapa</div>
+    <div class="modal-sub" id="mEtSub">Registre a conclusão e notifique as partes</div>
+    <div class="modal-proto" id="mEtProto"></div>
+    <span class="modal-label">Etapa</span>
+    <input type="text" id="mEtStatus" readonly>
+    <span class="modal-label">Data</span>
+    <input type="date" id="mEtData">
+    <span class="modal-label">Mensagem para as partes (opcional)</span>
+    <textarea id="mEtMsg" placeholder="Ex: Entrega confirmada presencialmente às 14h"></textarea>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="fecharModal('modalEtapa')">Cancelar</button>
+      <button class="btn-confirm" onclick="confirmarEtapa()">Confirmar e Notificar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL VISTORIA -->
+<div class="modal-overlay" id="modalVist">
+  <div class="modal">
+    <div class="modal-title">Registrar Vistoria</div>
+    <div class="modal-sub">Informe o resultado e eventuais reparos</div>
+    <div class="modal-proto" id="mVProto"></div>
+    <span class="modal-label">Data da vistoria</span>
+    <input type="date" id="mVData">
+    <span class="modal-label">Necessita reparos?</span>
+    <div class="resp-options">
+      <div class="resp-opt" id="rep-nao" onclick="selReparo('Não')">✅ Não</div>
+      <div class="resp-opt" id="rep-sim" onclick="selReparo('Sim')">🔧 Sim</div>
+    </div>
+    <div id="reparoCampos" style="display:none">
+      <span class="modal-label">Descrição dos reparos</span>
+      <textarea id="mVDesc" placeholder="Ex: Pintura da sala, troca de vidro do quarto..."></textarea>
+      <span class="modal-label">Valor estimado</span>
+      <input type="text" id="mVValor" placeholder="Ex: R$ 1.200,00">
+      <span class="modal-label">Responsável pelo reparo</span>
+      <div class="resp-options">
+        <div class="resp-opt" id="resp-locatario" onclick="selResp('Locatário')">👤 Locatário</div>
+        <div class="resp-opt" id="resp-locador" onclick="selResp('Locador')">🏠 Locador</div>
+      </div>
+      <div class="aviso-loc" id="avisoLoc">
+        ⚠️ Como o reparo é de responsabilidade do <b>locatário</b>, ao confirmar será enviado
+        e-mail ao <b>locador</b> solicitando 2 orçamentos para cobrança, com a opção de indicação
+        de profissionais da imobiliária (sem responsabilidade pela indicação).
+      </div>
+    </div>
+    <span class="modal-label">Mensagem adicional (opcional)</span>
+    <textarea id="mVMsg" placeholder="Observações da vistoria"></textarea>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="fecharModal('modalVist')">Cancelar</button>
+      <button class="btn-confirm" onclick="confirmarVistoria()">Registrar e Notificar</button>
+    </div>
+  </div>
+</div>
+
+<div class="topbar">
+  <div class="brand"><h1>Entrega de Chaves</h1><p>Nova São Paulo · Painel de Controle</p></div>
+  <div class="topright">
+    <div class="livebadge"><div class="dot"></div> Ao vivo</div>
+    <span class="lupd" id="lupd">Carregando...</span>
+    <button class="btn-ref" onclick="load()">&#8635; Atualizar</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="kpis">
+    <div class="kpi blue"><div class="klbl">Aguardando Entrega</div><div class="kval" id="k0">-</div></div>
+    <div class="kpi amber"><div class="klbl">Entregues s/ Vistoria</div><div class="kval" id="k1">-</div></div>
+    <div class="kpi purple"><div class="klbl">Aguardando Liberação</div><div class="kval" id="k2">-</div></div>
+    <div class="kpi teal"><div class="klbl">Chaves Liberadas</div><div class="kval" id="k3">-</div></div>
+    <div class="kpi green"><div class="klbl">Processos Encerrados</div><div class="kval" id="k4">-</div></div>
+  </div>
+
+  <div class="pmes-wrap">
+    <div class="pmes-head">
+      <div>
+        <div class="pmes-title">Entregas por mês</div>
+        <div class="pmes-leg">Conta entregas realizadas (data da entrega). Quando não houver, usa a data agendada.</div>
+      </div>
+      <div class="pmes-tot" id="pmesTot"></div>
+    </div>
+    <div class="pmes-bars" id="pmesBars"></div>
+  </div>
+
+  <div class="filters">
+    <button class="fbtn on" onclick="setF('todos',this)">Todos</button>
+    <button class="fbtn" onclick="setF('andamento',this)">Em andamento</button>
+    <button class="fbtn" onclick="setF('reparo',this)">Com reparo pendente</button>
+    <button class="fbtn" onclick="setF('liberado',this)">Liberados</button>
+    <input type="text" class="sbx" id="sbx" placeholder="Buscar por protocolo, parte ou imóvel..." oninput="render()">
+  </div>
+  <div class="sech"><div class="sectitle">Processos</div><div class="secbadge" id="cnt">0</div></div>
+  <div class="grid" id="lista"><div class="loading"><div class="lspin"></div><p style="color:#475569;font-size:13px">Carregando...</p></div></div>
+</div>
+
+<script>
+var SURL='https://script.google.com/macros/s/AKfycbyMjypc0XTMs_RR6I9GMyuOkguE7u-QXDJjczMQoSayduM1_AAhmUfe2GDJdXujsqpa6w/exec';
+
+// Etapas comuns a todos os tipos
+var ETAPAS_BASE = [
+  {key:'agendada',  status:'Entrega de chaves agendada',  col:'Data Agendada',  label:'Agendamento'},
+  {key:'entregue',  status:'Entrega de chaves realizada', col:'Data Entrega',   label:'Entrega realizada'},
+  {key:'vistoria',  status:'Vistoria realizada',          col:'Data Vistoria',  label:'Vistoria'},
+  {key:'liberada',  status:'Chaves liberadas',            col:'Data Liberação', label:'Chaves liberadas p/ locação'}
+];
+
+// Etapas finais por tipo de fianca (depois das comuns)
+var ETAPAS_FINAIS = {
+  'Caução': [
+    {key:'debitos',   status:'Débitos quitados',        col:'Data Débitos',    label:'Débitos quitados'},
+    {key:'devolucao', status:'Devolução da caução',     col:'Data Devolução',  label:'Devolução da caução'}
+  ],
+  'Título de capitalização': [
+    {key:'resgate',   status:'Resgate do título',       col:'Data Resgate',    label:'Resgate do título (formulário)'},
+    {key:'debitos',   status:'Débitos quitados',        col:'Data Débitos',    label:'Débitos quitados'}
+  ],
+  'Seguro fiança': [
+    {key:'sinistro',  status:'Entrada no sinistro',     col:'Data Sinistro',   label:'Entrada no sinistro', opcional:true},
+    {key:'debitos',   status:'Débitos quitados',        col:'Data Débitos',    label:'Débitos quitados'}
+  ],
+  'Fiador': [
+    {key:'debitos',   status:'Débitos quitados',        col:'Data Débitos',    label:'Débitos quitados'}
+  ]
+};
+
+function etapasDoProcesso(p){
+  var tipo = String(p['Tipo Fiança']||'').trim();
+  var finais = ETAPAS_FINAIS[tipo] || ETAPAS_FINAIS['Fiador'];
+  return ETAPAS_BASE.concat(finais);
+}
+
+var processos=[],filtro='todos',mProto='',mRespSel='',mReparo='',mesFiltro='';
+
+function load(){
+  document.getElementById('lupd').textContent='Atualizando...';
+  fetch(SURL+'?acao=listar&t='+Date.now()).then(function(r){return r.json();}).then(function(rc){
+    if(rc&&rc.length>1){var h=rc[0];processos=rc.slice(1).map(function(row){var o={};h.forEach(function(k,i){o[k]=row[i]||'';});return o;});}
+    else processos=[];
+    var now=new Date();
+    document.getElementById('lupd').textContent='Atualizado às '+now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    renderKPIs();render();
+  }).catch(function(){document.getElementById('lupd').textContent='Erro ao carregar';});
+}
+
+// ── Helpers das novas etapas ───────────────────────────────
+// Retorna true se a etapa key esta concluida (tem data preenchida)
+function etapaFeita(p, key){
+  var etapas = etapasDoProcesso(p);
+  for (var i=0;i<etapas.length;i++) if(etapas[i].key===key) return !!(p[etapas[i].col]||'').toString().trim();
+  return false;
+}
+// Vistoria sem reparos? (libera para nova locacao)
+function vistoriaSemReparos(p){
+  if (!etapaFeita(p,'vistoria')) return false;
+  return (p['Necessita Reparo']||'')!=='Sim';
+}
+// Bloqueia liberacao se: vistoria nao feita OU vistoria com reparos pendentes
+function podeLiberar(p){ return vistoriaSemReparos(p); }
+// Processo encerrado quando TODAS as etapas (exceto opcionais) estao feitas
+function processoEncerrado(p){
+  var etapas = etapasDoProcesso(p);
+  for (var i=0;i<etapas.length;i++){
+    if (etapas[i].opcional) continue;
+    if (!etapaFeita(p, etapas[i].key)) return false;
+  }
+  return true;
+}
+// Etapa "atual" para o badge de status (primeira nao concluida)
+function etapaAtual(p){
+  var etapas = etapasDoProcesso(p);
+  for (var i=0;i<etapas.length;i++){
+    if (etapas[i].opcional) continue;
+    if (!etapaFeita(p, etapas[i].key)) return etapas[i];
+  }
+  return null; // tudo concluido
+}
+// Compat: etapaIdx ainda usado por filtros — devolve um numero 0..N
+function etapaIdx(p){
+  var et = etapaAtual(p);
+  if (!et) return 99; // concluido
+  var etapas = etapasDoProcesso(p);
+  for (var i=0;i<etapas.length;i++) if(etapas[i].key===et.key) return i;
+  return 0;
+}
+function temReparoPendente(p){return (p['Necessita Reparo']||'')==='Sim' && !processoEncerrado(p);}
+// Alerta para seguro fianca: passou de 15d da entrega sem sinistro registrado, com debito pendente
+function alertaSinistro(p){
+  if ((p['Tipo Fiança']||'')!=='Seguro fiança') return '';
+  if (etapaFeita(p,'sinistro')) return '';
+  if (etapaFeita(p,'debitos')) return ''; // ja quitou, sem precisar
+  var dataEntrega = parseDtPt(p['Data Entrega']);
+  if (!dataEntrega) return '';
+  var hoje = new Date(); hoje.setHours(0,0,0,0);
+  var dias = Math.round((hoje-dataEntrega)/(24*3600*1000));
+  if (dias>15) return '⚠️ <b>'+(dias-15)+' dia(s) acima do prazo</b> para abrir sinistro (15d apos entrega).';
+  if (dias>10) return '⏰ Faltam <b>'+(15-dias)+' dia(s)</b> para abrir sinistro (prazo 15d apos entrega).';
+  return '';
+}
+// Parse "dd/mm/yyyy" ou "dd/mm/yyyy hh:mm" para Date local
+function parseDtPt(s){
+  if(!s) return null;
+  var m = String(s).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(!m) return null;
+  var d = new Date(parseInt(m[3],10), parseInt(m[2],10)-1, parseInt(m[1],10));
+  d.setHours(0,0,0,0);
+  return d;
+}
+// Data com tempo relativo: "16/06/2026 (há 1 dia)"
+function dataExibe(s){
+  var d = parseDtPt(s);
+  if(!d) return s||'';
+  var hoje = new Date(); hoje.setHours(0,0,0,0);
+  var diff = Math.round((hoje-d)/(24*3600*1000));
+  var rel;
+  if(diff===0) rel='hoje';
+  else if(diff===1) rel='ontem';
+  else if(diff>1) rel='há '+diff+' dias';
+  else if(diff===-1) rel='amanhã';
+  else rel='em '+(-diff)+' dias';
+  return String(s).slice(0,10)+' <span style="color:#475569;font-size:10px">('+rel+')</span>';
+}
+
+function renderKPIs(){
+  // KPIs por marco principal — independente do tipo de fianca
+  var k = {ag:0, ent:0, vist:0, lib:0, conc:0};
+  processos.forEach(function(p){
+    if (processoEncerrado(p)) k.conc++;
+    else if (etapaFeita(p,'liberada')) k.lib++;
+    else if (etapaFeita(p,'vistoria')) k.vist++;
+    else if (etapaFeita(p,'entregue')) k.ent++;
+    else k.ag++;
+  });
+  document.getElementById('k0').textContent=k.ag;
+  document.getElementById('k1').textContent=k.ent;
+  document.getElementById('k2').textContent=k.vist;
+  document.getElementById('k3').textContent=k.lib;
+  document.getElementById('k4').textContent=k.conc;
+  renderPorMes();
+}
+
+// Parse data pt-BR ("dd/mm/yyyy" ou "dd/mm/yyyy hh:mm") para 'YYYY-MM'.
+function _mesKey(s){
+  if(!s) return '';
+  var t=String(s).trim();
+  var m=t.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if(m) return m[3]+'-'+m[2].padStart(2,'0');
+  m=t.match(/^(\d{4})-(\d{2})-\d{2}/);
+  if(m) return m[1]+'-'+m[2];
+  return '';
+}
+var _MESES_ABREV=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+function _mesLabel(yyyymm){
+  var p=yyyymm.split('-');
+  if(p.length!==2) return yyyymm;
+  return _MESES_ABREV[parseInt(p[1],10)-1]+'/'+p[0].slice(2);
+}
+// Lista dos ultimos N meses (incluindo o atual) como ['YYYY-MM',...]
+function _ultMeses(n){
+  var hoje=new Date(); hoje.setDate(1);
+  var arr=[];
+  for(var i=n-1;i>=0;i--){
+    var d=new Date(hoje.getFullYear(),hoje.getMonth()-i,1);
+    arr.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));
+  }
+  return arr;
+}
+
+function _entMesRef(p){ return p['Data Entrega']||p['Data Agendada']||''; }
+
+function renderPorMes(){
+  var meses=_ultMeses(6); // 6 meses
+  var contagem={}; meses.forEach(function(m){contagem[m]=0;});
+  var totalGeral=0;
+  processos.forEach(function(p){
+    var mk=_mesKey(_entMesRef(p));
+    if(mk && contagem.hasOwnProperty(mk)){ contagem[mk]++; totalGeral++; }
+  });
+  var max=Math.max(1,Math.max.apply(null,meses.map(function(m){return contagem[m];})));
+  var mesAtual=meses[meses.length-1];
+  var bars=document.getElementById('pmesBars');
+  bars.innerHTML=meses.map(function(m){
+    var v=contagem[m];
+    var pct=(v/max)*100;
+    var sel=(mesFiltro===m);
+    var cls=sel?'pmes-bar sel':((m===mesAtual)?'pmes-bar atual':'pmes-bar');
+    var sty='cursor:pointer';
+    if(sel) sty+=';outline:2px solid #fff;outline-offset:1px';
+    return '<div class="pmes-col" onclick="setMesFiltro(\''+m+'\')" title="Clique para filtrar '+_mesLabel(m)+'" style="cursor:pointer">'
+      +'<div class="pmes-val">'+v+'</div>'
+      +'<div class="'+cls+'" style="height:'+pct+'%;'+sty+'"></div>'
+      +'<div class="pmes-mes">'+_mesLabel(m)+'</div></div>';
+  }).join('');
+  var info=mesFiltro
+    ? 'Filtrando: <b>'+_mesLabel(mesFiltro)+'</b> · <a href="#" onclick="setMesFiltro(\'\');return false;" style="color:var(--amber);text-decoration:underline">limpar</a>'
+    : 'Total nos últimos 6 meses: <b>'+totalGeral+'</b> · clique numa barra para filtrar';
+  document.getElementById('pmesTot').innerHTML=info;
+}
+
+function setMesFiltro(m){
+  // Toggle: clicar no mes ja selecionado limpa o filtro
+  mesFiltro = (mesFiltro===m) ? '' : m;
+  renderPorMes();
+  render();
+}
+
+function setF(f,btn){
+  filtro=f;
+  document.querySelectorAll('.fbtn').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+  render();
+}
+
+function statusBadge(p){
+  if (processoEncerrado(p)) return '<span class="badge b-con">&#10003; Encerrado</span>';
+  var at = etapaAtual(p);
+  if (!at) return '<span class="badge b-con">&#10003; Encerrado</span>';
+  if (at.key==='agendada') return '<span class="badge b-ab">&#9679; '+at.label+'</span>';
+  return '<span class="badge b-and">&#9889; '+at.label+'</span>';
+}
+
+function render(){
+  var q=(document.getElementById('sbx').value||'').toLowerCase();
+  var rows=processos.filter(function(p){
+    var conc=processoEncerrado(p);
+    var mf=filtro==='todos'
+      ||(filtro==='andamento'&&!conc)
+      ||(filtro==='reparo'&&temReparoPendente(p))
+      ||(filtro==='liberado'&&conc);
+    var mb=!q||['Protocolo','Locador','Locatário','Endereço'].some(function(k){return (p[k]||'').toLowerCase().indexOf(q)>-1;});
+    var mm=!mesFiltro||_mesKey(_entMesRef(p))===mesFiltro;
+    return mf&&mb&&mm;
+  });
+  document.getElementById('cnt').textContent=rows.length;
+  var el=document.getElementById('lista');
+  if(!rows.length){el.innerHTML='<div class="empty">&#128273; Nenhum processo encontrado.</div>';return;}
+  el.innerHTML=rows.map(cardHtml).join('');
+}
+
+function cardHtml(p){
+  var proto=p['Protocolo']||'';
+  var etapas = etapasDoProcesso(p);
+  var h='<div class="pcard">';
+  h+='<div class="pcard-top"><div class="pcard-end">'+(p['Endereço']||'-')+'</div>'+statusBadge(p)+'</div>';
+  h+='<div class="pcard-proto">'+proto+'</div>';
+  h+='<div class="parts">Locador: <b>'+(p['Locador']||'-')+'</b></div>';
+  h+='<div class="parts">Locatário: <b>'+(p['Locatário']||'-')+'</b></div>';
+  if(p['Tipo Fiança']) h+='<div class="fianca-tag">Fiança: '+p['Tipo Fiança']+'</div>';
+
+  // alerta de sinistro (seguro fianca, 15d)
+  var alerta = alertaSinistro(p);
+  if (alerta) h+='<div class="reparo-box" style="background:rgba(240,165,0,.08);border-color:rgba(240,165,0,.4);color:#fcd34d">'+alerta+'</div>';
+
+  // stepper dinamico por fianca
+  var feitas = 0; etapas.forEach(function(e){ if(etapaFeita(p,e.key)) feitas++; });
+  h+='<div class="stepper">';
+  etapas.forEach(function(et,i){
+    var done = etapaFeita(p, et.key);
+    // "curr" = proxima etapa nao concluida que seja desbloqueavel
+    var atual = etapaAtual(p);
+    var isCurr = atual && atual.key===et.key;
+    var cls = done?'done':(isCurr?'curr':'');
+    var data=p[et.col]||'';
+    var ico=done?'&#10003;':(i+1);
+    var nomeExtra = et.opcional ? ' <span style="font-size:10px;color:#64748b">(opcional)</span>' : '';
+    // Botão de editar data só aparece nas etapas com data preenchida
+    var btnEdit = data
+      ? ' <button onclick="editarDataEtapa(\''+proto+'\',\''+et.key+'\')" title="Alterar data" style="background:transparent;border:none;color:#94a3b8;cursor:pointer;font-size:11px;padding:0 4px">✏️</button>'
+      : '';
+    h+='<div class="step '+cls+'"><div class="step-dot">'+ico+'</div><div class="step-body"><div class="step-nome">'+et.label+nomeExtra+'</div>'
+      +(data?'<div class="step-data">'+dataExibe(data)+btnEdit+'</div>':(isCurr?'<div class="step-data" style="color:#fcd34d">⏳ pendente</div>':''))
+      +'</div></div>';
+  });
+  h+='</div>';
+
+  // reparo info
+  if((p['Necessita Reparo']||'')==='Sim'){
+    h+='<div class="reparo-box"><b>Reparo:</b> '+(p['Descrição Reparo']||'-')
+      +(p['Valor Reparo']?' · <b>'+p['Valor Reparo']+'</b>':'')
+      +(p['Responsável Reparo']?' · responsável: <b>'+p['Responsável Reparo']+'</b>':'')+'</div>';
+  } else if((p['Necessita Reparo']||'')==='Não'){
+    h+='<div class="reparo-box ok"><b>Vistoria:</b> sem necessidade de reparos.</div>';
+  }
+
+  // actions: exibe um botao por etapa "atualmente acionavel".
+  // Regra: dentro da sequencia (idx), uma etapa pode ser registrada se a anterior NAO-opcional ja foi feita.
+  // Liberacao tem regra extra: vistoria deve ter sido feita SEM reparos.
+  h+='<div class="pcard-actions">';
+  if (processoEncerrado(p)){
+    h+='<span class="finalizado">&#10003; Processo encerrado</span>';
+  } else {
+    var anteriorOK = true;
+    for (var i=0;i<etapas.length;i++){
+      var et = etapas[i];
+      if (etapaFeita(p, et.key)) { anteriorOK = true; continue; }
+      // Bloqueia se a anterior obrigatoria nao foi feita
+      if (!anteriorOK && !et.opcional) continue;
+      // Regra especial: liberacao so se vistoria sem reparos
+      if (et.key==='liberada' && !podeLiberar(p)){
+        // mostra disabled
+        h+='<button class="btn-acao btn-next" disabled style="opacity:.4;cursor:not-allowed" title="Aguardando vistoria sem reparos">🔒 '+et.label+'</button>';
+      } else if (et.key==='vistoria'){
+        h+='<button class="btn-acao btn-vist" onclick="abrirVistoria(\''+proto+'\')">Registrar '+et.label.toLowerCase()+'</button>';
+      } else {
+        h+='<button class="btn-acao btn-next" onclick="abrirEtapaKey(\''+proto+'\',\''+et.key+'\')">Registrar: '+et.label+'</button>';
+      }
+      if (!et.opcional) anteriorOK = false; // bloqueia proximas obrigatorias ate esta ser concluida
+    }
+  }
+  h+='</div></div>';
+  return h;
+}
+
+function hojeISO(){return new Date().toISOString().slice(0,10);}
+
+// MODAL ETAPA — versao baseada em key da etapa (suporta etapas dinamicas por fianca)
+function abrirEtapaKey(proto,key){
+  mProto=proto;
+  var p = processos.find(function(x){return x['Protocolo']===proto;}) || {};
+  var et = etapasDoProcesso(p).find(function(e){return e.key===key;});
+  if (!et) return;
+  document.getElementById('mEtProto').textContent=proto;
+  document.getElementById('mEtStatus').value=et.status;
+  document.getElementById('mEtData').value=hojeISO();
+  document.getElementById('mEtMsg').value='';
+  document.getElementById('mEtSub').textContent='Concluindo: '+et.label;
+  // Guarda a coluna alvo para o GAS atualizar a celula correta
+  document.getElementById('modalEtapa').dataset.col = et.col;
+  document.getElementById('modalEtapa').classList.add('show');
+}
+// EDITAR DATA de uma etapa já registrada.
+// Reaproveita atualizar_status do GAS mas mantém o status atual —
+// só troca a data da célula alvo. Prompt simples pra data nova.
+function editarDataEtapa(proto, key){
+  var p = processos.find(function(x){return x['Protocolo']===proto;}) || {};
+  var et = etapasDoProcesso(p).find(function(e){return e.key===key;});
+  if (!et) return;
+  var dataAtual = String(p[et.col]||'').trim();
+  // Converte "DD/MM/YYYY [HH:mm]" pra "YYYY-MM-DD" pro prompt
+  var mSlash = dataAtual.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  var iso = mSlash ? (mSlash[3]+'-'+mSlash[2]+'-'+mSlash[1]) : '';
+  var novaISO = prompt('Alterar data de "'+et.label+'"\n(formato AAAA-MM-DD, ex: 2026-08-15):', iso);
+  if (novaISO === null) return; // cancelou
+  novaISO = String(novaISO||'').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(novaISO)) {
+    alert('❌ Data inválida. Use AAAA-MM-DD (ex: 2026-08-15).');
+    return;
+  }
+  var novaBR = fmtBR(novaISO);
+  if (!confirm('Confirmar alteração?\n\n"'+et.label+'"\n\nDe: '+(dataAtual||'(vazio)')+'\nPara: '+novaBR)) return;
+  // Mantém status corrente na coluna Status geral (usa o status da etapa)
+  var url = SURL+'?acao=atualizar_status'
+    +'&protocolo='+encodeURIComponent(proto)
+    +'&novo_status='+encodeURIComponent(et.status)
+    +'&data='+encodeURIComponent(novaBR)
+    +'&col='+encodeURIComponent(et.col)
+    +'&mensagem='+encodeURIComponent('Data alterada pelo painel: '+novaBR)
+    +'&t='+Date.now();
+  fetch(url).then(function(r){
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    return r.text();
+  }).then(function(){
+    setTimeout(load, 800);
+  }).catch(function(e){
+    alert('❌ Falhou ao alterar a data: '+(e.message||e));
+  });
+}
+
+function confirmarEtapa(){
+  var status=document.getElementById('mEtStatus').value;
+  var data=fmtBR(document.getElementById('mEtData').value);
+  var msg=document.getElementById('mEtMsg').value.trim();
+  var col=document.getElementById('modalEtapa').dataset.col||'';
+  var url=SURL+'?acao=atualizar_status&protocolo='+encodeURIComponent(mProto)
+    +'&novo_status='+encodeURIComponent(status)+'&data='+encodeURIComponent(data)
+    +'&col='+encodeURIComponent(col)
+    +'&mensagem='+encodeURIComponent(msg)+'&t='+Date.now();
+  fetch(url).then(function(){fecharModal('modalEtapa');setTimeout(load,800);});
+}
+
+// MODAL VISTORIA
+function abrirVistoria(proto){
+  mProto=proto;mReparo='';mRespSel='';
+  document.getElementById('mVProto').textContent=proto;
+  document.getElementById('mVData').value=hojeISO();
+  document.getElementById('mVDesc').value='';
+  document.getElementById('mVValor').value='';
+  document.getElementById('mVMsg').value='';
+  document.getElementById('reparoCampos').style.display='none';
+  document.getElementById('avisoLoc').classList.remove('show');
+  document.querySelectorAll('#rep-nao,#rep-sim,#resp-locatario,#resp-locador').forEach(function(e){e.classList.remove('on');});
+  document.getElementById('modalVist').classList.add('show');
+}
+function selReparo(v){
+  mReparo=v;
+  document.getElementById('rep-sim').classList.toggle('on',v==='Sim');
+  document.getElementById('rep-nao').classList.toggle('on',v==='Não');
+  document.getElementById('reparoCampos').style.display=(v==='Sim')?'block':'none';
+  if(v!=='Sim'){mRespSel='';document.getElementById('avisoLoc').classList.remove('show');}
+}
+function selResp(v){
+  mRespSel=v;
+  document.getElementById('resp-locatario').classList.toggle('on',v==='Locatário');
+  document.getElementById('resp-locador').classList.toggle('on',v==='Locador');
+  document.getElementById('avisoLoc').classList.toggle('show',v==='Locatário');
+}
+function confirmarVistoria(){
+  if(!mReparo){alert('Informe se há necessidade de reparos.');return;}
+  if(mReparo==='Sim'&&!mRespSel){alert('Informe o responsável pelo reparo.');return;}
+  var data=fmtBR(document.getElementById('mVData').value);
+  var desc=document.getElementById('mVDesc').value.trim();
+  var valor=document.getElementById('mVValor').value.trim();
+  var msg=document.getElementById('mVMsg').value.trim();
+  var url=SURL+'?acao=registrar_vistoria&protocolo='+encodeURIComponent(mProto)
+    +'&data='+encodeURIComponent(data)
+    +'&necessita_reparo='+encodeURIComponent(mReparo)
+    +'&descricao='+encodeURIComponent(desc)
+    +'&valor='+encodeURIComponent(valor)
+    +'&responsavel='+encodeURIComponent(mRespSel)
+    +'&mensagem='+encodeURIComponent(msg)+'&t='+Date.now();
+  fetch(url).then(function(){fecharModal('modalVist');setTimeout(load,800);});
+}
+
+function fmtBR(iso){if(!iso)return '';var p=iso.split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:iso;}
+function fecharModal(id){document.getElementById(id).classList.remove('show');}
+
+load();
+setInterval(load,60000);
+</script>
+</body>
+</html>

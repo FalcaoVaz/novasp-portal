@@ -1,0 +1,2084 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FalcãoVaz Jurídico</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+  if (typeof pdfjsLib !== 'undefined') {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+</script>
+<body>
+
+<!-- ═══════════════════════════════════════════ LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="brand">FalcãoVaz<span>.</span></div>
+      <div class="sub">Sistema Jurídico</div>
+    </div>
+    <div class="login-title">Acesse sua conta</div>
+    <div id="login-error" class="alert alert-amber" style="display:none">
+      ⚠️ Usuário não encontrado. Verifique o nome.
+    </div>
+    <div class="form-group">
+      <label>Selecione seu perfil</label>
+      <select id="login-user">
+        <option value="">— selecione —</option>
+        <optgroup label="Jurídico — 500k tokens">
+          <option value="rodrigo">Rodrigo Falcão Vaz</option>
+          <option value="fernanda">Fernanda Araujo</option>
+          <option value="renata">Renata Navarro</option>
+          <option value="edna">Edna Rebesco</option>
+          <option value="durval">Durval Falcão Vaz</option>
+          <option value="janaina">Janaina Alves</option>
+        </optgroup>
+        <optgroup label="Administrativo — 200k tokens">
+          <option value="simone">Simone Cirino</option>
+          <option value="mikaeli">Mikaeli</option>
+          <option value="vanderleia">Vanderleia</option>
+          <option value="vivian">Vivian</option>
+          <option value="joaomarcus">João Marcus</option>
+          <option value="nogueira">Nogueira</option>
+        </optgroup>
+        <optgroup label="Vendas — 100k tokens">
+          <option value="christiane">Christiane</option>
+          <option value="felippe">Felippe</option>
+          <option value="emilia">Emilia</option>
+          <option value="regina">Regina</option>
+          <option value="thais">Thais</option>
+        </optgroup>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Senha</label>
+      <input type="password" id="login-pass" placeholder="••••••••" value="1234">
+    </div>
+    <button class="btn btn-primary" onclick="doLogin()">Entrar no sistema</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ APP -->
+<button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<div id="app">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="brand">FalcãoVaz<span>.</span></div>
+      <div class="sub">Sistema Jurídico</div>
+    </div>
+
+    <div class="sidebar-section">Geral</div>
+    <div class="nav-item active" onclick="goTo('dashboard')">
+      <span class="icon">📊</span> Dashboard
+    </div>
+
+    <!-- MÓDULO JUDICIAL -->
+    <div class="sidebar-section" id="nav-section-judicial" style="display:none">Judicial</div>
+    <div class="nav-item" id="nav-processos" style="display:none" onclick="goTo('processos')">
+      <span class="icon">⚖️</span> Processos
+    </div>
+    <div class="nav-item" id="nav-prazos" style="display:none" onclick="goTo('prazos')">
+      <span class="icon">⏰</span> Controle de Prazos
+    </div>
+    <div class="nav-item" id="nav-calculo-prazos" style="display:none" onclick="goTo('calculo-prazos')">
+      <span class="icon">🧮</span> Cálculo de Prazos
+    </div>
+    <div class="nav-item" id="nav-planilhas" style="display:none" onclick="goTo('planilhas')">
+      <span class="icon">💵</span> Cálculo de Débito
+    </div>
+    <div class="nav-item" id="nav-financeiro" style="display:none" onclick="goTo('financeiro')">
+      <span class="icon">💰</span> Financeiro
+    </div>
+    <div class="nav-item" id="nav-chamados-jur" style="display:none" onclick="goTo('chamados')">
+      <span class="icon">🎫</span> Chamados
+      <span class="badge badge-red" id="nav-chamados-badge" style="margin-left:auto;padding:2px 7px;font-size:10px;display:none">0</span>
+    </div>
+    <div class="nav-item" id="nav-aprovar-docs-jur" style="display:none" onclick="goTo('para-revisar')">
+      <span class="icon">✅</span> Para Revisar
+      <span class="badge badge-red" id="badge-para-revisar-nav" style="margin-left:auto;padding:2px 7px;font-size:10px;display:none">0</span>
+    </div>
+    <div class="nav-item" id="nav-acordos-jur" style="display:none" onclick="goTo('acordos')">
+      <span class="icon">🤝</span> Acordos Extrajudiciais
+    </div>
+
+    <!-- IA & DOCUMENTOS — todos os níveis -->
+    <div class="sidebar-section" id="nav-section-ia" style="display:none">IA & Documentos</div>
+    <div class="nav-item" id="nav-meus-docs" style="display:none" onclick="goTo('documentos')">
+      <span class="icon">✨</span> Documentos & IA
+    </div>
+    <!-- Item redundante ("Gerar com IA") removido — "Documentos & IA" ja abre a tela com o composer em destaque no topo. Mantido oculto por compat com JS. -->
+    <div class="nav-item" id="nav-gerar-doc" style="display:none !important" onclick="goTo('documentos');setTimeout(focarComposerIA,150)"></div>
+
+    <!-- Chamados para Adm/Vendas -->
+    <div class="sidebar-section" id="nav-section-chamados-ext" style="display:none">Suporte</div>
+    <div class="nav-item" id="nav-chamado-ext" style="display:none" onclick="goTo('chamados')">
+      <span class="icon">🎫</span> Solicitar ao Jurídico
+      <span class="badge badge-red" id="nav-chamados-badge-ext" style="margin-left:auto;padding:2px 7px;font-size:10px;display:none">0</span>
+    </div>
+
+    <!-- Admin -->
+    <div class="sidebar-section" id="nav-admin-section" style="display:none">Admin</div>
+    <div class="nav-item" id="nav-usuarios" style="display:none" onclick="goTo('usuarios')">
+      <span class="icon">👥</span> Usuários & Tokens
+    </div>
+
+    <div class="sidebar-bottom">
+      <div class="user-badge">
+        <div class="avatar" id="sidebar-avatar">RF</div>
+        <div class="user-info">
+          <div class="name" id="sidebar-name">Rodrigo F. V.</div>
+          <div class="role" id="sidebar-role">Nível 1 · Admin</div>
+        </div>
+      </div>
+      <div class="nav-item" onclick="doLogout()" style="margin-top:4px">
+        <span class="icon">🚪</span> Sair
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="topbar-title">Dashboard</div>
+      <div class="topbar-actions">
+        <span class="chip" id="topbar-user-chip">Rodrigo Falcão Vaz</span>
+        <span class="badge badge-amber" id="topbar-alert-badge">3 prazos urgentes</span>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ══ DASHBOARD ══ -->
+      <div class="page active" id="page-dashboard">
+
+        <!-- CTA em destaque acima de tudo: Novo com IA -->
+        <div style="margin-bottom:22px;padding:22px 28px;background:linear-gradient(135deg,#3B82F6 0%,#1E2D4A 100%);color:#fff;border-radius:14px;box-shadow:0 8px 24px rgba(59,130,246,.25);display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;cursor:pointer" onclick="goTo('documentos');setTimeout(focarComposerIA,150)">
+          <div style="display:flex;align-items:center;gap:16px;flex:1;min-width:260px">
+            <div style="font-size:44px;line-height:1">✨</div>
+            <div>
+              <div style="font-size:20px;font-weight:800;letter-spacing:-.01em;line-height:1.2">Criar documento com IA</div>
+              <div style="font-size:13px;color:rgba(255,255,255,.85);margin-top:4px;line-height:1.5">Descreva o que precisa e a IA redige petições, notificações, distratos, respostas de e-mail e mais — já em nome da imobiliária.</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();abrirAnexarDoc()" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.4);white-space:nowrap">📎 Anexar pronto</button>
+            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();goTo('documentos');setTimeout(focarComposerIA,150)" style="background:#fff;color:#1E2D4A;border:none;font-weight:700;white-space:nowrap">⚡ Começar →</button>
+          </div>
+        </div>
+
+        <div class="page-header">
+          <h1>Bom dia, <span id="dash-name">Rodrigo</span> 👋</h1>
+          <p>Resumo do escritório — <span id="dash-date"></span></p>
+        </div>
+
+        <!-- Stats: Jurídico -->
+        <div class="stats-grid" id="dash-stats-judicial" style="display:none">
+          <div class="stat-card">
+            <div class="stat-accent" style="background:var(--blue-500)"></div>
+            <div class="stat-label">Processos Ativos</div>
+            <div class="stat-value" id="stat-jur-processos">—</div>
+            <div class="stat-sub">Em andamento</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-accent" style="background:var(--red)"></div>
+            <div class="stat-label">Prazos Urgentes</div>
+            <div class="stat-value" style="color:var(--red)" id="stat-jur-prazos">—</div>
+            <div class="stat-sub">Próximos 5 dias</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-accent" style="background:var(--amber)"></div>
+            <div class="stat-label">Docs para revisar</div>
+            <div class="stat-value" id="stat-jur-revisao">—</div>
+            <div class="stat-sub">Aguardando sua revisão</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-accent" style="background:var(--green)"></div>
+            <div class="stat-label">Chamados abertos</div>
+            <div class="stat-value" id="stat-jur-chamados">—</div>
+            <div class="stat-sub">Recebidos + enviados</div>
+          </div>
+        </div>
+
+        <!-- Stats: Administrativo -->
+        <div class="stats-grid" id="dash-stats-adm" style="display:none">
+          <div class="stat-card">
+            <div class="stat-accent" style="background:var(--blue-500)"></div>
+            <div class="stat-label">Documentos gerados</div>
+            <div class="stat-value" id="stat-adm-docs">—</div>
+            <div class="stat-sub">Este mês</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-accent" style="background:var(--amber)"></div>
+            <div class="stat-label">Aguardando aprovação</div>
+            <div class="stat-value" style="color:var(--amber)" id="stat-adm-aguardando">—</div>
+            <div class="stat-sub">Enviados ao Jurídico</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-accent" style="background:var(--green)"></div>
+            <div class="stat-label">Aprovados</div>
+            <div class="stat-value" id="stat-adm-aprovados">—</div>
+            <div class="stat-sub">Prontos para uso</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-accent" style="background:var(--red)"></div>
+            <div class="stat-label">Chamados abertos</div>
+            <div class="stat-value" id="stat-adm-chamados">—</div>
+            <div class="stat-sub">Ao time Jurídico</div>
+          </div>
+        </div>
+
+        <!-- Stats: Vendas -->
+        <div class="stats-grid" id="dash-stats-vendas" style="display:none">
+          <div class="stat-card">
+            <div class="stat-accent" style="background:var(--blue-500)"></div>
+            <div class="stat-label">Documentos gerados</div>
+            <div class="stat-value" id="stat-vnd-docs">—</div>
+            <div class="stat-sub">Este mês</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-accent" style="background:var(--amber)"></div>
+            <div class="stat-label">Aguardando aprovação</div>
+            <div class="stat-value" style="color:var(--amber)" id="stat-vnd-aguardando">—</div>
+            <div class="stat-sub">Enviados ao Jurídico</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-accent" style="background:var(--green)"></div>
+            <div class="stat-label">Aprovados</div>
+            <div class="stat-value" id="stat-vnd-aprovados">—</div>
+            <div class="stat-sub">Este mês</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-accent" style="background:var(--red)"></div>
+            <div class="stat-label">Chamados abertos</div>
+            <div class="stat-value" id="stat-vnd-chamados">—</div>
+            <div class="stat-sub">Ao time Jurídico</div>
+          </div>
+        </div>
+
+        <!-- Painel inferior Jurídico -->
+        <div class="grid-2" id="dash-panel-judicial" style="display:none">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">⏰ Prazos Próximos</div>
+              <button class="btn btn-outline btn-sm" onclick="goTo('prazos')">Ver todos</button>
+            </div>
+            <div class="card-body" style="padding-top:12px">
+              <table>
+                <thead><tr><th>Processo</th><th>Tipo</th><th>Responsável</th><th>Prazo</th></tr></thead>
+                <tbody id="dash-prazos-jur">
+                  <tr><td colspan="4" class="text-gray text-xs" style="text-align:center;padding:16px">Carregando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">🎫 Chamados</div>
+              <button class="btn btn-outline btn-sm" onclick="goTo('chamados')">Ver todos</button>
+            </div>
+            <div class="card-body" style="padding-top:12px">
+              <table>
+                <thead><tr><th>De/Para</th><th>Assunto</th><th>Responsável</th><th>Urgência</th></tr></thead>
+                <tbody id="dash-chamados-jur">
+                  <tr><td colspan="4" class="text-gray text-xs" style="text-align:center;padding:16px">Carregando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Painel docs e chamados próprios — Jurídico (linha 2) -->
+        <div class="grid-2 mt-6" id="dash-panel-judicial-2" style="display:none">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">📄 Meus Documentos Recentes</div>
+              <button class="btn btn-outline btn-sm" onclick="goTo('meus-docs')">Ver todos</button>
+            </div>
+            <div class="card-body" style="padding-top:12px">
+              <table>
+                <thead><tr><th>Tipo</th><th>Referência</th><th>Status</th></tr></thead>
+                <tbody id="dash-meus-docs">
+                  <tr><td colspan="3" class="text-gray text-xs" style="text-align:center;padding:16px">Carregando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">🎫 Chamados Enviados por Mim</div>
+              <button class="btn btn-outline btn-sm" onclick="goTo('chamados')">Ver todos</button>
+            </div>
+            <div class="card-body" style="padding-top:12px">
+              <table>
+                <thead><tr><th>Título</th><th>Para</th><th>Status</th></tr></thead>
+                <tbody id="dash-meus-chamados">
+                  <tr><td colspan="3" class="text-gray text-xs" style="text-align:center;padding:16px">Carregando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Painel inferior Adm/Vendas -->
+        <div class="grid-2" id="dash-panel-extrajudicial" style="display:none">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">📄 Meus Documentos Recentes</div>
+              <button class="btn btn-outline btn-sm" onclick="goTo('meus-docs')">Ver todos</button>
+            </div>
+            <div class="card-body" style="padding-top:12px">
+              <table>
+                <thead><tr><th>Tipo</th><th>Referência</th><th>Status</th></tr></thead>
+                <tbody id="dash-meus-docs">
+                  <tr><td colspan="3" class="text-gray text-xs" style="text-align:center;padding:16px">Carregando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">🎫 Meus Chamados</div>
+              <button class="btn btn-outline btn-sm" onclick="goTo('chamados')">Ver todos</button>
+            </div>
+            <div class="card-body" style="padding-top:12px">
+              <table>
+                <thead><tr><th>Título</th><th>Responsável</th><th>Status</th></tr></thead>
+                <tbody id="dash-meus-chamados">
+                  <tr><td colspan="3" class="text-gray text-xs" style="text-align:center;padding:16px">Carregando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mt-6" id="admin-token-panel" style="display:none">
+          <div class="card-header">
+            <div class="card-title">🔋 Consumo de Tokens — Equipe</div>
+            <button class="btn btn-outline btn-sm" onclick="goTo('usuarios')">Painel completo</button>
+          </div>
+          <div class="card-body">
+            <div id="dash-token-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ PRAZOS ══ -->
+      <div class="page" id="page-prazos">
+        <div class="page-header flex justify-between items-center">
+          <div>
+            <h1>Controle de Prazos</h1>
+            <p>Todos os prazos processuais e administrativos</p>
+          </div>
+          <button class="btn btn-primary" onclick="abrirNovoPrazo()">+ Novo Prazo</button>
+        </div>
+
+        <div class="card">
+          <div class="card-header" style="padding-bottom:16px">
+            <div class="tabs" style="margin:0">
+              <div class="tab active" id="tab-prazos-todos" onclick="filterPrazos('todos',this)">Todos</div>
+              <div class="tab" id="tab-prazos-urgente" onclick="filterPrazos('urgente',this)">Urgentes</div>
+              <div class="tab" id="tab-prazos-judicial" onclick="filterPrazos('judicial',this)">Judiciais</div>
+              <div class="tab" id="tab-prazos-extrajudicial" onclick="filterPrazos('extrajudicial',this)">Extrajudiciais</div>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Processo / Ref.</th><th>Tipo</th><th>Responsável</th><th>Vencimento</th><th>Dias</th><th>Status</th><th>Ações</th>
+              </tr></thead>
+              <tbody id="tabela-prazos"><tr><td colspan="7" class="text-gray text-xs" style="text-align:center;padding:24px">Carregando prazos...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ PROCESSOS ══ -->
+      <div class="page" id="page-processos">
+        <div class="page-header flex justify-between items-center">
+          <div>
+            <h1>Processos Judiciais</h1>
+            <p>Gestão completa dos processos do escritório</p>
+          </div>
+          <button class="btn btn-primary" onclick="abrirNovoProcesso()">+ Novo Processo</button>
+        </div>
+
+        <div class="card">
+          <div class="card-body" style="padding-bottom:8px">
+            <div class="flex gap-2">
+              <input type="text" id="filtro-processo-busca" placeholder="🔍  Buscar por número, parte..." style="flex:1;padding:10px 14px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);font-family:DM Sans,sans-serif;font-size:14px;outline:none" oninput="carregarProcessos()">
+              <select id="filtro-processo-tipo" onchange="carregarProcessos()" style="padding:10px 14px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);font-family:DM Sans,sans-serif;font-size:14px;color:var(--gray-700);outline:none">
+                <option value="">Todos os tipos</option>
+                <option>Cível</option>
+                <option>Imobiliário</option>
+                <option>Execução</option>
+                <option>Trabalhista</option>
+                <option>Recursal</option>
+                <option>JEC</option>
+              </select>
+              <select id="filtro-processo-adv" onchange="carregarProcessos()" style="padding:10px 14px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);font-family:DM Sans,sans-serif;font-size:14px;color:var(--gray-700);outline:none">
+                <option value="">Todos os advogados</option>
+                <option>Rodrigo Falcão Vaz</option>
+                <option>Fernanda Araujo</option>
+                <option>Renata Navarro</option>
+                <option>Edna Rebesco</option>
+                <option>Durval Falcão Vaz</option>
+                <option>Janaina Alves</option>
+              </select>
+              <select id="filtro-processo-status" onchange="carregarProcessos()" style="padding:10px 14px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);font-family:DM Sans,sans-serif;font-size:14px;color:var(--gray-700);outline:none">
+                <option value="" selected>Todos (encerrados riscados)</option>
+                <option value="ativo">Só em andamento</option>
+                <option value="encerrado">Só encerrados</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Nº Processo</th><th>Partes</th><th>Tipo</th><th>Fase</th><th>Advogado</th><th>Última atualização</th><th>Status</th><th>Ações</th></tr></thead>
+              <tbody><tr><td colspan="8" class="text-gray text-xs" style="text-align:center;padding:24px">Carregando processos...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ PETIÇÕES IA ══ -->
+      <div class="page" id="page-peticoes">
+        <div class="page-header flex justify-between items-center">
+          <div>
+            <h1>Petições com IA</h1>
+            <p>Gere peças processuais — revisão por colega sempre opcional</p>
+          </div>
+          <button class="btn btn-primary" onclick="abrirModalPeticao()">+ Nova Petição</button>
+        </div>
+
+        <div class="tabs">
+          <div class="tab active" id="tab-pet-todas" onclick="switchPeticaoTab('todas',this)">Todas</div>
+          <div class="tab" id="tab-pet-rascunho" onclick="switchPeticaoTab('rascunho',this)">✏️ Rascunho</div>
+          <div class="tab" id="tab-pet-revisao" onclick="switchPeticaoTab('revisao',this)">👁️ Em revisão</div>
+          <div class="tab" id="tab-pet-para-revisar" onclick="switchPeticaoTab('para-revisar',this)">🔴 Para revisar <span class="badge badge-red" id="badge-pet-para-revisar" style="margin-left:4px;padding:2px 6px;font-size:10px;display:none">0</span></div>
+          <div class="tab" id="tab-pet-finalizada" onclick="switchPeticaoTab('finalizada',this)">✅ Finalizadas</div>
+        </div>
+
+        <!-- Todas -->
+        <div id="pet-tab-todas">
+          <div class="card"><div class="table-wrap"><table>
+            <thead><tr><th>Processo</th><th>Tipo</th><th>Autor</th><th>Revisor</th><th>Status</th><th>Tokens</th><th>Ações</th></tr></thead>
+            <tbody><tr><td colspan="7" class="text-gray text-xs" style="text-align:center;padding:24px">Carregando petições...</td></tr></tbody>
+          </table></div></div>
+        </div>
+
+        <!-- Rascunho -->
+        <div id="pet-tab-rascunho" style="display:none">
+          <div class="card"><div class="table-wrap"><table>
+            <thead><tr><th>Processo</th><th>Tipo</th><th>Autor</th><th>Tokens</th><th>Ações</th></tr></thead>
+            <tbody><tr><td colspan="5" class="text-gray text-xs" style="text-align:center;padding:24px">Carregando...</td></tr></tbody>
+          </table></div></div>
+        </div>
+
+        <!-- Em revisão -->
+        <div id="pet-tab-revisao" style="display:none">
+          <div id="alert-pet-revisao" style="display:none" class="alert alert-amber">👁️ Aguardando retorno do revisor.</div>
+          <div class="card"><div class="table-wrap"><table>
+            <thead><tr><th>Processo</th><th>Tipo</th><th>Revisor</th><th>Enviado em</th><th>Ações</th></tr></thead>
+            <tbody><tr><td colspan="7" class="text-gray text-xs" style="text-align:center;padding:24px">Carregando petições...</td></tr></tbody>
+          </table></div></div>
+        </div>
+
+        <!-- Para revisar (peças onde o usuário logado é o revisor) -->
+        <div id="pet-tab-para-revisar" style="display:none">
+          <div class="alert alert-amber">🔴 <strong>1 peça aguarda sua revisão</strong></div>
+          <div class="card"><div class="table-wrap"><table>
+            <thead><tr><th>Processo</th><th>Tipo</th><th>Autor</th><th>Enviado em</th><th>Ações</th></tr></thead>
+            <tbody><tr><td colspan="7" class="text-gray text-xs" style="text-align:center;padding:24px">Carregando petições...</td></tr></tbody>
+          </table></div></div>
+        </div>
+
+        <!-- Finalizadas -->
+        <div id="pet-tab-finalizada" style="display:none">
+          <div class="card"><div class="table-wrap"><table>
+            <thead><tr><th>Processo</th><th>Tipo</th><th>Autor</th><th>Revisor</th><th>Finalizada em</th><th>Ações</th></tr></thead>
+            <tbody><tr><td colspan="6" class="text-gray text-xs" style="text-align:center;padding:24px">Carregando...</td></tr></tbody>
+          </table></div></div>
+        </div>
+      </div>
+
+      <!-- ══ FINANCEIRO ══ -->
+      <div class="page" id="page-financeiro">
+        <div class="page-header">
+          <h1>Gestão Financeira</h1>
+          <p>Honorários, custas e receitas por processo</p>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-accent" style="background:var(--green)"></div>
+            <div class="stat-label">Receita Total (mês)</div>
+            <div class="stat-value" style="color:var(--green)">—</div>
+            <div class="stat-sub"></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-accent" style="background:var(--amber)"></div>
+            <div class="stat-label">A Receber</div>
+            <div class="stat-value" style="color:var(--amber)">—</div>
+            <div class="stat-sub"></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-accent" style="background:var(--red)"></div>
+            <div class="stat-label">Custas Processuais</div>
+            <div class="stat-value">—</div>
+            <div class="stat-sub">Este mês</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-accent" style="background:var(--blue-500)"></div>
+            <div class="stat-label">Resultado Líquido</div>
+            <div class="stat-value">—</div>
+            <div class="stat-sub"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Honorários por Processo</div>
+            <button class="btn btn-primary btn-sm">+ Lançar</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Processo</th><th>Cliente</th><th>Honorários</th><th>Recebido</th><th>Saldo</th><th>Status</th>
+              </tr></thead>
+              <tbody><tr><td colspan="6" class="text-gray text-xs" style="text-align:center;padding:24px">Carregando...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ NOTIFICAÇÕES ══ -->
+      <div class="page" id="page-notificacoes">
+        <div class="page-header flex justify-between items-center">
+          <div>
+            <h1>Notificações Extrajudiciais</h1>
+            <p>Gere e envie notificações e respostas administrativas com IA</p>
+          </div>
+          <button class="btn btn-primary" onclick="openModal('modal-notificacao')">+ Nova Notificação</button>
+        </div>
+
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Referência</th><th>Destinatário</th><th>Tipo</th><th>Criado por</th><th>Canal</th><th>Status</th><th>Ações</th>
+              </tr></thead>
+              <tbody>
+                <tr>
+                  <td><div class="font-semibold">NOT-2025-042</div></td>
+                  <td>Construtora ABC Ltda</td>
+                  <td>Notificação Extrajudicial</td>
+                  <td>Simone Cirino</td>
+                  <td>📧 E-mail</td>
+                  <td><span class="badge badge-amber">Rascunho</span></td>
+                  <td><button class="btn btn-sm btn-outline">Ver</button></td>
+                </tr>
+                <tr>
+                  <td><div class="font-semibold">NOT-2025-041</div></td>
+                  <td>João da Silva</td>
+                  <td>Resposta Administrativa</td>
+                  <td>Janaina Alves</td>
+                  <td>📱 WhatsApp</td>
+                  <td><span class="badge badge-green">Enviada</span></td>
+                  <td><button class="btn btn-sm btn-outline">Ver</button></td>
+                </tr>
+                <tr>
+                  <td><div class="font-semibold">NOT-2025-040</div></td>
+                  <td>Cond. Primavera</td>
+                  <td>Notificação Extrajudicial</td>
+                  <td>Mikaeli</td>
+                  <td>📧 E-mail</td>
+                  <td><span class="badge badge-blue">Em revisão</span></td>
+                  <td><button class="btn btn-sm btn-outline">Ver</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ DOCUMENTOS ADMIN ══ -->
+      <div class="page" id="page-documentos">
+
+        <!-- COMPOSER EM DESTAQUE — primeiro elemento da página -->
+        <details id="composer-novo-doc" style="margin-bottom:20px;background:linear-gradient(135deg,#eff6ff 0%,#f8fafc 100%);border:2px solid #3B82F6;border-radius:14px;box-shadow:0 6px 20px rgba(59,130,246,.15);padding:0;overflow:hidden" open>
+          <summary style="padding:16px 22px;cursor:pointer;list-style:none;user-select:none;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,#3B82F6 0%,#1E2D4A 100%);color:#fff">
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="font-size:24px">✨</span>
+              <div>
+                <div style="font-size:17px;font-weight:700;letter-spacing:-.01em">Novo documento com IA</div>
+                <div style="font-size:12px;color:rgba(255,255,255,.8);font-weight:400;margin-top:2px">Descreva o que precisa · anexe se quiser · deixe a IA redigir em nome da imobiliária</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button type="button" class="btn btn-outline btn-sm" onclick="event.preventDefault();event.stopPropagation();abrirAnexarDoc()" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.4)">📎 Anexar pronto</button>
+              <span style="font-size:11px;color:rgba(255,255,255,.6)">▼</span>
+            </div>
+          </summary>
+          <div style="padding:16px">
+            <div class="form-group">
+              <label>Descreva o que você precisa <span style="color:var(--red)">*</span></label>
+              <textarea id="doc-descricao" rows="5" placeholder="Explique livremente. A IA identifica o tipo (petição, notificação, resposta, distrato, parecer, e-mail, consulta) e monta o documento em nome da imobiliária.&#10;&#10;Exemplos:&#10;• 'Preciso responder a notificação em anexo do inquilino do apto 72 pedindo devolução da caução, argumentando que os débitos ainda não foram quitados.'&#10;• 'Redigir distrato do contrato do proc. 1234-56.2024, cliente João Silva, motivo mudança de cidade.'"></textarea>
+            </div>
+            <div class="flex" style="gap:12px;flex-wrap:wrap">
+              <div class="form-group" style="flex:1;min-width:220px">
+                <label>Referência / Assunto <span class="text-xs text-gray">— opcional</span></label>
+                <input type="text" id="doc-referencia" placeholder="Ex: Proc. 1234-56.2024 · Inquilino Ap. 72">
+              </div>
+              <div class="form-group" style="flex:1;min-width:220px">
+                <label>Tipo <span class="text-xs text-gray">— opcional</span></label>
+                <select id="doc-tipo-select">
+                  <option value="">🤖 Deixe a IA identificar</option>
+                  <option value="Petição Judicial">⚖️ Petição Judicial</option>
+                  <option value="📨 Notificação / Contranotificação">📨 Notificação</option>
+                  <option value="📋 Parecer / Análise">📋 Parecer / Análise</option>
+                  <option value="📝 Distrato / Rescisão">📝 Distrato / Rescisão</option>
+                  <option value="📧 Resposta a E-mail Jurídico">📧 Resposta E-mail</option>
+                  <option value="❓ Consulta Jurídica Rápida">❓ Consulta rápida</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>📎 Anexar documentos para a IA ler <span class="text-xs text-gray">— opcional</span></label>
+              <div id="upload-area-doc"
+                   onclick="document.getElementById('upload-input-doc').click()"
+                   style="border:2px dashed var(--gray-300);border-radius:var(--radius-sm);padding:12px;text-align:center;color:var(--gray-400);cursor:pointer;background:var(--gray-50);font-size:13px">
+                📄 Clique pra anexar — até 5 arquivos · PDF · PNG · JPG · TXT
+              </div>
+              <input type="file" id="upload-input-doc" accept=".pdf,.png,.jpg,.jpeg,.webp,.txt" multiple style="display:none" onchange="handleUploadMultiplo(this,'doc')">
+              <div id="upload-lista-doc" style="margin-top:8px;display:none">
+                <div style="font-size:11px;font-weight:600;color:var(--gray-500);margin-bottom:4px">ARQUIVOS ANEXADOS</div>
+                <div id="upload-lista-doc-items"></div>
+              </div>
+              <div id="upload-status-doc" style="display:none;margin-top:8px;padding:8px 12px;background:var(--blue-50);border-radius:var(--radius-sm);font-size:12px;color:var(--blue-700)"></div>
+            </div>
+
+            <!-- Resultado da IA (mesmo lugar) -->
+            <div id="doc-preview-area" style="display:none;margin-top:12px">
+              <div class="divider"></div>
+              <div class="flex justify-between items-center" style="margin-bottom:10px">
+                <div class="font-semibold text-sm">📄 Documento gerado pela IA</div>
+                <div class="flex gap-2 items-center">
+                  <span class="badge badge-blue" id="doc-tokens-badge">0 tokens</span>
+                  <button class="btn btn-xs btn-outline" id="btn-editar-gerado" onclick="toggleEditarDocGerado()">✏️ Editar</button>
+                </div>
+              </div>
+              <div class="doc-preview" id="doc-preview-content" contenteditable="false" style="max-height:350px;overflow-y:auto;transition:border 0.2s"></div>
+              <div id="doc-edit-hint" style="display:none;margin-top:6px;font-size:11px;color:var(--blue-600)">✏️ Modo edição ativo — suas alterações serão salvas automaticamente.</div>
+
+              <div id="doc-refinar-box" style="margin-top:16px">
+                <div class="divider"></div>
+                <label class="font-semibold text-sm">🔁 Melhorar este documento</label>
+                <div class="text-xs text-gray" style="margin:2px 0 6px">Diga o que ajustar e a IA reescreve. Ex.: "deixe mais formal", "encurte pela metade", "inclua cláusula de multa 10%".</div>
+                <textarea id="doc-refinar-input" rows="2" placeholder="O que você quer melhorar neste documento?"></textarea>
+                <div style="text-align:right;margin-top:6px">
+                  <button class="btn btn-outline btn-sm" id="btn-refinar-doc" onclick="refinarDocumento()">🔁 Melhorar com IA</button>
+                </div>
+              </div>
+            </div>
+
+            <div id="doc-generating" style="display:none"></div>
+
+            <!-- Rodapé de ações do composer -->
+            <div class="flex" style="gap:8px;margin-top:14px;justify-content:flex-end;flex-wrap:wrap">
+              <button class="btn btn-outline btn-sm" onclick="resetComposerDoc()">🔄 Limpar</button>
+              <button class="btn btn-primary btn-sm" onclick="gerarDocumento()" id="btn-gerar-doc">⚡ Gerar com IA</button>
+              <button class="btn btn-outline btn-sm" id="btn-baixar-pdf" style="display:none" onclick="baixarDocumentoPdf()">📄 Baixar PDF</button>
+              <button class="btn btn-outline btn-sm" id="btn-baixar-pdf-timbrado" style="display:none" onclick="baixarDocumentoPdf(true)">🏠 PDF timbrado Nova SP</button>
+              <button class="btn btn-outline btn-sm" id="btn-salvar-rascunho" style="display:none" onclick="salvarRascunho()">💾 Salvar rascunho</button>
+              <button class="btn btn-outline btn-sm" id="btn-pedir-revisao" style="display:none" onclick="docEmRevisaoId=docGeradoId;openModal('modal-enviar-revisao')">👁️ Enviar pra revisão</button>
+              <button class="btn btn-primary btn-sm" id="btn-finalizar-doc" style="display:none" onclick="finalizarDocumento()">✅ Finalizar</button>
+            </div>
+          </div>
+        </details>
+
+        <!-- Header discreto pra separar do composer em destaque -->
+        <div class="flex justify-between items-center" style="margin:24px 0 12px">
+          <div>
+            <h2 style="margin:0;font-size:18px;color:var(--gray-700);font-weight:700">📁 Meus documentos</h2>
+            <p style="margin:2px 0 0;font-size:12px;color:var(--gray-500)">Rascunhos, aprovados e o que está em revisão</p>
+          </div>
+        </div>
+
+        <!-- Filtro simples de status -->
+        <div class="card" style="padding:12px 14px;margin-bottom:14px">
+          <div class="flex" style="gap:8px;align-items:center;flex-wrap:wrap">
+            <span style="font-size:12px;color:var(--gray-500);font-weight:600">Status:</span>
+            <select id="filt-doc-status" onchange="carregarMeusDocumentos()" style="padding:6px 10px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:13px">
+              <option value="">Todos</option>
+              <option value="rascunho" selected>✏️ Rascunhos</option>
+              <option value="aguardando_aprovacao">⏳ Aguardando aprovação</option>
+              <option value="em_revisao">👁️ Em revisão</option>
+              <option value="aprovado">✅ Aprovados</option>
+              <option value="devolvido">↩️ Devolvidos</option>
+            </select>
+            <input type="text" id="filt-doc-busca" placeholder="🔍 Buscar por protocolo, tipo, referência…" oninput="carregarMeusDocumentos()" style="flex:1;min-width:200px;padding:6px 10px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:13px">
+            <span id="doc-tab-aprovar-inline" style="display:none">
+              <button class="btn btn-outline btn-sm" onclick="document.getElementById('filt-doc-status').value='aguardando_aprovacao';carregarMeusDocumentos()">🔴 <b id="badge-aprovar-num">0</b> aguardam sua aprovação</button>
+            </span>
+          </div>
+        </div>
+
+        <!-- Tabela unificada -->
+        <div class="card"><div class="table-wrap"><table>
+          <thead><tr>
+            <th>Protocolo</th>
+            <th>Origem</th>
+            <th>Tipo</th>
+            <th>Referência</th>
+            <th>Status</th>
+            <th>Data</th>
+            <th style="width:140px">Ações</th>
+          </tr></thead>
+          <tbody id="tbody-doc-unificado"><tr><td colspan="7" class="text-gray text-xs" style="text-align:center;padding:24px">Carregando...</td></tr></tbody>
+        </table></div></div>
+      </div>
+
+      <!-- ══ USUÁRIOS & TOKENS ══ -->
+      <div class="page" id="page-usuarios">
+        <div class="page-header">
+          <h1>Usuários & Controle de Tokens</h1>
+          <p>Painel administrativo — visível somente para você</p>
+        </div>
+
+        <div class="tabs">
+          <div class="tab active" onclick="switchTab('tab-nivel1',this)">Jurídico (500k)</div>
+          <div class="tab" onclick="switchTab('tab-nivel2',this)">Administrativo (200k)</div>
+          <div class="tab" onclick="switchTab('tab-nivel3',this)">Vendas (100k)</div>
+        </div>
+
+        <div id="tab-nivel1" class="tab-content">
+          <div class="card">
+            <div class="card-body">
+              <div id="users-nivel1"></div>
+            </div>
+          </div>
+        </div>
+        <div id="tab-nivel2" class="tab-content" style="display:none">
+          <div class="card">
+            <div class="card-body">
+              <div id="users-nivel2"></div>
+            </div>
+          </div>
+        </div>
+        <div id="tab-nivel3" class="tab-content" style="display:none">
+          <div class="card">
+            <div class="card-body">
+              <div id="users-nivel3"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ CHAMADOS ══ -->
+      <div class="page" id="page-chamados">
+        <div class="page-header flex justify-between items-center">
+          <div>
+            <h1 id="chamados-title">Chamados</h1>
+            <p id="chamados-sub">Gerencie chamados recebidos e enviados</p>
+          </div>
+          <button class="btn btn-primary" id="btn-novo-chamado" onclick="abrirModalChamado()">+ Novo Chamado</button>
+        </div>
+
+        <!-- Chamados por mes (todos os usuarios podem ver) -->
+        <div class="card" style="padding:14px 18px;margin-bottom:14px">
+          <div class="flex justify-between items-start" style="gap:10px;flex-wrap:wrap;margin-bottom:10px">
+            <div>
+              <div style="font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--gray-500)">Chamados por mês</div>
+              <div style="font-size:11px;color:var(--gray-500)">Conta pela data de abertura do chamado · últimos 6 meses</div>
+            </div>
+            <div style="font-size:11px;color:var(--gray-500)" id="cham-pmes-tot"></div>
+          </div>
+          <div id="cham-pmes-bars" class="pmes-bars-jur"></div>
+        </div>
+
+        <!-- Visão Jurídico: abas Recebidos / Meus -->
+        <div id="chamados-juridico-view" style="display:none">
+          <div class="tabs">
+            <div class="tab active" onclick="switchChamadoTab('recebidos',this)">📥 Recebidos <span class="badge badge-red" id="badge-chamados-recebidos" style="margin-left:6px;padding:2px 7px;font-size:10px;display:none">0</span></div>
+            <div class="tab" onclick="switchChamadoTab('em-andamento',this)">🔄 Em andamento</div>
+            <div class="tab" onclick="switchChamadoTab('concluidos',this)">✅ Concluídos</div>
+          </div>
+        </div>
+
+        <!-- Visão Adm/Vendas: abas Meus chamados / Novo -->
+        <div id="chamados-solicitante-view" style="display:none">
+          <div class="tabs">
+            <div class="tab active" onclick="switchChamadoTab('meus',this)">📋 Meus Chamados</div>
+            <div class="tab" onclick="switchChamadoTab('concluidos-meus',this)">✅ Concluídos</div>
+          </div>
+        </div>
+
+        <!-- Painel recebidos (Jurídico) -->
+        <div id="chamado-tab-recebidos">
+          <div class="alert alert-amber" id="alert-chamados-pendentes" style="display:none">⚠️ <strong id="txt-chamados-pendentes">0 chamados</strong> aguardando atendimento</div>
+          <div class="card">
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th>Protocolo</th><th>Título</th><th>Solicitante</th><th>Setor</th><th>Urgência</th><th>Aberto em</th><th>Ações</th>
+                </tr></thead>
+                <tbody id="lista-chamados-recebidos"><tr><td colspan="6" class="text-gray text-xs" style="text-align:center;padding:24px">Carregando...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Em andamento (Jurídico) -->
+        <div id="chamado-tab-em-andamento" style="display:none">
+          <div class="card">
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th>Protocolo</th><th>Título</th><th>Solicitante</th><th>Responsável</th><th>Urgência</th><th>Ações</th>
+                </tr></thead>
+                <tbody><tr><td colspan="6" class="text-gray text-xs" style="text-align:center;padding:24px">Carregando...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Concluídos (Jurídico) -->
+        <div id="chamado-tab-concluidos" style="display:none">
+          <div class="card">
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th>Protocolo</th><th>Título</th><th>Solicitante</th><th>Responsável</th><th>Concluído em</th><th>Ações</th>
+                </tr></thead>
+                <tbody><tr><td colspan="6" class="text-gray text-xs" style="text-align:center;padding:24px">Carregando...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Meus chamados (Adm / Vendas) -->
+        <div id="chamado-tab-meus" style="display:none">
+          <div class="card">
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th>Protocolo</th><th>Título</th><th>Urgência</th><th>Responsável</th><th>Status</th><th>Ações</th>
+                </tr></thead>
+                <tbody><tr><td colspan="6" class="text-gray text-xs" style="text-align:center;padding:24px">Carregando...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Concluídos meus (Adm / Vendas) -->
+        <div id="chamado-tab-concluidos-meus" style="display:none">
+          <div class="card">
+            <div class="empty">
+              <div class="icon">✅</div>
+              <p>Nenhum chamado concluído ainda.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ══ CÁLCULO DE PRAZOS ══ -->
+      <div class="page" id="page-calculo-prazos">
+        <div class="page-header">
+          <h1>Cálculo de Prazos</h1>
+          <p>Calcule prazos processuais, contratuais e legais automaticamente</p>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><div class="card-title">⚖️ Prazo Processual</div></div>
+            <div class="card-body">
+              <div class="form-group">
+                <label>Data da intimação / citação</label>
+                <input type="date" id="calc-data-inicio">
+              </div>
+              <div class="form-group">
+                <label>Tipo de prazo</label>
+                <select id="calc-tipo">
+                  <option value="15">Contestação — 15 dias úteis</option>
+                  <option value="15">Recurso de Apelação — 15 dias úteis</option>
+                  <option value="5">Embargos de Declaração — 5 dias úteis</option>
+                  <option value="30">Recurso Especial — 15 dias úteis</option>
+                  <option value="10">Manifestação — 10 dias úteis</option>
+                  <option value="5">Agravo Regimental — 5 dias úteis</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Tipo de contagem</label>
+                <select id="calc-contagem">
+                  <option value="util">Dias úteis (CPC)</option>
+                  <option value="corrido">Dias corridos</option>
+                </select>
+              </div>
+              <button class="btn btn-primary w-full" onclick="calcularPrazo()">Calcular prazo</button>
+              <div id="calc-resultado" style="display:none;margin-top:16px;padding:16px;background:var(--blue-50);border-radius:var(--radius-sm);border:1px solid var(--blue-100)">
+                <div class="text-xs text-gray" style="margin-bottom:4px">Vencimento calculado</div>
+                <div class="font-semibold" id="calc-data-fim" style="font-size:20px;color:var(--blue-700)"></div>
+                <div class="text-xs text-gray" id="calc-dias-restantes" style="margin-top:4px"></div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">📋 Prazos Contratuais</div></div>
+            <div class="card-body">
+              <div class="form-group">
+                <label>Data inicial do contrato</label>
+                <input type="date" id="calc-contrato-inicio">
+              </div>
+              <div class="form-group">
+                <label>Duração</label>
+                <div class="flex gap-2">
+                  <input type="number" placeholder="Ex: 30" id="calc-duracao" style="flex:1;padding:11px 14px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);font-family:DM Sans,sans-serif;font-size:14px;outline:none">
+                  <select id="calc-unidade" style="padding:11px 14px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);font-family:DM Sans,sans-serif;font-size:14px;outline:none">
+                    <option>dias</option>
+                    <option>meses</option>
+                    <option>anos</option>
+                  </select>
+                </div>
+              </div>
+              <button class="btn btn-primary w-full" onclick="calcularContrato()">Calcular vencimento</button>
+              <div id="calc-contrato-resultado" style="display:none;margin-top:16px;padding:16px;background:var(--green-light);border-radius:var(--radius-sm);border:1px solid #bbf7d0">
+                <div class="text-xs text-gray" style="margin-bottom:4px">Vencimento do contrato</div>
+                <div class="font-semibold" id="calc-contrato-fim" style="font-size:20px;color:var(--green)"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ CALCULADORA DE CORREÇÃO ══ -->
+      <div class="page" id="page-planilhas">
+        <div class="page-header">
+          <h1>Cálculo de Atualização de Débito</h1>
+          <p>Correção monetária + juros + multa + honorários — parcela única ou múltiplas</p>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <!-- Coluna esquerda: formulário -->
+          <div class="card">
+            <div class="card-header"><div class="card-title">Dados do cálculo</div></div>
+            <div style="padding:12px 4px">
+
+              <!-- Parcelas (1 ou mais) -->
+              <div class="form-group">
+                <label style="font-size:12px;color:var(--gray-500);font-weight:600;display:flex;align-items:center;justify-content:space-between">
+                  <span>Parcelas *</span>
+                  <span style="font-weight:400;font-size:11px;color:var(--gray-500)">Cada parcela corrige da sua data até a data final</span>
+                </label>
+                <div id="calc-corr-parcelas" style="border:1px solid var(--gray-200);border-radius:6px;padding:8px;background:var(--gray-50)"></div>
+                <button class="btn btn-outline btn-sm" style="margin-top:6px" onclick="_calcAddParcela()">+ Adicionar parcela</button>
+              </div>
+
+              <div class="form-group" style="margin-top:12px">
+                <label style="font-size:12px;color:var(--gray-500);font-weight:600">Data final (data do cálculo) *</label>
+                <input type="date" id="calc-corr-dt-fim">
+              </div>
+
+              <div class="form-group" style="margin-top:10px">
+                <label style="font-size:12px;color:var(--gray-500);font-weight:600">Índice de correção</label>
+                <select id="calc-corr-indice" onchange="_calcToggleIndiceManual()">
+                  <option value="tjsp">🏛️ Tabela Prática TJSP (IPCA-E até 12/2021 + Selic após)</option>
+                  <option value="ipca">IPCA (IBGE)</option>
+                  <option value="ipcae">IPCA-E (IBGE)</option>
+                  <option value="igpm">IGP-M (FGV)</option>
+                  <option value="inpc">INPC (IBGE)</option>
+                  <option value="selic">SELIC acumulada</option>
+                  <option value="tr">TR (Taxa Referencial)</option>
+                  <option value="manual">Digitar % manualmente</option>
+                  <option value="nenhum">Sem correção monetária</option>
+                </select>
+              </div>
+              <div class="form-group" id="calc-corr-indice-manual-row" style="display:none;margin-top:10px">
+                <label style="font-size:12px;color:var(--gray-500);font-weight:600">Correção manual (% acumulada por parcela)</label>
+                <input type="text" id="calc-corr-indice-manual" placeholder="Ex: 5,42" inputmode="decimal">
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+                <div class="form-group">
+                  <label style="font-size:12px;color:var(--gray-500);font-weight:600">Juros (% ao mês)</label>
+                  <input type="text" id="calc-corr-juros" placeholder="Ex: 1,00" value="1,00" inputmode="decimal">
+                </div>
+                <div class="form-group">
+                  <label style="font-size:12px;color:var(--gray-500);font-weight:600">Regime</label>
+                  <select id="calc-corr-juros-tipo">
+                    <option value="simples">Simples (padrão STJ)</option>
+                    <option value="composto">Composto</option>
+                  </select>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+                <div class="form-group">
+                  <label style="font-size:12px;color:var(--gray-500);font-weight:600">Multa (%)</label>
+                  <input type="text" id="calc-corr-multa" placeholder="Ex: 2,00" value="0" inputmode="decimal">
+                </div>
+                <div class="form-group">
+                  <label style="font-size:12px;color:var(--gray-500);font-weight:600">Honorários (%)</label>
+                  <input type="text" id="calc-corr-honor" placeholder="Ex: 10,00" value="0" inputmode="decimal">
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-top:10px">
+                <label style="font-size:12px;color:var(--gray-500);font-weight:600">Vincular a processo (opcional)</label>
+                <select id="calc-corr-processo">
+                  <option value="">— sem processo específico —</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-top:10px">
+                <label style="font-size:12px;color:var(--gray-500);font-weight:600">Título / referência (opcional)</label>
+                <input type="text" id="calc-corr-titulo" placeholder="Ex: Aluguéis vencidos jun-nov/2025">
+              </div>
+
+              <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
+                <button class="btn btn-primary" style="flex:1;min-width:120px" onclick="calcularCorrecao()">📊 Calcular</button>
+                <button class="btn btn-success btn-sm" onclick="salvarCalculoCorrecao()" id="calc-corr-btn-salvar" style="display:none">💾 Salvar</button>
+                <button class="btn btn-outline btn-sm" onclick="limparCalcCorrecao()" title="Limpar">🗑️</button>
+              </div>
+              <div id="calc-corr-status" style="font-size:11px;color:var(--gray-500);margin-top:10px;text-align:center;min-height:14px"></div>
+            </div>
+          </div>
+
+          <!-- Coluna direita: resultado -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Resultado</div>
+              <div class="flex gap-2">
+                <button class="btn btn-outline btn-sm" onclick="copiarResultadoCalc()" id="calc-corr-btn-copiar" style="display:none">📋 Copiar</button>
+                <button class="btn btn-outline btn-sm" onclick="gerarPDFCalculo()" id="calc-corr-btn-pdf" style="display:none">🖨️ PDF</button>
+              </div>
+            </div>
+            <div id="calc-corr-resultado" style="padding:14px 4px;color:var(--gray-500);font-size:13px;text-align:center;line-height:1.6">
+              Preencha os dados à esquerda e clique em <b>Calcular</b>.<br>
+              Índices oficiais buscados direto do Banco Central.<br>
+              Suporta múltiplas parcelas (útil pra aluguéis vencidos).
+            </div>
+          </div>
+        </div>
+
+        <!-- Histórico de cálculos salvos -->
+        <div class="card" style="margin-top:16px">
+          <div class="card-header">
+            <div class="card-title">Cálculos salvos</div>
+            <button class="btn btn-outline btn-sm" onclick="carregarHistoricoCalculos()">↻ Atualizar</button>
+          </div>
+          <div id="calc-corr-historico" style="padding:8px 4px;color:var(--gray-500);font-size:12px;text-align:center">
+            Faça um cálculo e clique em <b>💾 Salvar</b> pra manter o histórico.
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Gerar Planilha - movido para fora do app abaixo -->
+
+      <!-- ══ PARA REVISAR (Jurídico) ══ -->
+      <div class="page" id="page-para-revisar">
+        <div class="page-header">
+          <h1>Para Revisar</h1>
+          <p>Documentos enviados por outros usuários aguardando sua revisão</p>
+        </div>
+        <div class="alert alert-blue">
+          ⚖️ Documentos gerados pela equipe que foram encaminhados para sua revisão. Você pode aprovar, editar ou devolver.
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Protocolo</th><th>Tipo</th><th>Autor</th><th>Referência</th><th>Status</th><th>Atualizado</th><th>Ações</th></tr></thead>
+              <tbody id="tbody-para-revisar-jur">
+                <tr><td colspan="7" class="text-gray text-xs" style="text-align:center;padding:24px">Carregando documentos para revisão...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ ACORDOS EXTRAJUDICIAIS (Jurídico) ══ -->
+      <div class="page" id="page-acordos">
+        <div class="page-header flex justify-between items-center">
+          <div>
+            <h1>Acordos Extrajudiciais</h1>
+            <p>Controle de acordos com inquilinos para pagamento parcelado</p>
+          </div>
+          <button class="btn btn-primary" onclick="abrirNovoAcordo()">+ Novo Acordo</button>
+        </div>
+
+        <!-- KPIs -->
+        <div class="grid-4" style="margin-bottom:14px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+          <div class="card" style="padding:12px 14px"><div class="text-xs text-gray">Ativos</div><div class="font-semibold" style="color:var(--green);font-size:22px" id="kpi-acordo-ativos">—</div></div>
+          <div class="card" style="padding:12px 14px"><div class="text-xs text-gray">Concluídos</div><div class="font-semibold" style="color:var(--blue-700,#1d4ed8);font-size:22px" id="kpi-acordo-concl">—</div></div>
+          <div class="card" style="padding:12px 14px"><div class="text-xs text-gray">Rompidos</div><div class="font-semibold" style="color:var(--red);font-size:22px" id="kpi-acordo-romp">—</div></div>
+          <div class="card" style="padding:12px 14px"><div class="text-xs text-gray">Próximos do vencimento mensal (≤3d)</div><div class="font-semibold" style="color:var(--amber);font-size:22px" id="kpi-acordo-prox">—</div></div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="card" style="padding:12px 14px;margin-bottom:14px">
+          <div class="flex gap-2" style="flex-wrap:wrap">
+            <select id="filtro-acordo-status" onchange="carregarAcordos()" style="padding:8px 12px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);font-size:13px">
+              <option value="ativo">Ativos</option>
+              <option value="">Todos</option>
+              <option value="concluido">Concluídos</option>
+              <option value="rompido">Rompidos</option>
+              <option value="renegociado">Renegociados</option>
+            </select>
+            <input type="text" id="filtro-acordo-busca" placeholder="🔍 Buscar por proprietário, inquilino ou situação..." oninput="carregarAcordos()" style="flex:1;min-width:240px;padding:8px 12px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);font-size:13px">
+          </div>
+        </div>
+
+        <!-- Tabela -->
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Proprietário</th>
+                <th>Inquilino</th>
+                <th style="text-align:center">Dia pgto.</th>
+                <th>Parcelas</th>
+                <th>Situação</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr></thead>
+              <tbody id="tbody-acordos">
+                <tr><td colspan="7" class="text-gray text-xs" style="text-align:center;padding:24px">Carregando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- Modal Novo / Editar Acordo -->
+<div class="modal-overlay" id="modal-acordo">
+  <div class="modal" style="width:620px">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-acordo-titulo">+ Novo Acordo Extrajudicial</div>
+      <button class="modal-close" onclick="closeModal('modal-acordo')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Proprietário *</label>
+          <input type="text" id="acordo-proprietario" placeholder="Nome do locador">
+        </div>
+        <div class="form-group">
+          <label>Inquilino *</label>
+          <input type="text" id="acordo-inquilino" placeholder="Nome do locatário">
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Contrato (nº)</label>
+          <input type="text" id="acordo-contrato" placeholder="Ex: 8185">
+        </div>
+        <div class="form-group">
+          <label>Dia do pagamento (1–31)</label>
+          <input type="number" id="acordo-dia-pgto" min="1" max="31" placeholder="Ex: 10">
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Parcelas pagas</label>
+          <input type="number" id="acordo-pagas" min="0" value="0">
+        </div>
+        <div class="form-group">
+          <label>Total de parcelas</label>
+          <input type="number" id="acordo-total" min="1" placeholder="Ex: 20">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Valor por parcela (R$)</label>
+        <input type="text" id="acordo-valor" placeholder="0,00">
+      </div>
+      <div class="form-group">
+        <label>Situação / descrição do acordo</label>
+        <textarea id="acordo-situacao" rows="2" placeholder="Ex: Acordo ref. alugueis de Nov, Dez, Jan e Fev"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Observações</label>
+        <textarea id="acordo-obs" rows="2" placeholder="Observações internas (opcional)"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="acordo-status">
+          <option value="ativo">Ativo</option>
+          <option value="concluido">Concluído</option>
+          <option value="rompido">Rompido</option>
+          <option value="renegociado">Renegociado</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-acordo')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarAcordo()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ MODAIS ═══════ -->
+
+<!-- Modal Novo/Editar Prazo -->
+<div class="modal-overlay" id="modal-prazo">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-prazo-titulo">+ Novo Prazo</div>
+      <button class="modal-close" onclick="closeModal('modal-prazo')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Nº do Processo / Referência</label>
+          <input type="text" id="prazo-ref" placeholder="0000000-00.0000.0.00.0000">
+        </div>
+        <div class="form-group">
+          <label>Tipo de Prazo</label>
+          <select id="prazo-tipo">
+            <option>Contestação</option>
+            <option>Recurso</option>
+            <option>Manifestação</option>
+            <option>Alegações Finais</option>
+            <option>Resposta Administrativa</option>
+            <option>Outro</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Data de Vencimento</label>
+          <input type="date" id="prazo-data">
+        </div>
+        <div class="form-group">
+          <label>Responsável</label>
+          <select id="prazo-resp">
+            <option>Rodrigo Falcão Vaz</option>
+            <option>Fernanda Araujo</option>
+            <option>Renata Navarro</option>
+            <option>Edna Rebesco</option>
+            <option>Durval Falcão Vaz</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Observações</label>
+        <textarea id="prazo-obs" placeholder="Detalhes relevantes sobre o prazo..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-prazo')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarPrazo()">Salvar Prazo</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Novo Processo -->
+<div class="modal-overlay" id="modal-processo">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-processo-titulo">+ Novo Processo</div>
+      <button class="modal-close" onclick="closeModal('modal-processo')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Número do Processo (CNJ)</label>
+          <input type="text" id="proc-numero" placeholder="0000000-00.0000.8.26.0000">
+        </div>
+        <div class="form-group">
+          <label>Tipo</label>
+          <select id="proc-tipo"><option>Cível</option><option>Trabalhista</option><option>Imobiliário</option><option>Recursal</option><option>Execução</option><option>JEC</option></select>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Vara / Tribunal</label>
+          <input type="text" id="proc-vara" placeholder="Ex: Vara Cível 3ª de SP">
+        </div>
+        <div class="form-group">
+          <label>Fase atual</label>
+          <select id="proc-fase"><option>Inicial</option><option>Contestação</option><option>Instrução</option><option>Alegações Finais</option><option>Sentença</option><option>Recurso</option></select>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Autor / Reclamante</label>
+          <input type="text" id="proc-autor" placeholder="Nome completo ou razão social">
+        </div>
+        <div class="form-group">
+          <label>Réu / Reclamado</label>
+          <input type="text" id="proc-reu" placeholder="Nome completo ou razão social">
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Advogado Responsável</label>
+          <select id="proc-responsavel">
+            <option>Rodrigo Falcão Vaz</option>
+            <option>Fernanda Araujo</option>
+            <option>Renata Navarro</option>
+            <option>Edna Rebesco</option>
+            <option>Durval Falcão Vaz</option>
+            <option>Janaina Alves</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Valor da Causa (R$)</label>
+          <input type="text" id="proc-valor" placeholder="0,00">
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Nome do Cliente</label>
+          <input type="text" id="proc-cliente-nome" placeholder="Para personalizar emails">
+        </div>
+        <div class="form-group">
+          <label>Email do Cliente ⚠️</label>
+          <input type="email" id="proc-cliente-email" placeholder="cliente@email.com">
+        </div>
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="proc-notificar" checked style="width:auto;margin:0">
+          <span>Receber notificações automáticas do TJSP por email</span>
+        </label>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="proc-status"><option value="ativo">Ativo</option><option value="encerrado">Encerrado</option></select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-processo')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarProcesso()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Detalhe Processo -->
+<div class="modal-overlay" id="modal-processo-detalhe">
+  <div class="modal" style="width:680px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="proc-det-titulo">Processo</div>
+        <div class="text-xs text-gray" style="margin-top:3px" id="proc-det-vara">—</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-processo-detalhe')">×</button>
+    </div>
+    <div class="modal-body" style="padding-top:0">
+
+      <!-- Abas -->
+      <div class="tabs" style="margin-bottom:16px">
+        <div class="tab active" onclick="switchProcTab('resumo',this)">📋 Resumo</div>
+        <div class="tab" onclick="switchProcTab('andamentos',this)">📅 Andamentos</div>
+        <div class="tab" onclick="switchProcTab('prazos',this)">⏰ Prazos</div>
+        <div class="tab" onclick="switchProcTab('financeiro',this)">💰 Financeiro</div>
+        <div class="tab" onclick="switchProcTab('documentos',this)">📄 Documentos</div>
+      </div>
+
+      <!-- Resumo -->
+      <div id="proc-tab-resumo">
+        <div class="grid-2" style="gap:12px;margin-bottom:16px">
+          <div><div class="text-xs text-gray">Autor / Requerente</div><div class="font-semibold text-sm" id="proc-det-autor">—</div></div>
+          <div><div class="text-xs text-gray">Réu / Requerido</div><div class="font-semibold text-sm" id="proc-det-reu">—</div></div>
+          <div><div class="text-xs text-gray">Tipo</div><div class="font-semibold text-sm" id="proc-det-tipo">—</div></div>
+          <div><div class="text-xs text-gray">Fase</div><div class="font-semibold text-sm" id="proc-det-fase">—</div></div>
+          <div><div class="text-xs text-gray">Responsável</div><div class="font-semibold text-sm" id="proc-det-resp">—</div></div>
+          <div><div class="text-xs text-gray">Valor da Causa</div><div class="font-semibold text-sm" id="proc-det-valor">—</div></div>
+          <div><div class="text-xs text-gray">Status</div><div class="font-semibold text-sm" id="proc-det-status">—</div></div>
+          <div><div class="text-xs text-gray">Cadastrado em</div><div class="font-semibold text-sm" id="proc-det-data">—</div></div>
+        </div>
+
+        <!-- Email do cliente -->
+        <div class="divider"></div>
+        <div style="background:var(--blue-50);border:1px solid var(--blue-200);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:14px">
+          <div class="flex justify-between items-center" style="margin-bottom:10px">
+            <div class="font-semibold text-sm">📧 Notificação por Email ao Cliente</div>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px">
+              <input type="checkbox" id="proc-notif-ativo" onchange="toggleNotifEmail(this.checked)">
+              Envio mensal ativo
+            </label>
+          </div>
+          <div class="grid-2" style="gap:10px">
+            <div>
+              <div class="text-xs text-gray" style="margin-bottom:4px">Nome do cliente (para o email)</div>
+              <input type="text" id="proc-email-nome" class="input-sm" placeholder="Ex: João Pereira" style="width:100%;padding:7px 10px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:13px">
+            </div>
+            <div>
+              <div class="text-xs text-gray" style="margin-bottom:4px">Email do cliente</div>
+              <input type="email" id="proc-email-addr" class="input-sm" placeholder="cliente@email.com" style="width:100%;padding:7px 10px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:13px">
+            </div>
+          </div>
+          <div class="flex gap-2" style="margin-top:10px">
+            <button class="btn btn-outline btn-sm" onclick="salvarEmailCliente()">💾 Salvar email</button>
+            <button class="btn btn-primary btn-sm" onclick="enviarEmailClienteAgora()">📨 Enviar atualização agora</button>
+          </div>
+        </div>
+
+        <div class="flex gap-2 flex-wrap">
+          <button class="btn btn-primary btn-sm" onclick="closeModal('modal-processo-detalhe');abrirModalPeticao()">⚡ Gerar Petição IA</button>
+          <button class="btn btn-outline btn-sm" id="btn-abrir-esaj" onclick="abrirNoESAJ()" title="Abre o processo no e-SAJ TJSP para ler decisões/sentenças na íntegra">🔗 Ver no e-SAJ</button>
+          <button class="btn btn-outline btn-sm" onclick="switchProcTab('prazos',null);abrirAddPrazo()">+ Prazo</button>
+          <button class="btn btn-outline btn-sm" onclick="switchProcTab('andamentos',null);abrirAddAndamento()">+ Andamento</button>
+          <button class="btn btn-outline btn-sm" onclick="switchProcTab('financeiro',null);abrirAddFinanceiro()">+ Lançamento</button>
+        </div>
+      </div>
+
+      <!-- Andamentos -->
+      <div id="proc-tab-andamentos" style="display:none">
+        <div class="flex justify-between items-center" style="margin-bottom:12px">
+          <div class="font-semibold text-sm">Andamentos processuais</div>
+          <div class="flex gap-2">
+            <button class="btn btn-outline btn-sm" onclick="sincronizarDJENProcesso()" title="Busca publicações no DJEN pelo número CNJ (texto integral)">🔍 Sync DJEN</button>
+            <button class="btn btn-primary btn-sm" onclick="abrirAddAndamento()">+ Andamento</button>
+          </div>
+        </div>
+        <div id="proc-djen-status" style="font-size:11px;color:var(--gray-500);margin-bottom:8px;min-height:14px"></div>
+        <div id="proc-andamentos-lista">
+          <div class="text-gray text-xs" style="text-align:center;padding:24px">Carregando andamentos...</div>
+        </div>
+      </div>
+
+      <!-- Prazos -->
+      <div id="proc-tab-prazos" style="display:none">
+        <div class="flex justify-between items-center" style="margin-bottom:12px">
+          <div class="font-semibold text-sm">Prazos do processo</div>
+          <button class="btn btn-primary btn-sm" onclick="abrirAddPrazo()">+ Prazo</button>
+        </div>
+        <div id="proc-prazos-lista">
+          <div class="text-gray text-xs" style="text-align:center;padding:24px">Carregando prazos...</div>
+        </div>
+      </div>
+
+      <!-- Financeiro -->
+      <div id="proc-tab-financeiro" style="display:none">
+        <div class="flex justify-between items-center" style="margin-bottom:12px">
+          <div class="font-semibold text-sm">Lançamentos financeiros</div>
+          <button class="btn btn-primary btn-sm" onclick="abrirAddFinanceiro()">+ Lançamento</button>
+        </div>
+        <div id="proc-financeiro-resumo" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px"></div>
+        <div id="proc-financeiro-lista">
+          <div class="text-gray text-xs" style="text-align:center;padding:24px">Carregando financeiro...</div>
+        </div>
+      </div>
+
+      <!-- Documentos -->
+      <div id="proc-tab-documentos" style="display:none">
+        <div class="flex justify-between items-center" style="margin-bottom:12px">
+          <div class="font-semibold text-sm">Documentos e peças do processo</div>
+          <button class="btn btn-primary btn-sm" onclick="closeModal('modal-processo-detalhe');abrirModalPeticao()">⚡ Gerar com IA</button>
+        </div>
+        <div id="proc-documentos-lista">
+          <div class="text-gray text-xs" style="text-align:center;padding:24px">Carregando documentos...</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Mini-modal: Novo Andamento -->
+<div class="modal-overlay" id="modal-add-andamento">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📅 Novo Andamento</div>
+      <button class="modal-close" onclick="closeModal('modal-add-andamento')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Data</label>
+        <input type="date" id="and-data" value="">
+      </div>
+      <div class="form-group">
+        <label>Descrição</label>
+        <textarea id="and-descricao" placeholder="Ex: Audiência de instrução realizada. Testemunha ouvida. Próxima data: 20/06."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Tipo</label>
+        <select id="and-tipo">
+          <option>Despacho</option>
+          <option>Decisão</option>
+          <option>Audiência</option>
+          <option>Petição protocolada</option>
+          <option>Citação/Intimação</option>
+          <option>Sentença</option>
+          <option>Acórdão</option>
+          <option>Outro</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-add-andamento')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarAndamento()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Mini-modal: Novo Prazo do Processo -->
+<div class="modal-overlay" id="modal-add-prazo-proc">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">⏰ Novo Prazo</div>
+      <button class="modal-close" onclick="closeModal('modal-add-prazo-proc')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Tipo de Prazo</label>
+          <select id="prazo-proc-tipo">
+            <option>Contestação</option><option>Recurso de Apelação</option>
+            <option>Contrarrazões</option><option>Embargos de Declaração</option>
+            <option>Manifestação</option><option>Alegações Finais</option>
+            <option>Recurso Especial</option><option>Outro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Vencimento</label>
+          <input type="date" id="prazo-proc-vencimento">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Responsável</label>
+        <select id="prazo-proc-resp">
+          <option value="">— mesmo do processo —</option>
+          <option>Rodrigo Falcão Vaz</option><option>Fernanda Araujo</option>
+          <option>Renata Navarro</option><option>Edna Rebesco</option>
+          <option>Durval Falcão Vaz</option><option>Janaina Alves</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Observações</label>
+        <input type="text" id="prazo-proc-obs" placeholder="Detalhes relevantes...">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-add-prazo-proc')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarPrazoProcesso()">Salvar Prazo</button>
+    </div>
+  </div>
+</div>
+
+<!-- Mini-modal: Novo Lançamento Financeiro -->
+<div class="modal-overlay" id="modal-add-financeiro">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">💰 Novo Lançamento</div>
+      <button class="modal-close" onclick="closeModal('modal-add-financeiro')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Tipo</label>
+          <select id="fin-tipo">
+            <option value="honorarios">Honorários</option>
+            <option value="custas">Custas processuais</option>
+            <option value="receita">Receita</option>
+            <option value="despesa">Despesa</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Valor (R$)</label>
+          <input type="number" id="fin-valor" placeholder="0,00" step="0.01">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Descrição</label>
+        <input type="text" id="fin-descricao" placeholder="Ex: Honorários contratuais — 1ª parcela">
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Recebido (R$)</label>
+          <input type="number" id="fin-recebido" placeholder="0,00" step="0.01" value="0">
+        </div>
+        <div class="form-group">
+          <label>Vencimento</label>
+          <input type="date" id="fin-vencimento">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-add-financeiro')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarFinanceiro()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Nova Petição -->
+<div class="modal-overlay" id="modal-peticao">
+  <div class="modal" style="width:560px">
+    <div class="modal-header">
+      <div class="modal-title">⚖️ Nova Petição Judicial</div>
+      <button class="modal-close" onclick="closeModal('modal-peticao')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-blue" style="margin-bottom:16px">
+        🤖 Selecione o processo e o tipo de peça. A IA gerará o documento completo com fundamentação jurídica.
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Processo <span class="text-xs text-gray">— opcional</span></label>
+          <select id="pet-processo-select">
+            <option value="">— sem processo vinculado —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Tipo de Peça <span class="text-xs text-gray">— descreva livremente</span></label>
+          <input type="text" id="pet-tipo-select" placeholder="Ex: Contestação, Recurso, Parecer..." list="pet-tipos-list">
+          <datalist id="pet-tipos-list">
+            <option value="Contestação">
+            <option value="Razões de Apelação">
+            <option value="Contrarrazões">
+            <option value="Alegações Finais">
+            <option value="Embargos de Declaração">
+            <option value="Recurso Especial">
+            <option value="Recurso Ordinário">
+            <option value="Agravo de Instrumento">
+            <option value="Mandado de Segurança">
+            <option value="Tutela de Urgência">
+            <option value="Réplica">
+            <option value="Memoriais">
+            <option value="Impugnação ao Cumprimento de Sentença">
+            <option value="Exceção de Pré-Executividade">
+            <option value="Embargos à Execução">
+            <option value="Petição Simples">
+          </datalist>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Instruções adicionais para a IA <span class="text-xs text-gray">— opcional</span></label>
+        <textarea id="pet-instrucoes" rows="2" placeholder="Ex: Enfatizar prescrição. Incluir jurisprudência do STJ. Tom técnico..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>📎 Documentos para a IA ler <span class="text-xs text-gray">— opcional</span></label>
+        <div onclick="document.getElementById('upload-input-pet2').click()"
+             style="border:2px dashed var(--gray-300);border-radius:var(--radius-sm);padding:14px;text-align:center;color:var(--gray-400);cursor:pointer;background:var(--gray-50)">
+          📄 Petição inicial, contratos, provas, laudos...<br>
+          <span class="text-xs">PDF · PNG · JPG · até 5 arquivos</span>
+        </div>
+        <input type="file" id="upload-input-pet2" accept=".pdf,.png,.jpg,.jpeg,.webp,.txt" multiple style="display:none" onchange="handleUploadMultiplo(this,'doc')">
+        <div id="upload-status-pet2" style="margin-top:6px;font-size:12px;color:var(--blue-600)"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-peticao')">Cancelar</button>
+      <button class="btn btn-primary" onclick="abrirGerarPeticao()">⚡ Gerar Petição</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Nova Notificação -->
+<div class="modal-overlay" id="modal-notificacao">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">+ Nova Notificação</div>
+      <button class="modal-close" onclick="closeModal('modal-notificacao')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Tipo</label>
+          <select>
+            <option>Notificação Extrajudicial</option>
+            <option>Resposta Administrativa</option>
+            <option>Interpelação</option>
+            <option>Comunicado</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Canal de envio</label>
+          <select>
+            <option>📧 E-mail</option>
+            <option>📱 WhatsApp</option>
+            <option>Ambos</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Destinatário</label>
+        <input type="text" placeholder="Nome / Razão social">
+      </div>
+      <div class="form-group">
+        <label>E-mail / WhatsApp</label>
+        <input type="text" placeholder="email@empresa.com ou (11) 99999-9999">
+      </div>
+      <div class="form-group">
+        <label>Documentos de referência (opcional)</label>
+        <div style="border:2px dashed var(--gray-300);border-radius:var(--radius-sm);padding:16px;text-align:center;color:var(--gray-400);cursor:pointer;background:var(--gray-50)">
+          📎 Arraste documentos para a IA usar como base
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Instrução para a IA</label>
+        <textarea placeholder="Ex: Notificar sobre inadimplência de 3 meses. Tom firme mas não agressivo. Dar prazo de 10 dias..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-notificacao')">Cancelar</button>
+      <button class="btn btn-primary">⚡ Gerar com IA</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal "Gerar com IA" removido — composer agora vive inline na page-documentos -->
+
+<!-- Modal Anexar Documento Pronto (sem IA) -->
+<div class="modal-overlay" id="modal-anexar-doc">
+  <div class="modal" style="width:640px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">📎 Anexar Documento Pronto</div>
+        <div class="text-xs text-gray" style="margin-top:3px">Carregue um documento ja redigido (PDF, DOCX, TXT) para enviar para revisao</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-anexar-doc')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Tipo do documento</label>
+        <select id="anexar-tipo">
+          <option>Petição Judicial</option>
+          <option>Contestação</option>
+          <option>Notificação Extrajudicial</option>
+          <option>Parecer</option>
+          <option>Distrato / Rescisão</option>
+          <option>Declaração</option>
+          <option>Resposta a E-mail Jurídico</option>
+          <option>Outro</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Referência (processo, cliente, etc.)</label>
+        <input type="text" id="anexar-referencia" placeholder="Ex: Proc. 1234567-89.2024.8.26.0100 ou Cliente João Silva">
+      </div>
+      <div class="form-group">
+        <label>Arquivo</label>
+        <div style="border:1.5px dashed var(--gray-300);border-radius:8px;padding:24px;text-align:center;background:var(--gray-50)">
+          <input type="file" id="anexar-input" accept=".pdf,.docx,.doc,.txt" onchange="lerArquivoAnexar(this)" style="display:none">
+          <button class="btn btn-outline" onclick="document.getElementById('anexar-input').click()">📁 Escolher arquivo</button>
+          <div id="anexar-status" style="margin-top:10px;font-size:12px;color:var(--gray-600);display:none"></div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Observações para o revisor (opcional)</label>
+        <textarea id="anexar-obs" placeholder="Contexto, pontos de atenção, perguntas específicas..." rows="3"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-anexar-doc')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-salvar-anexo" onclick="salvarAnexoDoc()" disabled>💾 Salvar como rascunho</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Enviar para Revisão — Jurídico (entre pares) -->
+<!-- Modal Gerar Planilha -->
+<div class="modal-overlay" id="modal-planilha">
+  <div class="modal" style="width:600px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="planilha-modal-titulo">📊 Gerar Planilha</div>
+        <div class="text-xs text-gray" style="margin-top:3px">A IA gerará o demonstrativo completo</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-planilha')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Processo / Referência (opcional)</label>
+        <input type="text" id="planilha-processo" placeholder="Ex: 1001234-55.2024">
+      </div>
+      <div class="form-group">
+        <label>Descreva os dados</label>
+        <textarea id="planilha-descricao" style="min-height:120px" placeholder="Ex: Honorários de R$ 15.000 com 3 parcelas. Recebido R$ 5.000 em jan/2025. Correção pelo IGPM de 8,3%..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>📎 Documento base (opcional)</label>
+        <div onclick="document.getElementById('upload-input-planilha').click()"
+             style="border:2px dashed var(--gray-300);border-radius:var(--radius-sm);padding:14px;text-align:center;color:var(--gray-400);cursor:pointer;background:var(--gray-50)">
+          📄 Contrato, sentença, extrato — PDF ou imagem
+        </div>
+        <input type="file" id="upload-input-planilha" accept=".pdf,.png,.jpg,.jpeg" style="display:none" onchange="handleUpload(this,'planilha')">
+        <div id="upload-status-planilha" style="display:none;margin-top:8px;padding:8px 12px;background:var(--blue-50);border-radius:var(--radius-sm);font-size:12px;color:var(--blue-700)"></div>
+      </div>
+      <div id="planilha-preview-area" style="display:none">
+        <div class="divider"></div>
+        <div class="flex justify-between items-center" style="margin-bottom:8px">
+          <div class="font-semibold text-sm">📊 Demonstrativo gerado</div>
+          <span class="badge badge-blue" id="planilha-tokens">—</span>
+        </div>
+        <div class="doc-preview" id="planilha-preview" contenteditable="false" style="max-height:300px;overflow-y:auto"></div>
+      </div>
+      <div id="planilha-generating" style="display:none">
+        <div class="divider"></div>
+        <div class="doc-preview-generating"><div class="spinner"></div> Gerando com IA...</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-planilha')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-gerar-planilha" onclick="executarGerarPlanilha()">⚡ Gerar</button>
+      <button class="btn btn-outline" id="btn-salvar-planilha" style="display:none" onclick="salvarPlanilha()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL ÚNICO DE REVISÃO ═══ -->
+
+<!-- Enviar para revisão -->
+<div class="modal-overlay" id="modal-enviar-revisao">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">👁️ Enviar para Revisão</div>
+        <div class="text-xs text-gray" style="margin-top:3px">Opcional — você pode finalizar sem revisão</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-enviar-revisao')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-blue">
+        O revisor poderá <strong>aprovar, editar diretamente ou devolver</strong>. Todas as ações ficam registradas no log do documento.
+      </div>
+      <div class="form-group">
+        <label>Escolher revisor</label>
+        <select id="select-revisor-unico">
+          <option value="">— selecione —</option>
+        </select>
+        <script>
+        (function(){
+          // Revisores fixos — inclui Rodrigo sempre
+          const REVISORES_FIXOS = [
+            'Rodrigo Falcão Vaz','Renata Navarro','Simone Cirino',
+            'Fernanda Araujo','Edna Rebesco'
+          ];
+          function popularRevisores(){
+            const sel = document.getElementById('select-revisor-unico');
+            if(!sel) return;
+            // Tenta carregar do banco, senão usa fixos
+            const lista = (typeof USUARIOS_CACHE !== 'undefined' && USUARIOS_CACHE.length)
+              ? USUARIOS_CACHE.filter(u => u.judicial || u.nivel === 1)
+                              .map(u => u.nome || u.name)
+              : REVISORES_FIXOS;
+            sel.innerHTML = '<option value="">— selecione —</option>';
+            lista.forEach(r => {
+              sel.innerHTML += `<option value="${r}">${r}</option>`;
+            });
+          }
+          function obs_init(){
+            const modal = document.getElementById('modal-enviar-revisao');
+            if(!modal) { setTimeout(obs_init, 500); return; }
+            const o = new MutationObserver(() => {
+              if(modal.classList.contains('open')) popularRevisores();
+            });
+            o.observe(modal, {attributes:true, attributeFilter:['class']});
+          }
+          document.addEventListener('DOMContentLoaded', obs_init);
+        })();
+        </script>
+      </div>
+      <div class="form-group">
+        <label>Mensagem para o revisor (opcional)</label>
+        <textarea id="msg-revisor" placeholder="Ex: Atenção para a cláusula de multa. Cliente precisa até amanhã..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-enviar-revisao')">Cancelar</button>
+      <button class="btn btn-primary" onclick="enviarParaRevisao()">📤 Enviar para revisão</button>
+    </div>
+  </div>
+</div>
+
+<!-- Revisar documento (revisor) -->
+<div class="modal-overlay" id="modal-revisar-doc">
+  <div class="modal" style="width:700px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modal-revisar-titulo">⚖️ Revisão de Documento</div>
+        <div class="text-xs text-gray" style="margin-top:3px" id="modal-revisar-sub">Carregando...</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-revisar-doc')">×</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Info do documento -->
+      <div style="background:var(--gray-50);border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:16px;border:1px solid var(--gray-200)">
+        <div class="flex justify-between items-center">
+          <div>
+            <span class="text-xs text-gray">Gerado por</span>
+            <div class="font-semibold text-sm" id="revisar-autor">—</div>
+          </div>
+          <div>
+            <span class="text-xs text-gray">Protocolo</span>
+            <div class="font-semibold text-sm" id="revisar-protocolo">—</div>
+          </div>
+          <div>
+            <span class="text-xs text-gray">Tokens</span>
+            <div class="text-sm" id="revisar-tokens">—</div>
+          </div>
+          <div>
+            <span class="text-xs text-gray">Data</span>
+            <div class="text-sm" id="revisar-data">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Documento -->
+      <div class="flex justify-between items-center" style="margin-bottom:8px">
+        <div class="font-semibold text-sm">📄 Documento gerado pela IA</div>
+        <button class="btn btn-xs btn-outline" onclick="toggleEditRevisar()">✏️ Editar diretamente</button>
+      </div>
+      <div class="doc-preview" id="revisar-conteudo" contenteditable="false" style="max-height:320px;overflow-y:auto"></div>
+
+      <!-- Log de revisões anteriores -->
+      <div id="revisar-log-area" style="display:none;margin-top:16px">
+        <div class="divider"></div>
+        <div class="font-semibold text-sm" style="margin-bottom:8px">📋 Histórico de revisões</div>
+        <div id="revisar-log-lista"></div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="form-group">
+        <label>Comentário da revisão</label>
+        <textarea id="revisar-comentario" placeholder="Registre sua observação, decisão ou orientação ao autor..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-revisar-doc')">Fechar</button>
+      <button class="btn btn-outline btn-sm" onclick="baixarDocumentoPdf(false,'revisar-conteudo',window._docRevisaoRef)">📄 PDF</button>
+      <button class="btn btn-outline btn-sm" onclick="baixarDocumentoPdf(true,'revisar-conteudo',window._docRevisaoRef)">🏠 PDF timbrado Nova SP</button>
+      <button id="btn-revisar-salvar-edicao" class="btn btn-outline" style="display:none" onclick="salvarEdicaoAutor()">💾 Salvar edição</button>
+      <button id="btn-revisar-enviar" class="btn btn-primary" style="display:none" onclick="closeModal('modal-revisar-doc');openModal('modal-enviar-revisao')">📤 Enviar para revisão</button>
+      <button id="btn-revisar-devolver" class="btn btn-outline btn-sm" onclick="acaoRevisao('devolvido')">↩️ Devolver</button>
+      <button id="btn-revisar-aprovar" class="btn btn-primary" onclick="acaoRevisao('aprovado')">✅ Aprovar</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal-overlay" id="modal-chamado">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="chamado-modal-titulo">🎫 Novo Chamado</div>
+        <div class="text-xs text-gray" style="margin-top:3px" id="chamado-modal-sub">Solicite suporte ou orientação</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-chamado')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-blue" id="chamado-modal-dica">
+        💡 Descreva sua necessidade e escolha o destinatário.
+      </div>
+      <div class="form-group">
+        <label>Título do chamado</label>
+        <input type="text" id="chamado-titulo-input" placeholder="Ex: Dúvida sobre cláusula contratual">
+      </div>
+      <div class="form-group">
+        <label>Descrição detalhada</label>
+        <textarea id="chamado-desc-input" placeholder="Descreva a situação, o que já foi tentado, qual o resultado esperado..."></textarea>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Urgência</label>
+          <select id="chamado-urgencia-input">
+            <option value="alta">🔴 Alta — preciso hoje/amanhã</option>
+            <option value="media" selected>🟡 Média — esta semana</option>
+            <option value="baixa">🔵 Baixa — sem pressa</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label id="chamado-dest-label">Destinatário</label>
+          <select id="chamado-dest-input">
+            <option value="">— sem preferência —</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-chamado')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarChamado()">📨 Enviar Chamado</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Atender Chamado (Jurídico) -->
+<div class="modal-overlay" id="modal-chamado-detalhe">
+  <div class="modal" style="width:620px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="chamado-det-titulo">📋 Chamado</div>
+        <div class="text-xs text-gray" style="margin-top:3px" id="chamado-det-sub">Carregando...</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-chamado-detalhe')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--gray-50);border-radius:var(--radius-sm);padding:16px;margin-bottom:16px;border:1px solid var(--gray-200)">
+        <div class="flex justify-between items-center" style="margin-bottom:8px">
+          <div class="font-semibold" id="chamado-det-tit-curto">—</div>
+          <span class="badge badge-red" id="chamado-det-urgencia">—</span>
+        </div>
+        <div class="text-sm" id="chamado-det-descricao" style="color:var(--gray-600);line-height:1.6">—</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="form-group">
+        <label>Atribuir a</label>
+        <select id="atribuir-responsavel">
+          <option>— selecione o responsável —</option>
+          <option>Rodrigo Falcão Vaz</option>
+          <option>Fernanda Araujo</option>
+          <option>Renata Navarro</option>
+          <option>Edna Rebesco</option>
+          <option>Durval Falcão Vaz</option>
+          <option>Janaina Alves</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Resposta / Orientação para o solicitante</label>
+        <textarea id="chamado-det-resposta" placeholder="Descreva o que será feito, prazo estimado, ou solicite mais informações..."></textarea>
+      </div>
+
+      <div class="divider"></div>
+      <div class="flex gap-2">
+        <button class="btn btn-primary btn-sm" onclick="closeModal('modal-chamado-detalhe');openModal('modal-peticao')">⚡ Gerar documento com IA</button>
+        <button class="btn btn-outline btn-sm">📎 Anexar documento</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-chamado-detalhe')">Fechar</button>
+      <button class="btn btn-outline" onclick="salvarRespostaChamado()">💬 Salvar resposta</button>
+      <button class="btn btn-primary" onclick="concluirChamado()">✅ Marcar como concluído</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast de confirmação -->
+<div id="toast" style="
+  position:fixed;bottom:28px;right:28px;
+  background:var(--blue-800);color:white;
+  padding:14px 20px;border-radius:var(--radius);
+  font-size:14px;font-weight:500;
+  box-shadow:var(--shadow-lg);
+  display:none;z-index:9999;
+  animation:fadeUp 0.3s ease;
+">✅ Chamado enviado com sucesso!</div>
+
+<!-- Cachebuster: bump pra forcar pull do JS novo apos cada deploy -->
+<script src="js/00-config.js?v=20260805b"></script>
+<script src="js/01-auth.js?v=20260805b"></script>
+<script src="js/02-init.js?v=20260805b"></script>
+<script src="js/03-planilhas.js?v=20260805b"></script>
+<script src="js/04-processos.js?v=20260805b"></script>
+<script src="js/05-email.js?v=20260805b"></script>
+<script src="js/06-listas.js?v=20260805b"></script>
+<script src="js/07-meus-docs.js?v=20260805b"></script>
+<script src="js/08-chamados.js?v=20260805b"></script>
+<script src="js/09-nav.js?v=20260805b"></script>
+<script src="js/10-dashboard.js?v=20260805b"></script>
+<script src="js/11-documentos.js?v=20260805b"></script>
+<script src="js/12-uploads.js?v=20260805b"></script>
+<script src="js/13-gerar-doc.js?v=20260805b"></script>
+<script src="js/14-modais.js?v=20260805b"></script>
+<script src="js/15-acordos.js?v=20260805b"></script>
+<script src="js/16-calc-correcao.js?v=20260805b"></script>
+</body>
+</html>

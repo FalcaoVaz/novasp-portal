@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Upload de Seleção de Imóveis — Guia Rápido</title>
+<style>
+  @page { size: A4 portrait; margin: 0; }
+  html, body { margin: 0; padding: 0; font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: #1e293b; background: #f1f5f9; }
+
+  .page {
+    width: 210mm; min-height: 297mm;
+    padding: 20mm 22mm 22mm;
+    box-sizing: border-box;
+    background: #fff;
+    position: relative;
+    page-break-after: always;
+    overflow: hidden;
+  }
+  .page:last-child { page-break-after: auto; }
+  .page::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 8mm;
+    background: linear-gradient(90deg, #1E2D4A 0%, #3B82F6 100%);
+  }
+
+  h1 { font-size: 26pt; font-weight: 800; margin: 0 0 4mm 0; color: #1E2D4A; letter-spacing: -0.02em; line-height: 1.1; }
+  h2 { font-size: 16pt; font-weight: 700; margin: 8mm 0 4mm 0; color: #1E2D4A; letter-spacing: -0.01em; padding-bottom: 3mm; border-bottom: 2px solid #3B82F6; }
+  h3 { font-size: 13pt; font-weight: 700; margin: 5mm 0 2mm; color: #334155; }
+  p, li { font-size: 11pt; line-height: 1.55; color: #334155; }
+  strong { color: #1E2D4A; }
+
+  .sub {
+    font-size: 12pt; color: #64748b; margin-top: 2mm; margin-bottom: 8mm;
+  }
+
+  .step {
+    display: flex; align-items: flex-start;
+    padding: 5mm 6mm;
+    background: #f8fafc;
+    border-left: 4px solid #3B82F6;
+    border-radius: 3mm;
+    margin-bottom: 5mm;
+  }
+  .step .num {
+    width: 10mm; height: 10mm;
+    background: #3B82F6; color: #fff;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 13pt;
+    margin-right: 5mm; flex-shrink: 0;
+  }
+  .step .body h3 { margin-top: 0; }
+  .step .body p { margin: 1mm 0; font-size: 11pt; }
+
+  .btn-hl {
+    display: inline-block;
+    padding: 2mm 5mm;
+    background: #3B82F6; color: #fff;
+    border-radius: 2mm;
+    font-weight: 700; font-size: 11pt;
+    letter-spacing: 0.02em;
+  }
+  .kbd {
+    display: inline-block;
+    padding: 1mm 3mm;
+    background: #1E2D4A; color: #fff;
+    border-radius: 2mm;
+    font-family: monospace;
+    font-size: 10pt;
+  }
+
+  table.cols {
+    width: 100%; border-collapse: collapse;
+    margin: 3mm 0 5mm;
+    font-size: 10pt;
+  }
+  table.cols th {
+    background: #1E2D4A; color: #fff;
+    padding: 3mm 4mm; text-align: left;
+    font-size: 9pt; letter-spacing: 0.05em; text-transform: uppercase;
+  }
+  table.cols td {
+    padding: 3mm 4mm;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: top;
+  }
+  table.cols tr:nth-child(even) td { background: #f8fafc; }
+  table.cols .req { color: #dc2626; font-weight: 700; }
+
+  .box {
+    padding: 5mm 6mm;
+    border-radius: 3mm;
+    margin: 4mm 0;
+  }
+  .box.green { background: #ecfdf5; border-left: 4px solid #10b981; }
+  .box.amber { background: #fffbeb; border-left: 4px solid #f59e0b; }
+  .box.blue  { background: #eff6ff; border-left: 4px solid #3B82F6; }
+  .box.red   { background: #fef2f2; border-left: 4px solid #ef4444; }
+  .box p { margin: 1mm 0; font-size: 10.5pt; }
+
+  .brand {
+    position: absolute; bottom: 8mm; left: 22mm;
+    font-size: 9pt; color: #94a3b8; letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .pnum {
+    position: absolute; bottom: 8mm; right: 22mm;
+    font-size: 9pt; color: #94a3b8;
+  }
+
+  ul { padding-left: 5mm; }
+  li { margin-bottom: 2mm; }
+
+  .btn-print {
+    position: fixed;
+    top: 12px; right: 12px;
+    background: #3B82F6; color: #fff;
+    border: none; padding: 10px 18px;
+    border-radius: 8px; font-size: 14px; font-weight: 600;
+    cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    z-index: 999;
+  }
+  @media print { .btn-print { display: none; } }
+</style>
+</head>
+<body>
+
+<button class="btn-print" onclick="window.print()">🖨️ Salvar como PDF</button>
+
+<!-- ═════════════════ PÁGINA 1 ═════════════════ -->
+<section class="page">
+  <div style="font-size:10pt;color:#94a3b8;text-transform:uppercase;letter-spacing:0.15em;font-weight:700;margin-bottom:6mm;margin-top:5mm">Nova São Paulo Imobiliária</div>
+  <h1>Seleção de Imóveis<br>Guia do Upload Mensal</h1>
+  <p class="sub">Como enviar a lista de imóveis da sua equipe usando o modelo padrão, com <b>link do anúncio</b> incluído.</p>
+
+  <div class="box blue">
+    <p><b>📌 A partir de agora, cada envio mensal é feito no sistema, com upload do modelo padrão.</b></p>
+    <p>O sistema aceita <b>somente por planilha</b> — não tem mais cadastro manual um por um. Isso garante que ninguém esqueça de subir imóveis, e que todos vão pra peneira dos gerentes no mesmo momento.</p>
+  </div>
+
+  <h2>🎯 O que muda com o link</h2>
+  <p>Agora cada imóvel na planilha pode vir com o <b>link do anúncio</b> (ou da ficha interna). O sistema entende sozinho e faz o <b>código do imóvel virar um botão clicável</b> em toda a plataforma — na peneira dos gerentes, na lista, e até no PDF gerado pros corretores.</p>
+
+  <div class="box green">
+    <p><b>✅ Vantagens:</b></p>
+    <ul>
+      <li>Gerente clica no código durante a peneira e vê o imóvel na hora antes de aprovar/reprovar</li>
+      <li>Corretores recebem o PDF com os códigos clicáveis — abrem o anúncio direto do documento</li>
+      <li>Menos "vai lá no NIDO, procura pelo código, abre" — tudo num clique</li>
+    </ul>
+  </div>
+
+  <h2>📥 Passo 1 — Baixar o modelo</h2>
+  <div class="step">
+    <div class="num">1</div>
+    <div class="body">
+      <h3>No portal, entra em Gestão de Vendas → Seleção de Imóveis</h3>
+      <p>No topo da página, clica em <span class="btn-hl">📥 Baixar modelo</span></p>
+      <p>Baixa automaticamente o arquivo <b>modelo-selecao-imoveis-nova-sp.xlsx</b> com todas as colunas certas + uma linha de exemplo + uma aba de instruções internas.</p>
+    </div>
+  </div>
+
+  <span class="brand">Nova São Paulo · Seleção de Imóveis</span>
+  <span class="pnum">1 / 3</span>
+</section>
+
+<!-- ═════════════════ PÁGINA 2 ═════════════════ -->
+<section class="page">
+  <h1 style="font-size:22pt;margin-top:5mm">Preenchendo a planilha</h1>
+
+  <h2>📋 Passo 2 — Colunas do modelo</h2>
+
+  <table class="cols">
+    <thead>
+      <tr>
+        <th style="width:36mm">Coluna</th>
+        <th>Como preencher</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><b>Código</b> <span class="req">*</span></td>
+        <td>Código NIDO do imóvel. Ex: <span class="kbd">BI50125</span>, <span class="kbd">MO17833</span>, <span class="kbd">JA44482</span>. <b>Obrigatório</b> — sem código a linha é ignorada.</td>
+      </tr>
+      <tr>
+        <td>Endereço</td>
+        <td>Rua, número, bairro, complemento útil. Ex: "Rua Domingos de Morais, 123 — ap 42, Vila Mariana"</td>
+      </tr>
+      <tr>
+        <td>Corretor</td>
+        <td>Nome do responsável pelo imóvel. Primeiro nome já basta.</td>
+      </tr>
+      <tr>
+        <td>M²</td>
+        <td>Área útil em número. Aceita <span class="kbd">75</span>, <span class="kbd">75.5</span> ou <span class="kbd">75,5</span>.</td>
+      </tr>
+      <tr>
+        <td>Tempo de venda</td>
+        <td>Livre. Ex: "6 meses", "1 ano", "novo".</td>
+      </tr>
+      <tr>
+        <td>Outras opções no prédio</td>
+        <td>Outras unidades disponíveis no mesmo prédio (referência + valor). Ajuda o corretor a oferecer alternativas.</td>
+      </tr>
+      <tr style="background:#eff6ff !important">
+        <td><b>Link do imóvel 🔗</b></td>
+        <td><b>NOVO!</b> Cola a URL do anúncio ou da ficha interna. Ex: <span class="kbd">https://novasaopaulo.com.br/imovel/BI50125</span>. Com link, o código vira clicável no sistema todo.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="box amber">
+    <p><b>💡 Dica sobre nomes de colunas:</b></p>
+    <p>Se sua planilha interna já tem outros nomes, tudo bem — o sistema reconhece automaticamente sinônimos:</p>
+    <ul>
+      <li><b>Código</b>: aceita "Cod", "Referência", "Ref"</li>
+      <li><b>Endereço</b>: aceita "Rua", "Logradouro"</li>
+      <li><b>Link</b>: aceita "URL", "Anúncio", "Ficha", "Sitelink"</li>
+    </ul>
+    <p>Ou seja, você pode copiar/colar direto do NIDO sem renomear.</p>
+  </div>
+
+  <h2>📤 Passo 3 — Fazer o upload</h2>
+
+  <div class="step">
+    <div class="num">3</div>
+    <div class="body">
+      <h3>Clica em <span class="btn-hl">📤 Upload do mês</span></h3>
+      <p>Abre o modal. Preenche:</p>
+      <p>• <b>Equipe</b>: a sua<br>
+         • <b>Mês de referência</b>: já vem preenchido com o ciclo atual (não mude)<br>
+         • <b>Arquivo</b>: seu XLSX preenchido</p>
+      <p>Clica em <b>Importar como pendentes</b>. Os imóveis entram na fila da peneira dos gerentes.</p>
+    </div>
+  </div>
+
+  <span class="brand">Nova São Paulo · Seleção de Imóveis</span>
+  <span class="pnum">2 / 3</span>
+</section>
+
+<!-- ═════════════════ PÁGINA 3 ═════════════════ -->
+<section class="page">
+  <h1 style="font-size:22pt;margin-top:5mm">Depois do upload</h1>
+
+  <h2>🗳️ O que acontece</h2>
+
+  <div class="step">
+    <div class="num">A</div>
+    <div class="body">
+      <h3>Peneira dos gerentes (5 votos)</h3>
+      <p>Cada imóvel é votado pelos 4 gerentes + Rodrigo. Basta <b>3 aprovações</b> pra entrar na seleção ativa. 3 reprovações → sai. Enquanto não fecha, fica "aguardando votos".</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="num">B</div>
+    <div class="body">
+      <h3>Imóvel aprovado = 3 meses ativo no ciclo</h3>
+      <p>Todo imóvel aprovado no ciclo fica ativo até o <b>dia 9 do 3º mês seguinte</b>. Ex: aprovado em julho fica até 9 de outubro. Aí cai automático quando começa o novo ciclo.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="num">C</div>
+    <div class="body">
+      <h3>PDF pros corretores — clicável</h3>
+      <p>Você pode gerar o PDF do ciclo pra mandar por WhatsApp. Basta clicar em <span class="btn-hl">📄 Gerar PDF</span> na página. Sai um documento profissional agrupado por equipe. Se você preencheu o link, o <b>código no PDF também é clicável</b> — corretor abre o anúncio direto.</p>
+    </div>
+  </div>
+
+  <h2>❓ Perguntas frequentes</h2>
+
+  <h3>E se eu subir a mesma planilha por engano 2 vezes?</h3>
+  <p>Sistema agora bloqueia — não vai duplicar. Você recebe um erro claro dizendo qual código já existe.</p>
+
+  <h3>E se eu esquecer de colocar o link?</h3>
+  <p>Tudo bem — o campo é opcional. Só que o código não vai ficar clicável, e o corretor terá que ir no NIDO manualmente pra ver a ficha.</p>
+
+  <h3>Quando o novo ciclo começa?</h3>
+  <p>Todo <b>dia 10 do mês</b>. Antes disso, o sistema ainda considera o ciclo anterior. Se você subir a planilha entre dia 5 e 9, ela entra no ciclo anterior — melhor esperar dia 10 pra frente.</p>
+
+  <div class="box green" style="margin-top:8mm">
+    <p style="font-size:12pt;text-align:center"><b>🚀 Portal:</b> <span class="kbd">https://novasp.netlify.app</span></p>
+    <p style="font-size:11pt;text-align:center;margin-top:2mm">Dúvidas técnicas? Fala com Rodrigo.</p>
+  </div>
+
+  <span class="brand">Nova São Paulo · Seleção de Imóveis</span>
+  <span class="pnum">3 / 3</span>
+</section>
+
+</body>
+</html>

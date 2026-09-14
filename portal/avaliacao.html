@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Avaliação do seu imóvel — Nova São Paulo</title>
+<style>
+  :root{ --navy:#1E2D4A; --emerald:#047857; --bg:#f6f7f9; --line:#e6e8ec; --muted:#6b7280; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:#111827;font:15px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif}
+  .wrap{max-width:720px;margin:0 auto;padding:20px 16px 60px}
+  header{display:flex;align-items:center;gap:12px;padding:6px 0 18px}
+  .logo{width:40px;height:40px;border-radius:9px;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;letter-spacing:.5px}
+  .brand b{display:block;font-size:1.02em}
+  .brand span{color:var(--muted);font-size:.85em}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:14px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+  .kicker{color:var(--muted);font-size:.78em;text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+  .big{font-size:2.1em;font-weight:800;margin:6px 0 2px}
+  .sub{color:var(--muted)}
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:14px}
+  .grid .kicker{font-weight:500}
+  .grid b{font-size:1.05em}
+  .incorp{border-left:4px solid var(--emerald)}
+  .incorp .big{color:var(--emerald)}
+  .badge{display:inline-block;background:#d1fae5;color:var(--emerald);padding:2px 10px;border-radius:999px;font-size:.8em;font-weight:700}
+  table{width:100%;border-collapse:collapse;font-size:.9em;margin-top:8px}
+  th{color:var(--muted);text-align:left;font-weight:500;padding:6px 8px}
+  td{padding:6px 8px;border-top:1px solid #f1f3f5}
+  .foot{color:var(--muted);font-size:.82em;margin-top:8px}
+  .cta{background:var(--navy);color:#fff;border-radius:14px;padding:20px;text-align:center}
+  .cta a{display:inline-block;margin-top:10px;background:#fff;color:var(--navy);text-decoration:none;font-weight:700;padding:10px 18px;border-radius:10px}
+  .center{text-align:center;color:var(--muted);padding:60px 20px}
+  .imovel{font-size:1.15em;font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">NSP</div>
+    <div class="brand"><b>Imobiliária Nova São Paulo</b><span>Avaliação do seu imóvel</span></div>
+  </header>
+  <div id="conteudo"><div class="center">Carregando avaliação…</div></div>
+</div>
+
+<script>
+const SBU = 'https://mqcduyvpuxdweqesgwrq.supabase.co';
+const SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1xY2R1eXZwdXhkd2VxZXNnd3JxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4MzE5OTcsImV4cCI6MjA5MzQwNzk5N30.QdpRZRxnYF6GTh13wdTNqZTQ-9ztY3veef62mfGRphE';
+const R$ = v => (v==null||v===''||isNaN(Number(v))) ? '—' : 'R$ ' + Number(v).toLocaleString('pt-BR',{maximumFractionDigits:0});
+const q = new URLSearchParams(location.search).get('t');
+
+async function carregar(){
+  const box = document.getElementById('conteudo');
+  if(!q){ box.innerHTML = '<div class="center">Link inválido.</div>'; return; }
+  try{
+    const r = await fetch(`${SBU}/rest/v1/rpc/aval_por_token?p_token=${encodeURIComponent(q)}`,
+      { headers:{ apikey:SBK, Authorization:'Bearer '+SBK } });
+    const arr = await r.json();
+    const x = Array.isArray(arr) ? arr[0] : arr;
+    if(!x){ box.innerHTML = '<div class="center">Esta avaliação não está disponível.<br>Fale com o seu corretor da Nova São Paulo.</div>'; return; }
+    box.innerHTML = render(x);
+  }catch(e){
+    box.innerHTML = '<div class="center">Não foi possível abrir a avaliação agora.<br>Tente novamente em instantes.</div>';
+  }
+}
+
+function render(x){
+  let comps=[]; try{ comps = typeof x.comparaveis==='string'?JSON.parse(x.comparaveis):(x.comparaveis||[]); }catch(_){}
+  const mercado = x.valor_mercado ? `
+    <div class="card">
+      <div class="kicker">Valor de mercado estimado</div>
+      <div class="big">${R$(x.valor_mercado)}</div>
+      <div class="sub">Faixa de referência: ${R$(x.faixa_min)} — ${R$(x.faixa_max)}</div>
+      <div class="foot">${x.metodo||''}${x.anuncios_usados?` · baseado em ${x.anuncios_usados} anúncios da região`:''}</div>
+    </div>` : '';
+
+  const incorp = x.incorp_aplicavel ? `
+    <div class="card incorp">
+      <div class="kicker">Potencial para incorporação <span class="badge">exclusivo</span></div>
+      <div class="big">${R$(x.incorp_valor_terreno)}</div>
+      <div class="sub">valor estimado do terreno para um empreendimento — normalmente <b>acima</b> do valor como imóvel pronto.</div>
+      <div class="grid">
+        <div><div class="kicker">Zona</div><b>${x.zona||'—'}${x.ca?` · CA ${Number(x.ca)}`:''}</b></div>
+        <div><div class="kicker">Área construível</div><b>${x.incorp_area_constr?Math.round(x.incorp_area_constr)+' m²':'—'}</b></div>
+        <div><div class="kicker">Preço de lançamento na região</div><b>${R$(x.incorp_lancamento_rs_m2)}/m²</b></div>
+        <div><div class="kicker">VGV potencial</div><b>${R$(x.incorp_vgv)}</b></div>
+      </div>
+      <div class="foot">Estimativa técnica pelo método do valor residual, com base no zoneamento vigente. Sujeita à confirmação de recuos e viabilidade.</div>
+    </div>` : '';
+
+  const comptab = comps.length ? `
+    <div class="card">
+      <div class="kicker">Referências de mercado usadas</div>
+      <table><thead><tr><th>Tipo</th><th style="text-align:right">Área</th><th style="text-align:right">Preço</th><th style="text-align:right">R$/m²</th></tr></thead>
+      <tbody>${comps.map(c=>`<tr><td>${c.tipo||'—'}${c.dorm?' · '+c.dorm+'q':''}</td>
+        <td style="text-align:right">${c.area?Math.round(c.area)+' m²':'—'}</td>
+        <td style="text-align:right">${R$(c.preco)}</td>
+        <td style="text-align:right">${R$(c.rs_m2)}</td></tr>`).join('')}</tbody></table>
+    </div>` : '';
+
+  const dt = x.gerado_em ? new Date(x.gerado_em).toLocaleDateString('pt-BR') : '';
+  return `
+    <div class="card">
+      <div class="imovel">${x.tipo||'Imóvel'} · ${x.bairro||''}</div>
+      <div class="sub">${x.endereco||''}${x.edificio?' — '+x.edificio:''}</div>
+      <div class="grid">
+        ${x.area_util?`<div><div class="kicker">Área útil</div><b>${Math.round(x.area_util)} m²</b></div>`:''}
+        ${x.terreno?`<div><div class="kicker">Terreno</div><b>${Math.round(x.terreno)} m²</b></div>`:''}
+        ${x.dorm?`<div><div class="kicker">Dormitórios</div><b>${x.dorm}${x.suite?` (${x.suite} suíte)`:''}</b></div>`:''}
+        ${x.vaga?`<div><div class="kicker">Vagas</div><b>${x.vaga}</b></div>`:''}
+      </div>
+    </div>
+    ${mercado}
+    ${incorp}
+    ${comptab}
+    <div class="cta">
+      <div style="font-size:1.05em;font-weight:700">Quer vender pelo melhor valor possível?</div>
+      <div style="opacity:.85;font-size:.92em;margin-top:4px">Nossa equipe apresenta a estratégia completa para o seu imóvel.</div>
+      <a href="https://www.novasaopaulo.com.br" target="_blank">Falar com a Nova São Paulo</a>
+    </div>
+    <div class="foot" style="text-align:center">Avaliação gerada em ${dt} · Documento de referência, não constitui laudo oficial (NBR 14653).</div>`;
+}
+carregar();
+</script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entrega de Chaves — Nova São Paulo</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--navy:#2B3A6B;--dark:#1A2542;--light:#D6E4F0;--steel:#5B8DB8;--amber:#F0A500;--green:#1A7A4A;--gray:#64748b}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'DM Sans',sans-serif;background:#0f172a;min-height:100vh;color:#e2e8f0}
+  .header{background:linear-gradient(135deg,#1A2542,#2B3A6B);padding:32px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.1)}
+  .header h1{font-family:'DM Serif Display',serif;font-size:28px;color:#fff;margin-bottom:6px}
+  .header p{font-size:13px;color:#94a3b8}
+  .header .since{display:inline-block;background:rgba(240,165,0,0.15);border:1px solid rgba(240,165,0,0.3);color:var(--amber);font-size:11px;font-weight:700;padding:4px 14px;border-radius:20px;margin-top:10px;letter-spacing:1px}
+  .main{padding:40px 24px;max-width:1000px;margin:0 auto}
+  .section-title{font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:#475569;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+  .section-title::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.07)}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:40px}
+  .card{background:linear-gradient(135deg,#1e293b,#1a2440);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:24px;cursor:pointer;transition:all 0.25s;text-decoration:none;display:block;position:relative;overflow:hidden}
+  .card:hover{transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,0.3);border-color:rgba(255,255,255,0.15)}
+  .card.destaque{border-color:rgba(240,165,0,0.3);background:linear-gradient(135deg,#1e293b,#1c2038)}
+  .card-ico{font-size:32px;margin-bottom:14px}
+  .card-title{font-size:15px;font-weight:700;color:#e2e8f0;margin-bottom:6px}
+  .card-desc{font-size:12px;color:#64748b;line-height:1.5}
+  .card-tag{display:inline-block;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;margin-top:12px;letter-spacing:0.5px}
+  .tag-amber{background:rgba(240,165,0,0.15);color:var(--amber);border:1px solid rgba(240,165,0,0.3)}
+  .tag-blue{background:rgba(91,141,184,0.2);color:#93c5fd;border:1px solid rgba(91,141,184,0.3)}
+  .tag-teal{background:rgba(45,212,191,0.2);color:#2dd4bf;border:1px solid rgba(45,212,191,0.3)}
+  .footer{text-align:center;padding:32px;border-top:1px solid rgba(255,255,255,0.07);margin-top:20px}
+  .footer p{font-size:12px;color:#334155}
+  @media(max-width:700px){.grid{grid-template-columns:1fr 1fr}}
+  @media(max-width:480px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Nova São Paulo</h1>
+  <p>Departamento de Entrega de Chaves · Sistema Interno</p>
+  <div class="since">Fundada em 1969</div>
+</div>
+<div class="main">
+  <div class="section-title">🔑 Entrega de Chaves</div>
+  <div class="grid">
+    <a class="card destaque" href="cadastro.html">
+      <div class="card-ico">📝</div>
+      <div class="card-title">Cadastrar Entrega</div>
+      <div class="card-desc">Registre o locatário que vai entregar as chaves, partes envolvidas, tipo de fiança e agendamento, com notificação automática por e-mail.</div>
+      <div class="card-tag tag-amber">Equipe Interna</div>
+    </a>
+    <a class="card" href="painel.html">
+      <div class="card-ico">📊</div>
+      <div class="card-title">Painel de Controle</div>
+      <div class="card-desc">Acompanhe cada processo etapa a etapa, registre a vistoria e os reparos, e notifique as partes a cada atualização.</div>
+      <div class="card-tag tag-blue">Equipe Interna</div>
+    </a>
+    <a class="card" href="consulta.html">
+      <div class="card-ico">🔍</div>
+      <div class="card-title">Acompanhar Processo</div>
+      <div class="card-desc">Locador e locatário informam o protocolo e acompanham o status, as datas e o histórico em tempo real.</div>
+      <div class="card-tag tag-teal">Locador · Locatário</div>
+    </a>
+  </div>
+</div>
+<div class="footer"><p>Nova São Paulo Imobiliária · Fundada em 1969 · Sistema de Uso Interno</p></div>
+</body>
+</html>

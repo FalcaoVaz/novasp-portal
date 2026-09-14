@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Consultar Entrega de Chaves — Nova São Paulo</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--navy:#2B3A6B;--dark:#1A2542;--light:#D6E4F0;--steel:#5B8DB8;--red:#C0392B;--green:#1A7A4A;--amber:#F0A500;--gray:#64748b;--border:#e2e8f0}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'DM Sans',sans-serif;background:#EEF2F7;min-height:100vh;padding:32px 16px}
+  .page{max-width:560px;margin:0 auto}
+  .header{background:linear-gradient(135deg,#1A2542,#2B3A6B);border-radius:14px 14px 0 0;padding:24px 32px;text-align:center}
+  .header h1{font-family:'DM Serif Display',serif;font-size:22px;color:#fff;margin-bottom:4px}
+  .header p{font-size:12px;color:#94a3b8}
+  .card{background:#fff;padding:32px;border:1px solid var(--border);border-top:none;border-radius:0 0 14px 14px}
+  .busca{display:flex;gap:10px;margin-bottom:24px}
+  .busca input{flex:1;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;padding:12px 16px;border:2px solid var(--border);border-radius:8px;outline:none;color:var(--dark);text-align:center;letter-spacing:1px}
+  .busca input:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(43,58,107,0.1)}
+  .busca input::placeholder{font-size:13px;font-weight:400;letter-spacing:0;color:#94a3b8}
+  .btn-buscar{background:var(--navy);color:#fff;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;padding:12px 20px;border:none;border-radius:8px;cursor:pointer;white-space:nowrap}
+  .btn-buscar:hover{background:var(--dark)}
+  .btn-buscar:disabled{opacity:0.5;cursor:not-allowed}
+  .sc{border-radius:12px;padding:20px 24px;margin-bottom:16px;border:2px solid}
+  .sc-a{background:#EFF6FF;border-color:var(--steel)}
+  .sc-p{background:#FFFBEB;border-color:var(--amber)}
+  .sc-c{background:#F0FFF4;border-color:var(--green)}
+  .sc-lbl{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px}
+  .sc-a .sc-lbl{color:var(--steel)}.sc-p .sc-lbl{color:#92400e}.sc-c .sc-lbl{color:var(--green)}
+  .sc-st{font-family:'DM Serif Display',serif;font-size:24px;margin-bottom:4px}
+  .sc-a .sc-st{color:var(--navy)}.sc-p .sc-st{color:var(--amber)}.sc-c .sc-st{color:var(--green)}
+  .sc-proto{font-family:monospace;font-size:12px;color:var(--gray)}
+  .det{background:#F8FAFC;border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:16px}
+  .dr{display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px}
+  .dr:last-child{border-bottom:none}
+  .dr strong{color:var(--dark);min-width:110px;flex-shrink:0}
+  .dr span{color:var(--gray)}
+  .prog-title,.hist-title{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid var(--light)}
+  .steps{margin-bottom:20px}
+  .stp{display:flex;gap:12px;position:relative;padding-bottom:16px}
+  .stp:last-child{padding-bottom:0}
+  .stp::before{content:'';position:absolute;left:9px;top:20px;bottom:0;width:2px;background:var(--border)}
+  .stp:last-child::before{display:none}
+  .stp-dot{width:20px;height:20px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;border:2px solid var(--border);background:#fff;color:#94a3b8;z-index:1}
+  .stp.done .stp-dot{background:var(--green);border-color:var(--green);color:#fff}
+  .stp.curr .stp-dot{background:var(--amber);border-color:var(--amber);color:#fff}
+  .stp-nome{font-size:13px;font-weight:600;color:#94a3b8}
+  .stp.done .stp-nome,.stp.curr .stp-nome{color:var(--dark)}
+  .stp-data{font-size:11px;color:#94a3b8}
+  .reparo{background:#FFFBEB;border:1.5px solid var(--amber);border-radius:10px;padding:14px 16px;margin-bottom:16px;font-size:13px;color:#92400e;line-height:1.6}
+  .timeline{position:relative;padding-left:24px}
+  .timeline::before{content:'';position:absolute;left:7px;top:6px;bottom:6px;width:2px;background:var(--border)}
+  .t-item{position:relative;margin-bottom:16px}
+  .t-item:last-child{margin-bottom:0}
+  .t-dot{position:absolute;left:-21px;top:4px;width:12px;height:12px;border-radius:50%;border:2px solid var(--steel);background:var(--steel)}
+  .t-status{font-size:13px;font-weight:700;color:var(--dark);margin-bottom:2px}
+  .t-msg{font-size:13px;color:var(--gray);line-height:1.5;margin-bottom:3px}
+  .t-data{font-size:11px;color:#94a3b8}
+  .erro{background:#FEF2F2;border:1.5px solid var(--red);border-radius:10px;padding:16px;text-align:center;color:var(--red);font-size:14px;font-weight:600;line-height:1.5}
+  .loading{text-align:center;padding:20px;color:var(--gray);font-size:14px}
+  .spin{width:30px;height:30px;border:3px solid rgba(43,58,107,0.15);border-top-color:var(--navy);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 10px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <h1>Acompanhar Entrega de Chaves</h1>
+    <p>Nova São Paulo · Departamento de Entrega de Chaves</p>
+  </div>
+  <div class="card">
+    <div class="busca">
+      <input type="text" id="proto" placeholder="Ex: CHV-20260601-1234" onkeydown="if(event.key==='Enter')buscar()">
+      <button class="btn-buscar" id="btn" onclick="buscar()">Buscar</button>
+    </div>
+    <div id="res"></div>
+    <div style="text-align:center;margin-top:20px">
+      <span style="font-size:11px;color:#94a3b8">O protocolo foi informado no e-mail de confirmação.</span>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:12px">
+    <span style="font-size:11px;color:#94a3b8">Nova São Paulo Imobiliária · Entrega de Chaves</span>
+  </div>
+</div>
+<script>
+var SURL='https://script.google.com/macros/s/AKfycbyMjypc0XTMs_RR6I9GMyuOkguE7u-QXDJjczMQoSayduM1_AAhmUfe2GDJdXujsqpa6w/exec';
+var ETAPAS=['Entrega de chaves agendada','Entrega de chaves realizada','Vistoria realizada','Débitos quitados','Chaves liberadas'];
+var COL_DATA=['Data Agendada','Data Entrega','Data Vistoria','Data Débitos','Data Liberação'];
+
+function buscar(){
+  var proto=document.getElementById('proto').value.trim().toUpperCase();
+  if(!proto){alert('Digite o protocolo.');return;}
+  var el=document.getElementById('res');var btn=document.getElementById('btn');
+  el.innerHTML='<div class="loading"><div class="spin"></div>Buscando...</div>';
+  btn.disabled=true;
+  fetch(SURL+'?acao=buscar&protocolo='+encodeURIComponent(proto)+'&t='+Date.now())
+    .then(function(r){return r.json();})
+    .then(function(data){
+      btn.disabled=false;
+      if(!data||data.status==='nao_encontrado'){
+        el.innerHTML='<div class="erro">Protocolo não encontrado.<br><small>Verifique o número e tente novamente.</small></div>';return;
+      }
+      if(data.status==='erro'){el.innerHTML='<div class="erro">Erro ao buscar. Tente novamente.</div>';return;}
+      mostrar(data.processo,data.andamentos||[]);
+    })
+    .catch(function(){btn.disabled=false;el.innerHTML='<div class="erro">Erro de conexão. Tente novamente.</div>';});
+}
+
+function etapaIdx(status){var i=ETAPAS.indexOf((status||'').trim());return i<0?0:i;}
+
+function mostrar(c,andamentos){
+  var el=document.getElementById('res');
+  var idx=etapaIdx(c['Status']);
+  var cls=idx>=4?'sc-c':idx===0?'sc-a':'sc-p';
+  var html='<div class="sc '+cls+'"><div class="sc-lbl">Etapa Atual</div><div class="sc-st">'+(c['Status']||ETAPAS[0])+'</div><div class="sc-proto">'+(c['Protocolo']||'')+'</div></div>';
+
+  html+='<div class="det">';
+  html+='<div class="dr"><strong>Imóvel</strong><span>'+(c['Endereço']||'-')+'</span></div>';
+  html+='<div class="dr"><strong>Locador</strong><span>'+(c['Locador']||'-')+'</span></div>';
+  html+='<div class="dr"><strong>Locatário</strong><span>'+(c['Locatário']||'-')+'</span></div>';
+  html+='<div class="dr"><strong>Tipo de fiança</strong><span>'+(c['Tipo Fiança']||'-')+'</span></div>';
+  html+='</div>';
+
+  html+='<div class="prog-title">Progresso</div><div class="steps">';
+  ETAPAS.forEach(function(et,i){
+    var sc=i<idx?'done':(i===idx?'curr':'');
+    var data=c[COL_DATA[i]]||'';
+    var ico=i<idx?'&#10003;':(i+1);
+    html+='<div class="stp '+sc+'"><div class="stp-dot">'+ico+'</div><div><div class="stp-nome">'+et+'</div>'+(data?'<div class="stp-data">'+data+'</div>':'')+'</div></div>';
+  });
+  html+='</div>';
+
+  if((c['Necessita Reparo']||'')==='Sim'){
+    html+='<div class="reparo"><b>Reparos identificados na vistoria:</b><br>'+(c['Descrição Reparo']||'-')
+      +(c['Valor Reparo']?'<br>Valor estimado: <b>'+c['Valor Reparo']+'</b>':'')
+      +(c['Responsável Reparo']?'<br>Responsável: <b>'+c['Responsável Reparo']+'</b>':'')+'</div>';
+  }
+
+  if(andamentos&&andamentos.length>0){
+    html+='<div class="hist-title">Histórico</div><div class="timeline">';
+    andamentos.slice().reverse().forEach(function(a){
+      html+='<div class="t-item"><div class="t-dot"></div><div class="t-status">'+(a.status||'')+'</div>'+(a.mensagem?'<div class="t-msg">'+a.mensagem+'</div>':'')+'<div class="t-data">'+(a.data||'')+'</div></div>';
+    });
+    html+='</div>';
+  }
+  el.innerHTML=html;
+}
+</script>
+</body>
+</html>

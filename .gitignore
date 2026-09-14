@@ -1,0 +1,41 @@
+# ── Segredos — NUNCA versionar ─────────────────────────────────
+# Chaves e credenciais
+*.key
+*.pem
+*.p12
+*.dsn
+.env
+.env.*
+!.env.example
+# service_role / senha de banco / connection strings avulsas
+secret*
+*secret*
+*service*role*
+backup.key
+anon.key
+# tudo que mora em ~/.config/novasp (defensivo: se alguém copiar p/ cá)
+**/.config/novasp/**
+config/novasp/**
+
+# ── Artefatos de deploy ────────────────────────────────────────
+*.zip
+.netlify/
+dist/
+build/
+
+# ── Dependências ───────────────────────────────────────────────
+node_modules/
+vendor/
+__pycache__/
+*.pyc
+
+# ── Logs e temporários ─────────────────────────────────────────
+*.log
+*.tmp
+.cache/
+scratchpad/
+
+# ── Sistema operacional ────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*~

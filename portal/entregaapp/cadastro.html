@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entrega de Chaves — Cadastro · Nova São Paulo</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--navy:#2B3A6B;--dark:#1A2542;--light:#D6E4F0;--steel:#5B8DB8;--red:#C0392B;--green:#1A7A4A;--amber:#F0A500;--gray:#64748b;--border:#e2e8f0}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'DM Sans',sans-serif;background:#EEF2F7;min-height:100vh;padding:24px 16px}
+  .page{max-width:680px;margin:0 auto}
+  .header{background:linear-gradient(135deg,#1A2542,#2B3A6B);border-radius:14px 14px 0 0;padding:20px 32px;display:flex;align-items:center;justify-content:space-between}
+  .brand h1{font-family:'DM Serif Display',serif;font-size:18px;color:#fff}
+  .brand p{font-size:11px;color:#94a3b8;margin-top:2px}
+  .tag{background:rgba(240,165,0,0.2);border:1px solid var(--amber);color:var(--amber);font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px}
+  .card{background:#fff;padding:32px;border:1px solid var(--border);border-top:none}
+  .proto-bar{background:var(--light);border-radius:8px;padding:9px 14px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between}
+  .proto-bar span{font-size:12px;color:var(--gray)}
+  .pnum{font-family:monospace;font-size:15px;font-weight:700;color:var(--dark)}
+  .pdata{font-size:11px;color:var(--gray)}
+  .sec{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid var(--light)}
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+  .g1{display:grid;grid-template-columns:1fr;gap:16px;margin-bottom:24px}
+  .field{display:flex;flex-direction:column;gap:5px}
+  label{font-size:12px;font-weight:600;color:var(--dark)}
+  .req{color:var(--red)}
+  input,select,textarea{font-family:'DM Sans',sans-serif;font-size:14px;padding:9px 13px;border:1.5px solid var(--border);border-radius:8px;color:#1e293b;background:#F8FAFC;transition:all 0.2s;outline:none}
+  input:focus,select:focus,textarea:focus{border-color:var(--navy);background:#fff;box-shadow:0 0 0 3px rgba(43,58,107,0.1)}
+  textarea{resize:vertical;min-height:70px}
+  .fianca{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:24px}
+  .fop{border:2px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;transition:all 0.2s;text-align:center;user-select:none}
+  .fop:hover{border-color:var(--navy);transform:translateY(-1px)}
+  .fop.ativo{border-color:var(--navy);background:var(--light)}
+  .fop-ico{font-size:22px;margin-bottom:6px}
+  .fop-nome{font-size:12px;font-weight:700;color:var(--dark);line-height:1.2}
+  .footer{background:linear-gradient(135deg,#1A2542,#2B3A6B);border-radius:0 0 14px 14px;padding:20px 32px;display:flex;align-items:center;justify-content:space-between}
+  .ftxt{font-size:12px;color:#94a3b8}
+  .btn-env{background:var(--amber);color:var(--dark);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;padding:11px 28px;border:none;border-radius:8px;cursor:pointer;transition:all 0.2s}
+  .btn-env:hover{background:#d4920a}
+  .btn-env:disabled{opacity:0.5;cursor:not-allowed}
+  .suc{display:none;text-align:center;padding:48px 32px;background:#fff;border:1px solid var(--border);border-top:none}
+  .suc.show{display:block}
+  .suc-ico{font-size:52px;margin-bottom:12px}
+  .suc-h{font-family:'DM Serif Display',serif;font-size:24px;color:var(--dark);margin-bottom:8px}
+  .suc-p{font-size:14px;color:var(--gray);margin-bottom:20px;line-height:1.6}
+  .pbadge{display:inline-block;background:var(--light);color:var(--dark);font-family:monospace;font-size:20px;font-weight:700;padding:12px 28px;border-radius:8px;margin-bottom:24px;border:2px solid var(--navy)}
+  .info-box{background:#F0FFF4;border:1.5px solid var(--green);border-radius:10px;padding:16px 20px;text-align:left;margin-bottom:20px;font-size:13px;color:#155724;line-height:1.7}
+  .btn-nv{background:var(--navy);color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 24px;border:none;border-radius:8px;cursor:pointer;transition:all 0.2s}
+  .btn-nv:hover{background:var(--dark)}
+  .overlay{display:none;position:fixed;inset:0;background:rgba(26,37,66,0.75);align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:14px}
+  .overlay.show{display:flex}
+  .spin{width:44px;height:44px;border:4px solid rgba(255,255,255,0.2);border-top-color:var(--amber);border-radius:50%;animation:spin 0.8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .stxt{color:#fff;font-size:15px;font-weight:600}
+  @media(max-width:580px){.g2,.fianca{grid-template-columns:1fr 1fr}.card,.footer{padding:24px 18px}.header{padding:18px;flex-direction:column;align-items:flex-start;gap:10px}.footer{flex-direction:column;gap:12px}.btn-env{width:100%}}
+</style>
+</head>
+<body>
+<div class="overlay" id="overlay"><div class="spin"></div><div class="stxt">Registrando entrega...</div></div>
+<div class="page">
+  <div class="header">
+    <div class="brand"><h1>Nova São Paulo</h1><p>Entrega de Chaves · Cadastro</p></div>
+    <div class="tag">Novo Processo</div>
+  </div>
+  <div class="card" id="formCard">
+    <div class="proto-bar">
+      <span>Protocolo: <span class="pnum" id="proto"></span></span>
+      <span class="pdata" id="pdata"></span>
+    </div>
+
+    <div class="sec">01 — Partes Envolvidas</div>
+    <div class="g2">
+      <div class="field"><label>Locador <span class="req">*</span></label><input type="text" id="locador" placeholder="Nome do proprietário"></div>
+      <div class="field"><label>E-mail(s) do locador <span class="req">*</span></label><input type="text" id="emailLocador" placeholder="email1@x.com, email2@x.com"><div style="font-size:11px;color:#94a3b8;margin-top:4px">Para mais de um locador, separe os emails por vírgula.</div></div>
+      <div class="field"><label>Locatário <span class="req">*</span></label><input type="text" id="locatario" placeholder="Nome do inquilino"></div>
+      <div class="field"><label>E-mail do locatário <span class="req">*</span></label><input type="email" id="emailLocatario" placeholder="locatario@email.com"></div>
+    </div>
+
+    <div class="sec">02 — Imóvel</div>
+    <div class="g1">
+      <div class="field"><label>Endereço do imóvel <span class="req">*</span></label><input type="text" id="endereco" placeholder="Rua, número, complemento"></div>
+    </div>
+
+    <div class="sec">03 — Tipo de Fiança</div>
+    <div class="fianca">
+      <div class="fop" id="f-seg" onclick="selFianca('Seguro fiança','f-seg')"><div class="fop-ico">🛡️</div><div class="fop-nome">Seguro fiança</div></div>
+      <div class="fop" id="f-cau" onclick="selFianca('Caução','f-cau')"><div class="fop-ico">💰</div><div class="fop-nome">Caução</div></div>
+      <div class="fop" id="f-tit" onclick="selFianca('Título de capitalização','f-tit')"><div class="fop-ico">📜</div><div class="fop-nome">Título de capitalização</div></div>
+      <div class="fop" id="f-fia" onclick="selFianca('Fiador','f-fia')"><div class="fop-ico">🤝</div><div class="fop-nome">Fiador</div></div>
+    </div>
+
+    <div class="sec">04 — Situação da Entrega</div>
+    <div class="fianca" style="grid-template-columns:1fr 1fr">
+      <div class="fop ativo" id="m-age" onclick="selModo('agendamento','m-age')"><div class="fop-ico">📅</div><div class="fop-nome">Agendamento</div></div>
+      <div class="fop" id="m-ent" onclick="selModo('entrega','m-ent')"><div class="fop-ico">🔑</div><div class="fop-nome">Entrega já realizada</div></div>
+    </div>
+    <div class="g2">
+      <div class="field"><label id="lblData">Data prevista da entrega das chaves</label><input type="date" id="dataAgendada"></div>
+      <div class="field"><label>&nbsp;</label><input type="text" id="obs" placeholder="Observações (opcional)"></div>
+    </div>
+  </div>
+
+  <div class="footer" id="footerCard">
+    <div class="ftxt">Campos com <span style="color:var(--amber)">*</span> são obrigatórios.<br>Locador e locatário receberão a confirmação por e-mail.</div>
+    <button class="btn-env" id="btnEnv" onclick="enviar()">Registrar Entrega →</button>
+  </div>
+
+  <div class="suc" id="sucCard">
+    <div class="suc-ico">🔑</div>
+    <div class="suc-h">Processo Registrado!</div>
+    <div class="suc-p">A entrega de chaves foi agendada.<br>As partes foram notificadas por e-mail.</div>
+    <div class="pbadge" id="pbadge"></div>
+    <div class="info-box" id="infoBox"></div>
+    <button class="btn-nv" onclick="novo()">+ Novo Processo</button>
+  </div>
+
+  <div style="text-align:center;margin-top:12px"><span style="font-size:11px;color:#94a3b8">Nova São Paulo Imobiliária · Departamento de Entrega de Chaves · Uso Interno</span></div>
+</div>
+
+<script>
+var SURL='https://script.google.com/macros/s/AKfycbyMjypc0XTMs_RR6I9GMyuOkguE7u-QXDJjczMQoSayduM1_AAhmUfe2GDJdXujsqpa6w/exec';
+var fianca=null;
+var modo='agendamento';
+
+function selModo(v,id){
+  modo=v;
+  document.getElementById('m-age').classList.toggle('ativo',v==='agendamento');
+  document.getElementById('m-ent').classList.toggle('ativo',v==='entrega');
+  document.getElementById('lblData').textContent = v==='entrega' ? 'Data da entrega das chaves' : 'Data prevista da entrega das chaves';
+}
+
+function gProto(){
+  var n=new Date();
+  return 'CHV-'+n.getFullYear()+String(n.getMonth()+1).padStart(2,'0')+String(n.getDate()).padStart(2,'0')+'-'+String(Math.floor(Math.random()*9000)+1000);
+}
+function gData(){
+  var n=new Date();
+  return n.toLocaleDateString('pt-BR')+' '+n.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+document.getElementById('proto').textContent=gProto();
+document.getElementById('pdata').textContent=gData();
+
+function selFianca(v,id){
+  fianca=v;
+  document.querySelectorAll('.fop').forEach(function(el){el.classList.remove('ativo');});
+  document.getElementById(id).classList.add('ativo');
+}
+
+function fmtData(iso){
+  if(!iso) return '';
+  var p=iso.split('-');
+  return p.length===3? p[2]+'/'+p[1]+'/'+p[0] : iso;
+}
+
+function enviar(){
+  var locador=document.getElementById('locador').value.trim();
+  var emailLocador=document.getElementById('emailLocador').value.trim();
+  var locatario=document.getElementById('locatario').value.trim();
+  var emailLocatario=document.getElementById('emailLocatario').value.trim();
+  var endereco=document.getElementById('endereco').value.trim();
+  var dataAgendada=fmtData(document.getElementById('dataAgendada').value);
+  var obs=document.getElementById('obs').value.trim();
+  var proto=document.getElementById('proto').textContent;
+
+  if(!locador){alert('Informe o locador.');return;}
+  if(!emailLocador){alert('Informe ao menos um e-mail do locador.');return;}
+  // Aceita 1 ou mais emails separados por virgula
+  var emailsLoc=emailLocador.split(',').map(function(s){return s.trim();}).filter(Boolean);
+  var reEmail=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  var invLoc=emailsLoc.filter(function(e){return !reEmail.test(e);});
+  if(!emailsLoc.length){alert('Informe ao menos um e-mail do locador.');return;}
+  if(invLoc.length){alert('E-mail(s) do locador inválido(s): '+invLoc.join(', '));return;}
+  // Normaliza para virgula+espaco
+  emailLocador=emailsLoc.join(', ');
+  if(!locatario){alert('Informe o locatário.');return;}
+  if(!emailLocatario){alert('Informe o e-mail do locatário.');return;}
+  if(!endereco){alert('Informe o endereço do imóvel.');return;}
+  if(!fianca){alert('Selecione o tipo de fiança.');return;}
+
+  var payload={protocolo:proto,locador:locador,emailLocador:emailLocador,locatario:locatario,emailLocatario:emailLocatario,endereco:endereco,tipoFianca:fianca,dataAgendada:dataAgendada,modo:modo,obs:obs};
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('btnEnv').disabled=true;
+
+  // POST com body puro no formato que o doPost do GAS espera:
+  // JSON.parse(e.postData.contents) direto — payload sem wrapper.
+  // Content-Type text/plain evita preflight CORS no Apps Script.
+  var url=SURL+'?t='+Date.now();
+  var bodyJson=JSON.stringify(payload);
+  console.log('[cadastro] enviando POST pra GAS. Body:', bodyJson.length, 'chars');
+
+  fetch(url, {
+    method: 'POST',
+    body: bodyJson,
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    redirect: 'follow'
+  }).then(function(r){
+    console.log('[cadastro] GAS HTTP', r.status);
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    return r.text();
+  }).then(function(txt){
+    console.log('[cadastro] resposta:', String(txt).substring(0,300));
+    var resp={};
+    try { resp = JSON.parse(txt); } catch(e) {
+      throw new Error('Resposta não-JSON do GAS: ' + String(txt).substring(0,100));
+    }
+    if (resp.success === false) throw new Error(resp.error || 'GAS retornou success:false');
+    if (!resp.success && !resp.protocolo) throw new Error('GAS não confirmou o cadastro. Resposta: ' + JSON.stringify(resp).substring(0,150));
+    // Sucesso — mostra a tela final
+    document.getElementById('overlay').classList.remove('show');
+    document.getElementById('pbadge').textContent=proto;
+    var ehEntrega=modo==='entrega';
+    document.querySelector('.suc-p').innerHTML=(ehEntrega?'A entrega das chaves foi registrada (etapa 2).':'A entrega de chaves foi agendada.')+'<br>As partes foram notificadas por e-mail.';
+    var rotuloData=ehEntrega?'Entrega realizada':'Entrega agendada';
+    document.getElementById('infoBox').innerHTML='<strong>Resumo:</strong><br>Situação: '+(ehEntrega?'Entrega já realizada':'Agendamento')+'<br>Locador: '+locador+'<br>Locatário: '+locatario+'<br>Imóvel: '+endereco+'<br>Fiança: '+fianca+(dataAgendada?'<br>'+rotuloData+': '+dataAgendada:'');
+    document.getElementById('formCard').style.display='none';
+    document.getElementById('footerCard').style.display='none';
+    document.getElementById('sucCard').classList.add('show');
+    window.scrollTo({top:0,behavior:'smooth'});
+  }).catch(function(e){
+    console.error('[cadastro] falha:', e);
+    document.getElementById('overlay').classList.remove('show');
+    document.getElementById('btnEnv').disabled=false;
+    alert('❌ NÃO foi possível registrar o cadastro.\n\nErro: '+(e.message||e)+'\n\nPossíveis causas:\n• Sem conexão com internet\n• GAS de manutenção fora do ar\n• Dados muito extensos (observações longas)\n\nTente de novo. Se persistir, avise o Rodrigo.');
+  });
+}
+
+function novo(){
+  fianca=null;
+  document.getElementById('sucCard').classList.remove('show');
+  document.getElementById('formCard').style.display='block';
+  document.getElementById('footerCard').style.display='flex';
+  document.getElementById('btnEnv').disabled=false;
+  document.querySelectorAll('.fop').forEach(function(el){el.classList.remove('ativo');});
+  document.querySelectorAll('input,textarea').forEach(function(el){el.value='';});
+  selModo('agendamento','m-age');
+  document.getElementById('proto').textContent=gProto();
+  document.getElementById('pdata').textContent=gData();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+</script>
+</body>
+</html>
