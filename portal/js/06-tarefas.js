@@ -49,7 +49,10 @@ async function loadTar(){
     for (const a of AREAS_TAREFAS) porArea[a.key] = [];
     porArea['outros'] = [];
 
+    // Concluídas saem da visão principal e vão pro repositório recolhível no fim
+    const concluidas = [];
     for (const t of d) {
+      if (String(t.status || t.Status || '').includes('Conclu')) { concluidas.push(t); continue; }
       const respRaw = String(t.responsavel || t['Responsável'] || t.Responsavel || '');
       const primeiroResp = respRaw.split(',')[0].trim();
       const area = _areaPorResp(primeiroResp);
@@ -127,6 +130,16 @@ async function loadTar(){
       html += porArea['outros'].map(renderRow).join('');
     }
 
+    // Repositório de concluídas (oculto por padrão; clique no cabeçalho mostra/oculta)
+    if (concluidas.length) {
+      html += `<tr><td colspan="7" style="padding:11px 14px;background:#f0fdf4;border-top:1px solid var(--borda);cursor:pointer" onclick="_tarToggleConcluidas()">
+        <span style="font-size:12px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:.5px">✅ Concluídas</span>
+        <span style="background:#16a34a;color:#fff;font-size:10px;font-weight:700;padding:1px 8px;border-radius:99px;margin-left:6px">${concluidas.length}</span>
+        <span id="tar-conc-hint" style="color:#94a3b8;font-size:11px;margin-left:6px">▸ mostrar</span>
+      </td></tr>`;
+      html += concluidas.map(x => renderRow(x).replace('<tr style="', '<tr class="tar-conc" hidden style="')).join('');
+    }
+
     tbody.innerHTML = html;
   }catch(e){
     console.error('loadTar:', e.message);
@@ -194,3 +207,13 @@ async function _tarStatusChange(id, status){
   }catch(e){ toast('Erro: '+e.message,'err'); }
 }
 
+
+
+// Mostra/oculta o repositório de tarefas concluídas
+function _tarToggleConcluidas(){
+  const linhas = document.querySelectorAll('tr.tar-conc');
+  const mostrar = linhas.length && linhas[0].hidden;
+  linhas.forEach(r => { r.hidden = !mostrar; });
+  const hint = document.getElementById('tar-conc-hint');
+  if (hint) hint.textContent = mostrar ? '▾ ocultar' : '▸ mostrar';
+}

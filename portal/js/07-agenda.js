@@ -330,46 +330,47 @@ async function renderAg(){
     // Reuniões fixas da PAUTA (terça Mkt, quarta Adm/Jurídico, quinta 1:1s)
     // injetadas no topo com participantes visíveis.
     const reunioes = (typeof reunioesDoDia === 'function') ? reunioesDoDia(day) : [];
-    const cardsReuniao = reunioes.map(r => {
+    const itensFixos = reunioes.map(r => {
       const canc = cancelDia[r.tipo];
       if (canc) {
-        // Cancelada esta semana: nota discreta + desfazer (lideres)
-        return `<div style="padding:6px 8px;border-radius:6px;font-size:11px;margin-bottom:4px;background:var(--bg);border-left:3px solid #cbd5e1;color:#94a3b8">
+        return { hora: r.hora || '99:99', html: `<div style="padding:6px 8px;border-radius:6px;font-size:11px;margin-bottom:4px;background:var(--bg);border-left:3px solid #cbd5e1;color:#94a3b8">
           <s>${r.hora} · ${r.label}</s> cancelada esta semana
           ${podeCancelarReuniao ? `<a href="#" onclick="event.preventDefault();desfazerCancelReuniao('${String(canc.id||'')}')" style="color:#3b82f6;font-size:10px;margin-left:4px">desfazer</a>` : ''}
-        </div>`;
+        </div>` };
       }
       const partsFmt = r.participantes.map(p => p.split(' ')[0]).join(', ');
       const btnCanc = podeCancelarReuniao
         ? `<span onclick="event.stopPropagation();cancelarReuniaoFixa('${r.tipo}','${r.label}','${iso}')" title="Cancelar esta reunião só nesta semana" style="float:right;color:#94a3b8;font-weight:700;padding:0 3px;cursor:pointer">✕</span>`
         : '';
-      return `<div onclick="goTo('pauta-${r.tipo}')" title="Abrir pauta desta reunião · Participantes: ${r.participantes.join(', ')}"
+      return { hora: r.hora || '99:99', html: `<div onclick="goTo('pauta-${r.tipo}')" title="Abrir pauta desta reunião · Participantes: ${r.participantes.join(', ')}"
         style="padding:6px 8px;border-radius:6px;font-size:11.5px;margin-bottom:4px;background:${r.cor}15;border-left:3px solid ${r.cor};cursor:pointer">
         <div style="font-weight:700;color:${r.cor}">${btnCanc}<b>${r.hora}</b> · ${r.label} <span style="font-size:9px;background:${r.cor};color:#fff;padding:1px 5px;border-radius:8px;margin-left:3px">REUNIÃO</span></div>
         <div style="font-size:10px;color:#64748b;margin-top:2px">👥 ${partsFmt}</div>
-      </div>`;
-    }).join('');
+      </div>` };
+    });
+    const itensEv = evDia.map(e=>{
+      const hi=(e.hora_inicio||'').slice(0,5);
+      const hf=(e.hora_fim||'').slice(0,5);
+      const horario = hi ? (hf ? `${hi}–${hf}` : hi) : '';
+      const resp = (e.responsavel||'').trim();
+      const eid = String(e.id||'');
+      const ehPessoal = String(e.tipo||'').toLowerCase()==='pessoal';
+      const bgEv = ehPessoal ? '#f5f3ff' : 'var(--bg)';
+      return { hora: hi || '99:99', html: `<div style="padding:5px 7px;border-radius:6px;font-size:11.5px;margin-bottom:4px;background:${bgEv};cursor:pointer" onclick="abrirEditarEv('${eid}')" title="${ehPessoal?'Compromisso pessoal (só você vê)':'Clique para editar'}">
+        ${horario?`<b>${horario}</b> `:''}${ehPessoal?'🔒 ':''}${e.titulo||''}
+        ${(!ehPessoal && resp)?`<div style="font-size:10px;color:#64748b;margin-top:2px">👤 ${resp.length>40?resp.slice(0,38)+'…':resp}</div>`:''}
+      </div>` };
+    });
+    // Reuniões fixas + eventos ordenados JUNTOS por horário (antes as fixas ficavam num bloco no topo)
+    const itensDia = [...itensFixos, ...itensEv]
+      .sort((a,b)=> String(a.hora||'99:99').localeCompare(String(b.hora||'99:99')));
     return`<div class="card">
       <div style="padding:10px;text-align:center;background:var(--bg);border-bottom:1px solid var(--borda)">
         <div style="font-size:11px;font-weight:700;color:#94a3b8">${ns[i]}</div>
         <div style="font-size:20px;font-weight:800;${isToday(day)?'color:#2a4070':''}">${day.getDate()}</div>
-        ${badge4a}
       </div>
       <div style="padding:6px;min-height:60px">
-        ${cardsReuniao}
-        ${evDia.map(e=>{
-          const hi=(e.hora_inicio||'').slice(0,5);
-          const hf=(e.hora_fim||'').slice(0,5);
-          const horario = hi ? (hf ? `${hi}–${hf}` : hi) : '';
-          const resp = (e.responsavel||'').trim();
-          const eid = String(e.id||'');
-          const ehPessoal = String(e.tipo||'').toLowerCase()==='pessoal';
-          const bgEv = ehPessoal ? '#f5f3ff' : 'var(--bg)';
-          return `<div style="padding:5px 7px;border-radius:6px;font-size:11.5px;margin-bottom:4px;background:${bgEv};cursor:pointer" onclick="abrirEditarEv('${eid}')" title="${ehPessoal?'Compromisso pessoal (só você vê)':'Clique para editar'}">
-            ${horario?`<b>${horario}</b> `:''}${ehPessoal?'🔒 ':''}${e.titulo||''}
-            ${(!ehPessoal && resp)?`<div style="font-size:10px;color:#64748b;margin-top:2px">👤 ${resp.length>40?resp.slice(0,38)+'…':resp}</div>`:''}
-          </div>`;
-        }).join('')}
+        ${itensDia.map(x=>x.html).join('')}
         <button onclick="abrirNovoEv('${iso}')" style="width:100%;padding:4px;font-size:11px;color:#94a3b8;background:none;border:1px dashed var(--borda);border-radius:6px;cursor:pointer;margin-top:4px">+ add</button>
       </div>
     </div>`;
@@ -626,6 +627,15 @@ async function saveEv(){
     _saveEvBusy = false;
   }, 50000);   // > timeout de escrita (45s) pra nao liberar duplo-clique antes da resposta
   console.log('[saveEv] iniciando', _editEvId ? '(EDIT id='+_editEvId+')' : '(CREATE)');
+  // Sessão válida ANTES de gravar: o token vence em 1h; sem renovar, a escrita
+  // cai pra chave anônima e o RLS bloqueia — era a causa de "não salva de novo".
+  if (typeof renovarSessaoSupabase === 'function') {
+    const okSess = await renovarSessaoSupabase();
+    if (!okSess) {
+      toast('Sua sessão expirou. Recarregue a página (F5) e entre de novo para salvar.','err');
+      _saveEvBusy = false; clearTimeout(_saveEvSafetyTimer); return;
+    }
+  }
   const ti=document.getElementById('et')?.value?.trim();
   const dataVal=document.getElementById('ed')?.value;
   console.log('[saveEv] titulo:', ti, 'data:', dataVal);

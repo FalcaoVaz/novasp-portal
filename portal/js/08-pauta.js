@@ -6,7 +6,7 @@
 // às 4as-feiras (dow:3) e se intercalam — uma semana adm, na outra jurídico.
 const PAUTA_CFG = {
   terca:      {aba:'PAUTA_TERCA',     cor:'#8B5CF6', dom:'ter',        dow:2, hora:'15:00', lb:'Mkt',       quinzenal:false, paridade:null},
-  quarta:     {aba:'PAUTA_QUARTA',    cor:'#0EA5E9', dom:'qua',        dow:3,               lb:'Adm',       quinzenal:true,  paridade:0},
+  quarta:     {aba:'PAUTA_QUARTA',    cor:'#0EA5E9', dom:'qua',        dow:3, hora:'11:00', lb:'Adm',       quinzenal:true,  paridade:0},
   juridico:   {aba:'PAUTA_JURIDICO',  cor:'#D97706', dom:'jur',        dow:3,               lb:'Jurídico',  quinzenal:true,  paridade:1},
   // 1:1 quinzenais com gerentes de vendas — TODOS na 5a-feira (dow=4):
   //   Semana A: Felippe 10h, Emilia 11h
