@@ -1,3 +1,4 @@
+const SANDBOX = true;  // AMBIENTE DE TESTES — nao mesclar na main
 ﻿const SBU='https://tllumapesxspkjqylpix.supabase.co';
 const SBK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsbHVtYXBlc3hzcGtqcXlscGl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MDczNjYsImV4cCI6MjEwNDk4MzM2Nn0.0cQsLPp2GWe8OUAi0tNAva1fwRUS9_BgK-hfyrRHu2o';
 const H={'apikey':SBK,'Authorization':'Bearer '+SBK,'Content-Type':'application/json','Prefer':'return=representation'};
@@ -5,16 +6,17 @@ const H={'apikey':SBK,'Authorization':'Bearer '+SBK,'Content-Type':'application/
 // Apps Script URLs
 // URL1 = Requisições (NSP) | URL2 = Manutenção Predial (MAN)
 // URL_A=Manutenção (acao=listar_chamados) | URL_B=Requisições (sem param)
-const GAS_MANUTENCAO  = 'https://script.google.com/macros/s/AKfycbzYe4LtYkrHYvAa01L7Gj7kLt49BcTksANSB79m0NaRP4HbKI97HD0IglJ5A-eLoZ5ouQ/exec';
-const GAS_REQUISICOES = 'https://script.google.com/macros/s/AKfycbyGxdULpRrk-UPaPWmciY6tvjzlyTvff1tsVxsaFdXH1wMiNWSpMscYTwsaHs2aUImQhw/exec';
-const GAS_CALENDAR    = 'https://script.google.com/macros/s/AKfycbzvYElSoSN_rBikiur2Z-kgDF06xt8lvL-F6BfahfayyHKMWPUzqe78_s4h1YjK-0Q/exec';
+const GAS_MANUTENCAO = '';  // desligado no sandbox
+const GAS_REQUISICOES = '';  // desligado no sandbox
+const GAS_CALENDAR = '';  // desligado no sandbox
 // Apps Script de email (compartilhado com falcaovaz) — para boas-vindas e outras notificacoes
-const GAS_EMAIL       = 'https://script.google.com/macros/s/AKfycbw6QlYrbYAlM4TFLvX92j5d19WUHHYrN-ykiGp1Umxu4qb8MzjV7oJVixkM4EFqBQqGqw/exec';
+const GAS_EMAIL = '';  // desligado no sandbox
 
 // Cliente Apps Script — GET
 // timeoutMs: o Apps Script trava intermitentemente; sem timeout o fetch
 // fica pendurado e a agenda "some" da tela. AbortController corta em 20s.
 async function gasGet(url, params={}, opts={}) {
+  if (SANDBOX || !url) throw new Error('Modulo indisponivel no ambiente de testes (sandbox).');
   const q = new URLSearchParams({...params, t: Date.now()}).toString();
   const timeoutMs = opts.timeoutMs || 20000;
   const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
@@ -57,6 +59,7 @@ async function gasGetCached(url, params={}, ttlMs=60000){
 }
 // Cliente Apps Script — POST
 async function gasPost(url, body) {
+  if (SANDBOX || !url) throw new Error('Modulo indisponivel no ambiente de testes (sandbox).');
   const r = await fetch(url, {
     method: 'POST',
     headers: {'Content-Type':'text/plain'},
@@ -214,7 +217,7 @@ function encerrarSessaoSupabase(){
 // localStorage daqui. O portal é o único dono do refresh_token;
 // o jurídico só recebe o access_token (1h) e pede outro quando
 // está pra vencer. Sem isso, o jurídico quebra quando o RLS ligar.
-const JURIDICO_ORIGIN = 'https://falcaovaz.netlify.app';
+const JURIDICO_ORIGIN = 'SANDBOX_JURIDICO_ORIGIN';  // preencher com a URL do preview do juridico
 
 async function _enviarTokenJuridico(alvo){
   try {
@@ -253,3 +256,6 @@ const db={
   async patch(t,id,d){const r=await fetch(SBU+'/rest/v1/'+t+'?id=eq.'+id,{method:'PATCH',headers:hdr(),body:JSON.stringify(d)});if(!r.ok){const b=await r.json();throw new Error(b.message||JSON.stringify(b));}return r.json();},
   async del(t,id){const r=await fetch(SBU+'/rest/v1/'+t+'?id=eq.'+id,{method:'DELETE',headers:hdr()});return r.ok;}
 };
+
+// --- Banner de sandbox (branch sandbox; nunca na main) ---
+if (typeof document!=='undefined'){document.addEventListener('DOMContentLoaded',function(){try{var b=document.createElement('div');b.textContent='AMBIENTE DE TESTES (SANDBOX) - dados ficticios; Manutencao, Requisicoes, Tarefas, Pautas e e-mails estao desligados.';b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;background:#b45309;color:#fff;font:600 12px/1.4 system-ui,sans-serif;padding:6px 12px;text-align:center';document.body.appendChild(b);document.body.style.paddingTop='30px';}catch(e){}});}

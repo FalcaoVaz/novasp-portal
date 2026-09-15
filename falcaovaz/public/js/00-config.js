@@ -11,12 +11,12 @@ const EMPRESA_DADOS = {
 // ═══════════════════════════════════════════════════
 // SUPABASE — CONFIGURAÇÃO
 // ═══════════════════════════════════════════════════
-const SUPABASE_URL = 'https://mqcduyvpuxdweqesgwrq.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1xY2R1eXZwdXhkd2VxZXNnd3JxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4MzE5OTcsImV4cCI6MjA5MzQwNzk5N30.QdpRZRxnYF6GTh13wdTNqZTQ-9ztY3veef62mfGRphE';
+const SUPABASE_URL = 'https://tllumapesxspkjqylpix.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsbHVtYXBlc3hzcGtqcXlscGl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MDczNjYsImV4cCI6MjEwNDk4MzM2Nn0.0cQsLPp2GWe8OUAi0tNAva1fwRUS9_BgK-hfyrRHu2o';
 
 // URL do Apps Script de envio de email do juridico (substitui Resend).
 // Crie o Web App seguindo o codigo em falcaovaz/gas/email-juridico.gs e cole a URL aqui.
-const GAS_EMAIL_JURIDICO = 'https://script.google.com/macros/s/AKfycbw6QlYrbYAlM4TFLvX92j5d19WUHHYrN-ykiGp1Umxu4qb8MzjV7oJVixkM4EFqBQqGqw/exec';
+const GAS_EMAIL_JURIDICO = '';  // desligado no sandbox
 
 const DB_HEADERS = {
   'apikey': SUPABASE_KEY,
@@ -180,3 +180,6 @@ function esperarTokenPortal(timeoutMs){
   });
 }
 
+
+// --- Banner de sandbox ---
+if (typeof document!=='undefined'){document.addEventListener('DOMContentLoaded',function(){try{var b=document.createElement('div');b.textContent='AMBIENTE DE TESTES (SANDBOX) - dados ficticios; e-mails desligados.';b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;background:#b45309;color:#fff;font:600 12px/1.4 system-ui,sans-serif;padding:6px 12px;text-align:center';document.body.appendChild(b);document.body.style.paddingTop='30px';}catch(e){}});}
