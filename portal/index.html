@@ -347,6 +347,12 @@
             <div class="pcd">Envio pelas equipes, peneira pelos gerentes, validade de 3 meses.</div>
             <div class="pcb">Disponível</div>
           </div>
+          <div class="pc" data-tone="amber" id="card-vnd-captacao" onclick="goTo('vnd-captacao')">
+            <div class="pci"><i data-icon="award" data-size="32"></i></div>
+            <div class="pct">Captação Mensal</div>
+            <div class="pcd">Upload mensal por equipe — lista quem bateu a meta (5+ captações).</div>
+            <div class="pcb">Disponível</div>
+          </div>
           <div class="pc" data-tone="amber" id="card-vnd-peneira" onclick="goTo('vnd-peneira')" style="display:none">
             <div class="pci"><i data-icon="check-square" data-size="32"></i></div>
             <div class="pct">Peneira</div>
@@ -383,6 +389,37 @@
       <!-- Avaliação de Imóveis (motor em lote → dossiê + link) -->
       <div class="page" id="p-aval-imoveis">
         <div id="aval-imoveis-root">Carregando…</div>
+      </div>
+
+      <!-- Captação Mensal por Corretor -->
+      <div class="page" id="p-vnd-captacao">
+        <div class="ph">
+          <div>
+            <h1 class="pt">Captação Mensal</h1>
+            <div class="pst">Lançamento de captações por corretor · meta: 5+ no mês</div>
+          </div>
+          <div class="flex" style="gap:6px;flex-wrap:wrap">
+            <button class="btn btn-o" onclick="baixarModeloCaptacao()" title="Baixa o XLSX modelo (Corretor, Equipe, Quantia de Captação)">📥 Baixar modelo</button>
+            <label class="btn btn-p" style="cursor:pointer;margin:0">📤 Importar planilha
+              <input type="file" accept=".xlsx,.xls" style="display:none" onchange="_capUpload(this)">
+            </label>
+          </div>
+        </div>
+        <div class="card" style="padding:12px 14px;margin-bottom:14px">
+          <label style="font-size:13px;color:#64748b">Mês de referência:
+            <input type="month" id="cap-mes" onchange="carregarCaptacao()" style="margin-left:6px;padding:6px 10px;border:1.5px solid var(--borda);border-radius:8px">
+          </label>
+          <span id="cap-status" style="margin-left:10px;font-size:12px;color:#94a3b8"></span>
+        </div>
+        <div class="card"><div class="cb" style="padding:0"><div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:.9em">
+            <thead><tr style="text-align:left;color:#64748b;border-bottom:1px solid var(--borda)">
+              <th style="padding:10px 12px">#</th><th style="padding:10px 12px">Corretor</th>
+              <th style="padding:10px 12px">Equipe</th><th style="padding:10px 12px;text-align:right">Captações</th>
+            </tr></thead>
+            <tbody id="tb-vnd-captacao"><tr><td colspan="4" style="padding:20px;text-align:center;color:#94a3b8">Escolha o mês e importe a planilha.</td></tr></tbody>
+          </table>
+        </div></div></div>
       </div>
 
       <!-- Seleção de Imóveis -->
@@ -1623,7 +1660,7 @@
     <div class="fg"><label>Título *</label><input class="fc" id="et" placeholder="Ex: Reunião de diretoria"></div>
     <div class="frow">
       <div class="fg"><label>Data</label><input type="date" class="fc" id="ed"></div>
-      <div class="fg"><label>Tipo</label><select class="fc" id="ety"><option>Reunião</option><option>Reunião Adm</option><option>Reunião Jurídico</option><option>Visita</option><option>Prazo</option><option>Outro</option></select></div>
+      <div class="fg"><label>Tipo</label><select class="fc" id="ety"><option>Reunião</option><option>Reunião Adm</option><option>Reunião Jurídico</option><option>Visita</option><option>Treinamento</option><option>Prazo</option><option>Outro</option></select></div>
     </div>
     <div class="frow">
       <div class="fg"><label>Início</label><select class="fc" id="ei"></select></div>
