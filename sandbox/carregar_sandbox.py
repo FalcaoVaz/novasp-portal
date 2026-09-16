@@ -59,6 +59,33 @@ def mascara_linha(tabela, row):
     return out
 
 
+# ── Modo piloto: os 8 participantes acessam TODOS os módulos no sandbox ──
+# Roda ao fim da carga (a recarga de segunda restaura as flags do backup, que
+# são as de produção/restritas). Só afeta o SANDBOX — main() já recusa DSN de
+# produção antes de chegar aqui. NÃO altera produção nem a main.
+PILOTO_EMAILS = [
+    'rodrigo@novasaopaulo.com.br',         # Rodrigo
+    'anderson.lucchi@novasaopaulo.com.br', # Anderson
+    'cpd@novasaopaulo.com.br',             # Gabriela
+    'thais.barbosa@novasaopaulo.com.br',   # Thais
+    'financeiro@novasaopaulo.com.br',      # Dayani (Day)
+    'ti@novasaopaulo.com.br',              # Fabio
+    'fernanda.araujo@novasaopaulo.com.br', # Fernanda (jurídico)
+    'renata@novasaopaulo.com.br',          # Renata Navarro
+]
+
+def elevar_piloto(con):
+    """Eleva os 8 do piloto a acesso total no sandbox."""
+    cur = con.cursor()
+    cur.execute("""update usuarios
+        set admin=true, judicial=true, acesso_juridico=true,
+            acesso_interno=true, acesso_calendar=true, nivel=1
+        where lower(email) = any(%s)""", ([e.lower() for e in PILOTO_EMAILS],))
+    n = cur.rowcount
+    con.commit()
+    return n
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--backup', default=None)
@@ -129,7 +156,9 @@ def main():
             con.commit()
         except Exception:
             con.rollback()
+    n_elev = elevar_piloto(con)                       # modo piloto: acesso total aos 8
     print(f'\nOK — {total} linhas carregadas no sandbox (terceiros mascarados; staff preservado).')
+    print(f'Modo piloto: {n_elev} usuários elevados a acesso total (admin/jurídico/interno/calendar/nível 1).')
     con.close()
 
 
