@@ -492,7 +492,7 @@ const MENUS={
   vendas:[
     {ic:'home',          lb:'Seleção de Imóveis',     pg:'vnd-selecao'},
     {ic:'target',        lb:'Captação Mensal',        pg:'vnd-captacao'},
-    {ic:'search',        lb:'Avaliação de Imóveis',   pg:'aval-imoveis'},
+    {ic:'building',      lb:'Avaliação de Imóveis',   pg:'aval-imoveis'},
     {ic:'check',         lb:'Controle de Presença',   pg:'vnd-presenca'},
     {ic:'target',        lb:'Cotas de Anúncios',      pg:'vnd-cotas'},
     {ic:'calendar',      lb:'Agenda do Fotógrafo',    pg:'vnd-fotografo'}
