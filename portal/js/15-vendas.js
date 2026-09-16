@@ -2706,3 +2706,51 @@ async function exportarSelecaoExcel(){
   XLSX.writeFile(wb, nome);
   toast(`📊 ${dados.length} imóveis exportados.`,'ok');
 }
+
+// ═══════════════════════════════════════════════════════════════
+// CAPTAÇÃO MENSAL POR CORRETOR (pedido Anderson, 16/09/2026).
+// Adaptado ao portal real: CUR (não state.usuarioAtual), toast (não avisar),
+// db.get(t,'?query') e upsert por delete+insert (db.post não tem onConflict);
+// casa nome por normalização (trim+minúsculo+sem acento). RLS = acesso_autenticado
+// (quem pode enviar é gated na UI, como no resto do portal).
+// ═══════════════════════════════════════════════════════════════
+function _capNorm(s){ return String(s||'').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
+
+// rows = XLSX.utils.sheet_to_json(ws)  → [{Corretor, Equipe, 'Quantia de Captação'}, ...]
+// mesRef = 'YYYY-MM-01'
+async function importarCaptacaoMensal(rows, mesRef){
+  const corretores = await db.get('vendas_corretores', '?select=id,nome,equipe&ativo=eq.true');
+  const idx = {}; (corretores||[]).forEach(c => { idx[_capNorm(c.nome)] = c; });
+  const naoEncontrados = [];
+  const porCorretor = {};                       // dedup por corretor (último vence)
+  for (const linha of (rows||[])){
+    const nome = String(linha['Corretor']||'').trim();
+    if (!nome) continue;
+    const c = idx[_capNorm(nome)];
+    if (!c){ naoEncontrados.push(nome); continue; }
+    porCorretor[c.id] = {
+      corretor_id: c.id, corretor_nome: nome,
+      equipe: String(linha['Equipe']||'').trim() || c.equipe || '',
+      mes_referencia: mesRef,
+      quantidade: Math.max(0, Math.trunc(Number(linha['Quantia de Captação'])||0)),
+      enviado_por: (typeof CUR!=='undefined' && CUR) ? CUR.id : null
+    };
+  }
+  const lancamentos = Object.values(porCorretor);
+  if (naoEncontrados.length)
+    toast('Corretor(es) não encontrado(s) — nome não bate com o cadastro: '+naoEncontrados.join(', '),'err');
+  if (!lancamentos.length) return { gravados:0, naoEncontrados };
+  // "reenviar o mês substitui": apaga as linhas desses corretores no mês e reinsere
+  const ids = lancamentos.map(l=>l.corretor_id).join(',');
+  await fetch(SBU+'/rest/v1/vendas_captacoes_mensais?mes_referencia=eq.'+encodeURIComponent(mesRef)+'&corretor_id=in.('+ids+')',
+              { method:'DELETE', headers:hdr() });
+  await db.post('vendas_captacoes_mensais', lancamentos);
+  return { gravados: lancamentos.length, naoEncontrados };
+}
+
+// Meta: só corretores com 5+ captações no mês, do maior pro menor.
+async function listarMetaCaptacao(mesRef){
+  const dados = await db.get('vendas_captacoes_mensais',
+    '?mes_referencia=eq.'+encodeURIComponent(mesRef)+'&order=quantidade.desc');
+  return (dados||[]).filter(d => (d.quantidade||0) >= 5);
+}
