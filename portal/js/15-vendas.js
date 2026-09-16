@@ -62,8 +62,9 @@ async function carregarSelecaoImoveis(){
       const ym = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
       meses.push(ym);
     }
+    // Default = ciclo ATUAL (antes vinha "Todos ciclos" e misturava aprovados de todos os meses)
     selMs.innerHTML = '<option value="">Todos ciclos</option>' +
-      meses.map(ym => `<option value="${ym}">${_ymLabel(ym)}${ym===cicloAtual?' (atual)':''}</option>`).join('');
+      meses.map(ym => `<option value="${ym}"${ym===cicloAtual?' selected':''}>${_ymLabel(ym)}${ym===cicloAtual?' (atual)':''}</option>`).join('');
   }
 
   const status = document.getElementById('filt-sel-status')?.value || '';

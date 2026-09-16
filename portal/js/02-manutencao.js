@@ -411,12 +411,17 @@ function ehColaboradorGestao(){
 // Tem direito ao modulo Gestao (lider, admin ou colaborador de avaliacao)
 function podeAcessarGestao(){ return ehLiderGestao() || ehColaboradorGestao(); }
 
+// Pessoas com acesso SÓ ao Calendar (sem Vendas/Gestão) — incluídas na agenda
+// por e-mail exato. Ex.: Gabriela (cpd@) e Dayani (financeiro@), set/2026.
+const CALENDAR_EXTRA_EMAILS = ['cpd@novasaopaulo.com.br','financeiro@novasaopaulo.com.br'];
+
 // Calendar é restrito: lideres + gerentes/assistentes de vendas + admin.
 // Substitui a flag acesso_calendar pra evitar que o resto do time apareça
 // nos campos de participantes/responsaveis das agendas e tarefas.
 function podeAcessarCalendar(){
   if (!CUR) return false;
   if (CUR.admin) return true;
+  if (CALENDAR_EXTRA_EMAILS.includes(String(CUR.email||'').trim().toLowerCase())) return true;
   if (typeof ehLiderGestao === 'function' && ehLiderGestao()) return true;
   if (typeof podeAcessarVendas === 'function' && podeAcessarVendas()) return true;
   return false;
@@ -425,6 +430,7 @@ function podeAcessarCalendar(){
 function _usuarioElegivelCalendar(u){
   if (!u) return false;
   if (u.admin) return true;
+  if (CALENDAR_EXTRA_EMAILS.includes(String(u.email||'').trim().toLowerCase())) return true;
   // Acesso total por email exato (TI)
   if (Array.isArray(ACESSO_TOTAL_EMAILS) &&
       ACESSO_TOTAL_EMAILS.includes(String(u.email||'').trim().toLowerCase())) return true;
