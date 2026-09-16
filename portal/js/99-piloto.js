@@ -40,5 +40,20 @@
     };
   }
 
+  // 3) Login sem re-cadastro: no sandbox o GoTrue começa vazio, então
+  //    quem entra pela 1ª vez precisa CRIAR a conta a partir da tela de
+  //    login. Ignoramos o `somenteLogin` (produção usa pra não deixar
+  //    senha errada virar conta) — assim: tenta logar; se a conta ainda
+  //    não existe, cria na hora. Quem já tem conta apenas loga (sem
+  //    aparecer "primeiro acesso"/cadastro de novo).
+  if (typeof window.autenticarSupabase === 'function') {
+    var _origAuth = window.autenticarSupabase;
+    window.autenticarSupabase = function(usuario, senhaPlana, opts){
+      opts = Object.assign({}, opts || {});
+      opts.somenteLogin = false;
+      return _origAuth.call(this, usuario, senhaPlana, opts);
+    };
+  }
+
   console.log('%c[MODO PILOTO] acesso total ativo (somente sandbox)', 'color:#b45309;font-weight:700');
 })();
