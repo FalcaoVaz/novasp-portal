@@ -491,6 +491,7 @@ const MENUS={
   ],
   vendas:[
     {ic:'home',          lb:'Seleção de Imóveis',     pg:'vnd-selecao'},
+    {ic:'target',        lb:'Captação Mensal',        pg:'vnd-captacao'},
     {ic:'search',        lb:'Avaliação de Imóveis',   pg:'aval-imoveis'},
     {ic:'check',         lb:'Controle de Presença',   pg:'vnd-presenca'},
     {ic:'target',        lb:'Cotas de Anúncios',      pg:'vnd-cotas'},
@@ -742,7 +743,7 @@ const TITLES={
   'reg-rh':'Regras — RH',
   'reg-adm':'Regras — Administração',
   'vendas-home':'Gestão de Vendas',
-  'vnd-selecao':'Seleção de Imóveis','aval-imoveis':'Avaliação de Imóveis','vnd-peneira':'Peneira de Imóveis','vnd-presenca':'Controle de Presença',
+  'vnd-selecao':'Seleção de Imóveis','vnd-captacao':'Captação Mensal','aval-imoveis':'Avaliação de Imóveis','vnd-peneira':'Peneira de Imóveis','vnd-presenca':'Controle de Presença',
   'juridico-embed':'Sistema Jurídico',
   'vnd-cotas':'Cotas de Anúncios','vnd-fotografo':'Agenda do Fotógrafo',
   'vnd-foto-disp':'Minha Disponibilidade',

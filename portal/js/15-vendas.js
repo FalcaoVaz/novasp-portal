@@ -2754,3 +2754,57 @@ async function listarMetaCaptacao(mesRef){
     '?mes_referencia=eq.'+encodeURIComponent(mesRef)+'&order=quantidade.desc');
   return (dados||[]).filter(d => (d.quantidade||0) >= 5);
 }
+
+// ── UI da Captação Mensal (tela do sandbox) ──────────────────────────────
+function _capMesRef(){
+  const v = document.getElementById('cap-mes')?.value || '';   // 'YYYY-MM'
+  return v ? v + '-01' : null;
+}
+function baixarModeloCaptacao(){
+  if (typeof XLSX === 'undefined'){ toast('SheetJS não carregou. Recarregue com internet.','err'); return; }
+  const cab = ['Corretor','Equipe','Quantia de Captação'];
+  const ex  = ['João Silva','Águia',7];
+  const brancas = Array.from({length:20},()=>['','','']);
+  const ws = XLSX.utils.aoa_to_sheet([cab, ex, ...brancas]);
+  ws['!cols'] = [{wch:28},{wch:16},{wch:20}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Captação');
+  XLSX.writeFile(wb, 'modelo-captacao.xlsx');
+}
+async function _capUpload(input){
+  const f = input.files && input.files[0]; if (!f) return;
+  const mes = _capMesRef();
+  if (!mes){ toast('Escolha o mês de referência antes de importar.','err'); input.value=''; return; }
+  try{
+    const buf = await f.arrayBuffer();
+    const wb  = XLSX.read(buf, { type:'array', raw:false });
+    const ws  = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { defval:'', raw:false });
+    const r = await importarCaptacaoMensal(rows, mes);
+    toast('✅ '+r.gravados+' captações importadas'+(r.naoEncontrados.length?' · '+r.naoEncontrados.length+' não encontrados':'')+'.','ok');
+    carregarCaptacao();
+  }catch(e){ toast('Erro ao importar: '+(e.message||e),'err'); }
+  finally{ input.value=''; }
+}
+async function carregarCaptacao(){
+  const tb = document.getElementById('tb-vnd-captacao'); if (!tb) return;
+  const mesInput = document.getElementById('cap-mes');
+  if (mesInput && !mesInput.value){                    // default = mês atual
+    const d = new Date();
+    mesInput.value = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  }
+  const mes = _capMesRef(); if (!mes) return;
+  tb.innerHTML = '<tr><td colspan="4" style="padding:16px;text-align:center;color:#94a3b8">Carregando…</td></tr>';
+  try{
+    const lista = await listarMetaCaptacao(mes);
+    const st = document.getElementById('cap-status');
+    if (st) st.textContent = lista.length + ' corretor(es) bateram a meta (5+).';
+    tb.innerHTML = lista.length
+      ? lista.map((d,i)=>`<tr style="border-bottom:1px solid var(--borda)">
+          <td style="padding:8px 12px;color:#94a3b8">${i+1}</td>
+          <td style="padding:8px 12px;font-weight:600">${d.corretor_nome||''}</td>
+          <td style="padding:8px 12px">${d.equipe||''}</td>
+          <td style="padding:8px 12px;text-align:right;font-weight:700">${d.quantidade}</td></tr>`).join('')
+      : '<tr><td colspan="4" style="padding:20px;text-align:center;color:#94a3b8">Ninguém bateu a meta (5+) neste mês — ou nada importado ainda.</td></tr>';
+  }catch(e){ tb.innerHTML = '<tr><td colspan="4" style="padding:16px;color:#dc2626">Erro: '+(e.message||e)+'</td></tr>'; }
+}

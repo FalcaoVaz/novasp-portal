@@ -148,6 +148,7 @@ function goTo(pg){
     }
   }
   if(pg==='vnd-selecao')   carregarSelecaoImoveis?.();
+  if(pg==='vnd-captacao')  carregarCaptacao?.();
   if(pg==='vnd-peneira')   carregarPeneiraSelecao?.();
   if(pg==='vnd-presenca')  carregarVendasPresenca?.();
   if(pg==='vnd-cotas')     carregarVendasCotas?.();
