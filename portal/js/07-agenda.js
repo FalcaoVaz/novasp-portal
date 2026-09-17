@@ -89,21 +89,19 @@ function _agCategoria4a(ev){
   // Concat lower de tipo e titulo (varias variacoes de nome de coluna)
   const tipo = String(ev.tipo||ev.Tipo||'').toLowerCase();
   const tit  = String(ev.titulo||ev.Titulo||ev['Título']||'').toLowerCase();
-  // 1) Tipo explicito tem prioridade
+  // Só o TIPO explícito decide a intercalação ("Reunião Adm"/"Reunião
+  // Jurídico"). NÃO usar título nem nome: o Telmo criou "Reunião | Bauler
+  // Assessoria + Gerente Administrativo" (tipo Reunião) e sumia porque o
+  // título tinha "Administrativo"; e reunião com a Vivian sumia pelo nome.
   if (/jur[ií]d/.test(tipo)) return 'juridico';
   if (/\badm\b|administrativ/.test(tipo)) return 'adm';
-  // 2) Titulo
-  if (/jur[ií]d/.test(tit)) return 'juridico';
-  if (/\badm\b|administrativ/.test(tit)) return 'adm';
-  // 3) Nomes-chave em qualquer campo do evento (cobre 'responsavel',
-  //    'Responsavel', 'Responsável', 'Participantes', 'participantes', etc).
-  let all = '';
-  try { all = Object.values(ev).map(v => String(v||'').toLowerCase()).join(' | '); } catch(_){}
-  let nJur = 0, nAdm = 0;
-  _AG_NOMES_JUR.forEach(n => { if (all.includes(n)) nJur++; });
-  _AG_NOMES_ADM.forEach(n => { if (all.includes(n)) nAdm++; });
-  if (nJur > nAdm) return 'juridico';
-  if (nAdm > nJur) return 'adm';
+  // (antes) título e nomes-chave — removidos por esconder compromissos normais.
+  // Um compromisso normal com
+  //    Vivian/João/Fernanda etc. era detectado como adm/jurídico e SUMIA na
+  //    semana errada da intercalação (bug do Telmo 17/09/2026: reunião com a
+  //    Vivian numa quarta de semana jurídica não aparecia). A alternância
+  //    adm×jurídico só vale pras reuniões FIXAS de pauta (tipo "Reunião Adm"/
+  //    "Reunião Jurídico"), já cobertas pelos testes de tipo/título acima.
   return null;
 }
 // Para uma data e categoria, decide se o evento deve aparecer naquela 4a-feira.
