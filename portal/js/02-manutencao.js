@@ -497,10 +497,17 @@ const MENUS={
   ],
   vendas:[
     {ic:'home',          lb:'Seleção de Imóveis',     pg:'vnd-selecao'},
-    {ic:'award',         lb:'Captação Mensal',        pg:'vnd-captacao'},
-    {ic:'search',        lb:'Avaliação de Imóveis',   pg:'aval-imoveis'},
+    {ic:'building',      lb:'Avaliação de Imóveis',   pg:'aval-imoveis'},
     {ic:'check',         lb:'Controle de Presença',   pg:'vnd-presenca'},
-    {ic:'target',        lb:'Cotas de Anúncios',      pg:'vnd-cotas'},
+    // Planilha Mensal por EQUIPE (1 aba do Excel → 1 sub-módulo; pedido Anderson 29/09/2026)
+    // "Cotas de Anúncios" (vnd-cotas) e "Captação Mensal" (vnd-captacao) saíram do menu:
+    // páginas antigas continuam existindo como histórico, acessíveis pelo link dentro do sub-módulo novo.
+    {ic:'building',      lb:'Cota de Anúncios – Apartamentos',        pg:'vp-cota_anuncios_apto'},
+    {ic:'star',          lb:'Cota Extra – Apartamentos',              pg:'vp-cota_extra_apto'},
+    {ic:'home',          lb:'Cota de Anúncios – Casas e Comerciais',  pg:'vp-cota_anuncios_casas'},
+    {ic:'star',          lb:'Cota Extra – Casas e Comerciais',        pg:'vp-cota_extra_casas'},
+    {ic:'placa',         lb:'Captação e Placas Mensal',               pg:'vp-captacao_placas'},
+    {ic:'vendido',       lb:'Vendidos Seleção',                       pg:'vp-vendidos_selecao'},
     {ic:'calendar',      lb:'Agenda do Fotógrafo',    pg:'vnd-fotografo'}
   ]
 };
@@ -635,6 +642,15 @@ function ehRepresentantePuro(){
 // vendas + assistentes autorizadas (Camille e Thais) — decisao de
 // ago/2026; antes qualquer usuario de vendas podia apagar/inserir.
 const GESTAO_CORRETORES_EXTRA = ['Camille','Thais'];
+// Quem importa/exclui a Planilha Mensal por EQUIPE: quem gerencia corretores
+// (admin, acesso total, gerentes de vendas, GESTAO_CORRETORES_EXTRA) + marketing.
+const PLANILHA_VENDAS_IMPORTADORES = ['Anderson','Gabriela','Thais'];
+function podeImportarPlanilhaVendas(){
+  if (!CUR) return false;
+  if (podeGerenciarCorretores()) return true;
+  const nome = _vendasNormaliza(CUR.nome||'');
+  return PLANILHA_VENDAS_IMPORTADORES.some(n => nome.includes(_vendasNormaliza(n)));
+}
 function podeGerenciarCorretores(){
   if (!CUR) return false;
   if (CUR.admin) return true;
@@ -752,6 +768,9 @@ const TITLES={
   'vnd-selecao':'Seleção de Imóveis','vnd-captacao':'Captação Mensal','aval-imoveis':'Avaliação de Imóveis','vnd-peneira':'Peneira de Imóveis','vnd-presenca':'Controle de Presença',
   'juridico-embed':'Sistema Jurídico',
   'vnd-cotas':'Cotas de Anúncios','vnd-fotografo':'Agenda do Fotógrafo',
+  'vp-cota_anuncios_apto':'Cota de Anúncios – APARTAMENTOS','vp-cota_extra_apto':'Cota Extra – APARTAMENTOS',
+  'vp-cota_anuncios_casas':'Cota de Anúncios – CASAS E COMERCIAIS','vp-cota_extra_casas':'Cota Extra – CASAS E COMERCIAIS',
+  'vp-captacao_placas':'Captação e Placas Mensal','vp-vendidos_selecao':'Vendidos Seleção',
   'vnd-foto-disp':'Minha Disponibilidade',
   'vnd-forum':'Fórum dos Representantes',
   tarefas:'Tarefas',agenda:'Agenda',horarios:'Horários Livres',

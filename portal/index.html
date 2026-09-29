@@ -347,10 +347,46 @@
             <div class="pcd">Envio pelas equipes, peneira pelos gerentes, validade de 3 meses.</div>
             <div class="pcb">Disponível</div>
           </div>
-          <div class="pc" data-tone="amber" id="card-vnd-captacao" onclick="goTo('vnd-captacao')">
-            <div class="pci"><i data-icon="award" data-size="32"></i></div>
-            <div class="pct">Captação Mensal</div>
-            <div class="pcd">Upload mensal por equipe — lista quem bateu a meta (5+ captações).</div>
+          <!-- Planilha Mensal por EQUIPE: 1 aba do Excel → 1 sub-módulo (pedido Anderson 29/09/2026) -->
+          <div class="pc" data-tone="amber" id="card-vp-cota_anuncios_apto" onclick="goTo('vp-cota_anuncios_apto')">
+            <div class="pci"><i data-icon="building" data-size="32"></i></div>
+            <div class="pct">Cota de Anúncios – APARTAMENTOS</div>
+            <div class="pcd">Super Destaque + Destaque Comum por corretor (mensal). Lido do Excel.</div>
+            <div class="pcb">Disponível</div>
+          </div>
+
+          <div class="pc" data-tone="amber" id="card-vp-cota_extra_apto" onclick="goTo('vp-cota_extra_apto')">
+            <div class="pci"><i data-icon="star" data-size="32"></i></div>
+            <div class="pct">Cota Extra – APARTAMENTOS</div>
+            <div class="pcd">Cota extra para quem atingiu a meta de 05 captações no mês.</div>
+            <div class="pcb">Disponível</div>
+          </div>
+
+          <div class="pc" data-tone="amber" id="card-vp-cota_anuncios_casas" onclick="goTo('vp-cota_anuncios_casas')">
+            <div class="pci"><i data-icon="home" data-size="32"></i></div>
+            <div class="pct">Cota de Anúncios – CASAS E COMERCIAIS</div>
+            <div class="pcd">Super Destaque + Destaque Comum por corretor (mensal). Lido do Excel.</div>
+            <div class="pcb">Disponível</div>
+          </div>
+
+          <div class="pc" data-tone="amber" id="card-vp-cota_extra_casas" onclick="goTo('vp-cota_extra_casas')">
+            <div class="pci"><i data-icon="star" data-size="32"></i></div>
+            <div class="pct">Cota Extra – CASAS E COMERCIAIS</div>
+            <div class="pcd">Cota extra para quem atingiu a meta de 05 captações no mês.</div>
+            <div class="pcb">Disponível</div>
+          </div>
+
+          <div class="pc" data-tone="emerald" id="card-vp-captacao_placas" onclick="goTo('vp-captacao_placas')">
+            <div class="pci"><i data-icon="placa" data-size="32"></i></div>
+            <div class="pct">Captação e Placas Mensal</div>
+            <div class="pcd">Captações ativas e placas por corretor no mês. Meta: 05.</div>
+            <div class="pcb">Disponível</div>
+          </div>
+
+          <div class="pc" data-tone="teal" id="card-vp-vendidos_selecao" onclick="goTo('vp-vendidos_selecao')">
+            <div class="pci"><i data-icon="vendido" data-size="32"></i></div>
+            <div class="pct">Vendidos Seleção</div>
+            <div class="pcd">Imóveis da Seleção de Imóveis vendidos no mês.</div>
             <div class="pcb">Disponível</div>
           </div>
           <div class="pc" data-tone="amber" id="card-vnd-peneira" onclick="goTo('vnd-peneira')" style="display:none">
@@ -363,12 +399,6 @@
             <div class="pci"><i data-icon="check" data-size="32"></i></div>
             <div class="pct">Controle de Presença</div>
             <div class="pcd">Atividades do mês + marcação de presença + estatísticas.</div>
-            <div class="pcb">Disponível</div>
-          </div>
-          <div class="pc" data-tone="amber" id="card-vnd-cotas" onclick="goTo('vnd-cotas')">
-            <div class="pci"><i data-icon="target" data-size="32"></i></div>
-            <div class="pct">Cotas de Anúncios</div>
-            <div class="pcd">Super Destaque e Destaque Comum por corretor (mensal).</div>
             <div class="pcb">Disponível</div>
           </div>
           <div class="pc" data-tone="purple" id="card-vnd-fotografo" onclick="goTo('vnd-fotografo')">
@@ -391,11 +421,20 @@
         <div id="aval-imoveis-root">Carregando…</div>
       </div>
 
+
+      <!-- Planilha Mensal por EQUIPE — 6 sub-módulos (conteúdo montado por js/18-vendas-planilhas.js) -->
+      <div class="page" id="p-vp-cota_anuncios_apto"><div class="vp-root" id="vp-root-cota_anuncios_apto">Carregando…</div></div>
+      <div class="page" id="p-vp-cota_extra_apto"><div class="vp-root" id="vp-root-cota_extra_apto">Carregando…</div></div>
+      <div class="page" id="p-vp-cota_anuncios_casas"><div class="vp-root" id="vp-root-cota_anuncios_casas">Carregando…</div></div>
+      <div class="page" id="p-vp-cota_extra_casas"><div class="vp-root" id="vp-root-cota_extra_casas">Carregando…</div></div>
+      <div class="page" id="p-vp-captacao_placas"><div class="vp-root" id="vp-root-captacao_placas">Carregando…</div></div>
+      <div class="page" id="p-vp-vendidos_selecao"><div class="vp-root" id="vp-root-vendidos_selecao">Carregando…</div></div>
+      <!-- Captação Mensal por Corretor (sandbox — teste Anderson) -->
       <!-- Captação Mensal por Corretor -->
       <div class="page" id="p-vnd-captacao">
         <div class="ph">
           <div>
-            <h1 class="pt">Captação Mensal</h1>
+            <h1 class="pt">Captação Mensal (histórico)</h1>
             <div class="pst">Lançamento de captações por corretor · meta: 5+ no mês</div>
           </div>
           <div class="flex" style="gap:6px;flex-wrap:wrap">
@@ -578,7 +617,7 @@
       <!-- Cotas de Anúncios -->
       <div class="page" id="p-vnd-cotas">
         <div class="ph">
-          <div><h1 class="pt">Cotas de Anúncios</h1><div class="pst">Super Destaque + Destaque Comum por corretor (mensal)</div></div>
+          <div><h1 class="pt">Cotas de Anúncios (histórico)</h1><div class="pst">Super Destaque + Destaque Comum por corretor (mensal)</div></div>
           <button class="btn btn-p" onclick="abrirNovaCotaCorretor()">+ Corretor</button>
         </div>
 
@@ -1832,5 +1871,6 @@
 <script src="js/15-vendas.js?v=20260911d"></script>
 <script src="js/17-forum.js?v=20260911d"></script>
 <script src="js/18-avaliacoes.js?v=20260913b"></script>
+<script src="js/18-vendas-planilhas.js?v=20260929a"></script>
 </body>
 </html>

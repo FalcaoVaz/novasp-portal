@@ -141,7 +141,8 @@ function goTo(pg){
     // Representante puro (corretor rep, nao gerente/admin) so ve o Forum.
     // Esconde todos os outros cards de Vendas.
     if (typeof ehRepresentantePuro === 'function' && ehRepresentantePuro()) {
-      ['card-vnd-selecao','card-vnd-presenca','card-vnd-cotas','card-vnd-fotografo','card-vnd-peneira']
+      ['card-vnd-selecao','card-vnd-presenca','card-vnd-fotografo','card-vnd-peneira',
+       'card-vp-cota_anuncios_apto','card-vp-cota_extra_apto','card-vp-cota_anuncios_casas','card-vp-cota_extra_casas','card-vp-captacao_placas','card-vp-vendidos_selecao']
         .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
       // Redireciona direto pro forum (sem passar pelo home de Vendas)
       setTimeout(() => goTo('vnd-forum'), 60);
@@ -152,6 +153,7 @@ function goTo(pg){
   if(pg==='vnd-peneira')   carregarPeneiraSelecao?.();
   if(pg==='vnd-presenca')  carregarVendasPresenca?.();
   if(pg==='vnd-cotas')     carregarVendasCotas?.();
+  if(pg.startsWith('vp-')) window.VendasPlanilhas?.abrirPagina(pg.slice(3));   // Planilha Mensal por EQUIPE
   if(pg==='vnd-fotografo') carregarAgendaFotografo?.();
   if(pg==='vnd-foto-disp') carregarFotoDisp?.();
   if(pg==='vnd-forum')     carregarForum?.();
