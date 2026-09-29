@@ -43,3 +43,27 @@ No Netlify (time NOVASP): conecte o repositório do GitHub ao site (ou crie um s
 ## Regras do piloto (lembrete)
 - Só o Rodrigo faz código e deploy. O Fabio testa no sandbox, faz exports e Git.
 - Ninguém trabalha com dado que tenha nome de proprietário fora do sandbox.
+
+## 6. Acervo Guess (frente 11) — carga das 4 tabelas prioritárias
+
+Exports do Fabio (xlsx, NexusDB → Excel): `ContratosLoc.xlsx`, `Cadmovel.xlsx`, `Clientes.xlsx`, `Inquilinos.xlsx`.
+Schema e carga saem do mesmo mapa de colunas (`sandbox/carregar_guess.py`):
+
+```bash
+# 1) schema (gerado; já versionado em portal/sql/2026-09-29-acervo-guess.sql) — rodar no SQL Editor do sandbox
+python3 sandbox/carregar_guess.py --gerar-sql > portal/sql/2026-09-29-acervo-guess.sql
+
+# 2) conferir leitura + máscara sem tocar no banco
+python3 sandbox/carregar_guess.py --pasta ~/Downloads --dry-run
+
+# 3) carga no SANDBOX (sempre mascarada: PESSOA 00001, CPF só pontuação, endereço só o tipo, sem texto livre)
+python3 sandbox/carregar_guess.py --pasta ~/Downloads
+
+# 4) produção (só o Rodrigo; sem máscara; recusa sem a flag)
+python3 sandbox/carregar_guess.py --pasta ~/Downloads --dsn ~/.config/novasp/prod-pooler.dsn --producao
+```
+
+- Tabelas: `guess_contratos`, `guess_imoveis`, `guess_clientes`, `guess_inquilinos` (+ `guess_cargas` com data/linhas/mascarado e a view `guess_v_contratos`).
+- Só leitura pela API (policy SELECT para authenticated). Quem vê é gated na UI (gerentes). Retenção: decisão da Fernanda.
+- Chaves: `ContratosLoc.Imovel → Cadmovel.Contrato` (=`guess_imoveis.imovel`), `Proprietario → Clientes.Codigo`, `Inquilino/2/3 → Inquilinos.Codigo`. Conferido nos exports de 28/09: 100% dos contratos apontam para imóvel existente; 10 sem proprietário e 9 sem inquilino.
+- Tamanho estimado em produção: ~63 MB brutos (Free tem 500 MB; produção estava em 177 MB em 29/09).
