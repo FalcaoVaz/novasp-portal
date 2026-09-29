@@ -154,6 +154,7 @@ function goTo(pg){
   if(pg==='vnd-presenca')  carregarVendasPresenca?.();
   if(pg==='vnd-cotas')     carregarVendasCotas?.();
   if(pg.startsWith('vp-')) window.VendasPlanilhas?.abrirPagina(pg.slice(3));   // Planilha Mensal por EQUIPE
+  if(pg==='acervo-guess')  window.AcervoGuess?.abrir();                        // frente 11
   if(pg==='vnd-fotografo') carregarAgendaFotografo?.();
   if(pg==='vnd-foto-disp') carregarFotoDisp?.();
   if(pg==='vnd-forum')     carregarForum?.();

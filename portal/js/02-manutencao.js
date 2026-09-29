@@ -485,7 +485,8 @@ const MENUS={
     {ic:'clipboard', lb:'Avaliações',       pg:'avaliacoes'},
     {ic:'target',    lb:'Tarefas / Bônus',  pg:'metas'},
     {ic:'dollar',    lb:'Apurar Bônus',     pg:'bonus'},
-    {ic:'star',      lb:'Avaliar Líder',    pg:'av-lider'}
+    {ic:'star',      lb:'Avaliar Líder',    pg:'av-lider'},
+    {ic:'book',      lb:'Acervo Guess (locação)', pg:'acervo-guess'}   // frente 11 — só líderes (menuGestaoItens)
   ],
   regras:[
     {ic:'clipboardList', lb:'Processos (BPMN)', pg:'processos-bpmn'},
@@ -778,6 +779,7 @@ const TITLES={
   'pauta-terca':'Pauta Mkt','pauta-quarta':'Pauta Adm','pauta-juridico':'Pauta Jurídico',
   'pauta-renata':'Pauta Vendas — Renata (Moema)','pauta-felippe':'Pauta Vendas — Felippe',
   'pauta-christiane':'Pauta Vendas — Christiane','pauta-emilia':'Pauta Vendas — Emilia',
+  'acervo-guess':'Acervo Guess — locação (só leitura)',
   liderados:'Meus Liderados',organograma:'Organograma',avaliacoes:'Avaliações Trimestrais',
   'processos-bpmn':'Processos (BPMN)',
   metas:'Tarefas e Pontuação de Bônus',bonus:'Apuração de Bônus',
