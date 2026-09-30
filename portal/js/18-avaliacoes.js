@@ -256,16 +256,33 @@ async function avalCalcular(){
   const stt=document.getElementById('av-calc-status');
   stt.textContent='Buscando anúncios ao vivo em '+bairro+'…';
 
-  let precos={};
+  let precos={}, semMotor=false;
   try{
-    const r=await fetch(`${AVAL_MOTOR}/precos?bairro=`+encodeURIComponent(bairro),{headers:hdr()});
+    const ctrl=(typeof AbortController!=='undefined')?new AbortController():null;
+    const timer=ctrl?setTimeout(()=>ctrl.abort(),8000):null;
+    const r=await fetch(`${AVAL_MOTOR}/precos?bairro=`+encodeURIComponent(bairro),Object.assign({headers:hdr()},ctrl?{signal:ctrl.signal}:{}));
+    if(timer) clearTimeout(timer);
     if(!r.ok) throw new Error('motor HTTP '+r.status);
     precos=await r.json();
-  }catch(e){ stt.innerHTML='<span style="color:#dc2626">Não consegui buscar o preço ao vivo ('+(e.message||e)+'). O motor está no ar?</span>'; return; }
+  }catch(e){ semMotor=true; }
 
   // comparáveis de fechamento (ITBI) — do banco, via RPC
   let compsItbi=[];
-  try{ compsItbi=await _avRpc('aval_comps_itbi',{p_bairro:bairro,p_lim:8}); }catch(_){}
+  try{ compsItbi=await _avRpc('aval_comps_itbi',{p_bairro:bairro,p_lim:semMotor?20:8}); }catch(_){}
+
+  // MODO TESTE (motor de anúncios ao vivo ainda não hospedado): usa a mediana do R$/m²
+  // dos fechamentos ITBI do bairro como preço de mercado, e avisa. Quando o motor entrar
+  // no ar (AVAL_MOTOR_URL), o fluxo volta ao normal sem mexer aqui.
+  if(semMotor){
+    const rs=(compsItbi||[]).map(c=>Number(c.rs_m2)).filter(v=>v>0).sort((a,b)=>a-b);
+    if(rs.length){
+      const med=rs.length%2?rs[(rs.length-1)/2]:(rs[rs.length/2-1]+rs[rs.length/2])/2;
+      precos={rs_apto:Math.round(med), rs_casa:null, n_apto:0, amostra:[], base:'ITBI', n_itbi:rs.length};
+      stt.innerHTML='<span style="color:#b45309">Motor de anúncios ao vivo indisponível — usando a mediana de '+rs.length+' fechamentos ITBI de '+bairro+' (preço pago). Modo teste.</span>';
+    }else{
+      stt.innerHTML='<span style="color:#dc2626">Motor de anúncios indisponível e sem fechamentos ITBI para "'+bairro+'". Confira o nome do bairro.</span>'; return;
+    }
+  }
 
   // trava: se o zoneamento ainda não resolveu (clique rápido), busca agora
   if(!_avForm.geo){
@@ -293,7 +310,7 @@ async function avalCalcular(){
     const vm=area*rs_tipo;
     dossie.valor_mercado=Math.round(vm); dossie.faixa_min=Math.round(vm*0.9); dossie.faixa_max=Math.round(vm*1.1);
     const rsf=rs_tipo.toLocaleString('pt-BR');
-    dossie.metodo=`${area} m² × R$ ${rsf}/m² (anúncios ${bairro})`;
+    dossie.metodo=`${area} m² × R$ ${rsf}/m² (${precos.base==='ITBI'?`mediana de ${precos.n_itbi} fechamentos ITBI em ${bairro} — modo teste`:`anúncios ${bairro}`})`;
   }
   const ca=dossie.ca;
   if(ehcasa && geo.incorporavel && ca && ca>=2 && terreno && rs_apto){
