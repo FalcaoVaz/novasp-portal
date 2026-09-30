@@ -37,21 +37,51 @@ const AV_PARAM = {
   margem:0.20,          // margem do incorporador
   lanc_sobre_usado:1.25,// se não houver lançamento anunciado no bairro: lançamento ≈ usado × 1,25
   casa_sobre_apto:0.60, // se não houver casa anunciada no bairro: R$/m² casa ≈ apto × 0,60 (mediana observada 30/09/2026)
+  constr_sobre_computavel:1.40, // área construída real ≈ computável × 1,40 (subsolo/garagem, áreas técnicas e comuns não computam)
+  // Outorga onerosa (PDE, Lei 16.050/2014, art. 117): Ct = (At/Ac) × V × Fs × Fp por m² adicional acima do CA básico.
+  // V = valor do m² do terreno no Cadastro de Valor de Terreno (QVT) da quadra; Fs = 1,0 (habitação de mercado);
+  // Fp = fator de planejamento da macroárea (Quadro do PDE, varia por região) — conferir para o endereço.
+  outorga_fs:1.0,
+  outorga_fp:1.0,
+  qvt_sobre_mercado:0.50, // sem QVT informado: V ≈ 50% do valor de mercado do terreno (o cadastro fica bem abaixo do mercado)
+  lote_min_m2:400,        // abaixo disso, alerta: CA máximo dificilmente é atingido
+  frente_min_m:12,        // idem para frente estreita
+  cota_solidariedade_m2:20000, // acima disso, PDE exige 10% em HIS ou equivalente
 };
 // Bairros onde o padrão sugerido é ALTO (o corretor pode trocar na tela)
 const AV_BAIRROS_ALTO = ['moema','itaim','vila nova conceicao','brooklin','campo belo','jardim paulista','jardins','paraiso','vila olimpia','ibirapuera','chacara klabin','vila mariana','pinheiros','perdizes'];
 const _avNormBairro = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 function _avPadraoSugerido(bairro){ const b=_avNormBairro(bairro); return AV_BAIRROS_ALTO.some(x=>b.includes(x)) ? 'alto' : 'medio'; }
 // Conta reversa de incorporação: quanto o terreno pode valer para o empreendimento fechar com margem.
-function _avContaIncorp({terreno, ca, rs_lanc, padrao}){
+function _avContaIncorp({terreno, ca, ca_basico, rs_lanc, padrao, qvt, frente, gabarito}){
   const p=AV_PADROES[padrao]||AV_PADROES.medio, P=AV_PARAM;
-  const area_constr=terreno*ca, area_vendavel=area_constr*P.eficiencia;
+  const cab = (ca_basico!=null && ca_basico>0) ? Number(ca_basico) : null;
+  const area_comput=terreno*ca;                       // o que conta no CA
+  const area_constr=area_comput*P.constr_sobre_computavel;   // o que se constrói de fato (obra)
+  const area_vendavel=area_comput*P.eficiencia;       // área privativa vendida
   const vgv=area_vendavel*rs_lanc;
   const obra=area_constr*p.cub*P.fator_obra;
   const indiretos=vgv*(P.comissao+P.marketing+P.ret+P.adm);
   const margem=vgv*P.margem;
-  const terreno_max=vgv-obra-indiretos-margem;
-  return {padrao, cub:p.cub, area_constr, area_vendavel, vgv, obra, indiretos, margem, terreno_max, custo_m2:p.cub*P.fator_obra};
+  const antes=vgv-obra-indiretos-margem;              // terreno máximo SEM outorga
+  // outorga onerosa sobre a área computável acima do CA básico
+  let outorga=0, area_adicional=0, v=null, v_origem='';
+  if(cab!=null && ca>cab){
+    area_adicional=terreno*(ca-cab);
+    if(qvt && qvt>0){ v=qvt; v_origem='QVT informado'; }
+    else if(antes>0){ v=(antes/terreno)*P.qvt_sobre_mercado; v_origem=`estimado: ${P.qvt_sobre_mercado*100}% do valor de mercado do terreno`; }
+    if(v){ outorga=area_adicional*(terreno/area_comput)*v*P.outorga_fs*P.outorga_fp; }
+  }
+  const terreno_max=antes-outorga;
+  const alertas=[];
+  if(terreno<P.lote_min_m2) alertas.push(`Lote de ${terreno} m²: abaixo de ${P.lote_min_m2} m² o CA máximo raramente é atingido (recuos e taxa de ocupação).`);
+  if(frente && frente<P.frente_min_m) alertas.push(`Frente de ${frente} m: abaixo de ${P.frente_min_m} m a implantação de torre fica comprometida.`);
+  if(gabarito && String(gabarito).trim() && !/sem|n[aã]o/i.test(String(gabarito))) alertas.push(`Gabarito de altura na zona: ${gabarito} — pode limitar o número de pavimentos antes do CA.`);
+  if(area_comput>P.cota_solidariedade_m2) alertas.push(`Área computável acima de ${P.cota_solidariedade_m2.toLocaleString('pt-BR')} m²: PDE exige cota de solidariedade (10% em HIS ou equivalente).`);
+  if(cab==null) alertas.push('CA básico não identificado na zona: outorga onerosa não calculada.');
+  if(terreno_max<=0) alertas.push('Conta fechou negativa: neste padrão e preço de lançamento, a incorporação não paga o terreno.');
+  return {padrao, cub:p.cub, custo_m2:p.cub*P.fator_obra, ca, ca_basico:cab, terreno, frente:frente||null, gabarito:gabarito||null,
+          area_comput, area_constr, area_vendavel, vgv, obra, indiretos, margem, antes, area_adicional, v, v_origem, outorga, terreno_max, alertas};
 }
 
 let _avImoveis = [];
@@ -191,6 +221,8 @@ function avalNova(){
         <select id="av-padrao" title="Padrão construtivo do que seria construído no terreno (custo de obra pelo CUB Sinduscon-SP)" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px">
           ${Object.entries(AV_PADROES).map(([k,v])=>`<option value="${k}">Padrão ${v.lb} — obra ≈ ${_avR$(Math.round(v.cub*AV_PARAM.fator_obra))}/m²</option>`).join('')}</select>
         <input id="av-lanc" type="number" placeholder="Lançamento R$/m² no bairro (opcional — senão usa anúncios)" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px">
+        <input id="av-frente" type="number" placeholder="Frente do terreno (m) — casas/terrenos" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px">
+        <input id="av-qvt" type="number" placeholder="Valor de terreno da quadra R$/m² (QVT, opcional — p/ outorga)" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px">
       </div>
       <div style="color:#94a3b8;font-size:.82em;margin-top:4px">Padrão e lançamento só entram na conta de incorporação (casas, sobrados e terrenos em zona que permite adensar). Custo de obra = CUB ${AV_PARAM.cub_ref} × ${AV_PARAM.fator_obra}.</div>
       <input id="av-preco" type="number" placeholder="Preço que o proprietário pensa em pedir (opcional)" style="margin-top:8px;width:100%;padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px">
@@ -369,7 +401,8 @@ async function avalCalcular(){
   // ── Incorporação (conta reversa): casas, sobrados e terrenos em zona que permite adensar ──
   const ca=dossie.ca;
   if((ehcasa||ehterreno) && geo.incorporavel && ca && ca>=2 && terreno && rs_lanc){
-    const m=_avContaIncorp({terreno, ca, rs_lanc, padrao});
+    const frente=+g('av-frente')||null, qvt=+g('av-qvt')||null;
+    const m=_avContaIncorp({terreno, ca, ca_basico:geo.ca_basico, rs_lanc, padrao, qvt, frente, gabarito:geo.gabarito_m});
     _avForm.memoria=m; _avForm.lancOrigem=lancOrigem;
     if(m.terreno_max>0){
       dossie.incorp_aplicavel=true;
@@ -379,7 +412,9 @@ async function avalCalcular(){
       dossie.incorp_valor_terreno=Math.round(m.terreno_max);
       const base = preco || dossie.valor_mercado;
       dossie.incorp_ganho_pct = base ? Math.round((m.terreno_max/base-1)*100) : null;
-      dossie.metodo=(dossie.metodo?dossie.metodo+' · ':'')+`incorporação: padrão ${padrao}, lançamento ${lancOrigem}`;
+      dossie.metodo=(dossie.metodo?dossie.metodo+' · ':'')+`incorporação: padrão ${padrao}, lançamento ${lancOrigem}`+
+        (m.outorga?`, outorga ${_avR$(Math.round(m.outorga))} (${m.v_origem})`:'')+
+        ` [incorp:${JSON.stringify({padrao, cab:m.ca_basico, qvt:qvt||null, frente:frente||null, gab:m.gabarito||null})}]`;
     }else{
       dossie.metodo=(dossie.metodo?dossie.metodo+' · ':'')+`incorporação inviável no padrão ${padrao} (terreno máximo ≤ 0)`;
     }
@@ -436,22 +471,37 @@ function renderAvalPreview(x, precos){
 function _avMemoriaHTML(m){
   if(!m) return '';
   const P=AV_PARAM, p=AV_PADROES[m.padrao]||AV_PADROES.medio;
-  const l=(r,v,neg)=>`<tr style="border-top:1px solid #f1f5f9"><td style="padding:3px 8px;color:#64748b">${r}</td><td style="padding:3px 8px;text-align:right;${neg?'color:#b91c1c':''}">${neg?'− ':''}${_avR$(Math.round(v))}</td></tr>`;
-  return `<details style="margin-top:10px"><summary style="cursor:pointer;color:#047857;font-size:.9em">Memória de cálculo (conta reversa)</summary>
-    <table style="width:100%;border-collapse:collapse;font-size:.86em;margin-top:6px"><tbody>
-      ${l(`VGV: ${Math.round(m.area_vendavel)} m² vendáveis (${Math.round(m.area_constr)} m² × ${P.eficiencia}) × lançamento`, m.vgv)}
-      ${l(`Obra: ${Math.round(m.area_constr)} m² × CUB ${p.ref} ${_avR$(p.cub)} × ${P.fator_obra} (padrão ${p.lb})`, m.obra, true)}
+  const l=(r,v,neg)=>`<tr style="border-top:1px solid #f1f5f9"><td style="padding:3px 8px;color:#64748b">${r}</td><td style="padding:3px 8px;text-align:right;white-space:nowrap;${neg?'color:#b91c1c':''}">${neg?'− ':''}${_avR$(Math.round(v))}</td></tr>`;
+  const n=v=>Math.round(v).toLocaleString('pt-BR');
+  const areas=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-size:.86em;margin-top:6px">
+      <div><span style="color:#94a3b8">Terreno</span><br><b>${n(m.terreno)} m²</b>${m.frente?` · frente ${m.frente} m`:''}</div>
+      <div><span style="color:#94a3b8">CA básico / máximo</span><br><b>${m.ca_basico!=null?m.ca_basico:'?'} / ${m.ca}</b></div>
+      <div><span style="color:#94a3b8">Área computável</span><br><b>${n(m.area_comput)} m²</b> <small>(terreno × CA)</small></div>
+      <div><span style="color:#94a3b8">Área construída estimada</span><br><b>${n(m.area_constr)} m²</b> <small>(× ${P.constr_sobre_computavel}: subsolo, técnicas, comuns)</small></div>
+      <div><span style="color:#94a3b8">Área vendável (privativa)</span><br><b>${n(m.area_vendavel)} m²</b> <small>(${P.eficiencia*100}% da computável)</small></div>
+      <div><span style="color:#94a3b8">Acima do CA básico</span><br><b>${n(m.area_adicional)} m²</b> <small>(paga outorga)</small></div>
+    </div>`;
+  const alertas=(m.alertas||[]).length?`<ul style="margin:8px 0 0;padding-left:18px;font-size:.84em;color:#b45309">${m.alertas.map(a=>`<li>${a}</li>`).join('')}</ul>`:'';
+  return `<details open style="margin-top:10px"><summary style="cursor:pointer;color:#047857;font-size:.9em">Memória de cálculo (conta reversa)</summary>
+    ${areas}
+    <table style="width:100%;border-collapse:collapse;font-size:.86em;margin-top:8px"><tbody>
+      ${l(`VGV: ${n(m.area_vendavel)} m² vendáveis × lançamento ${_avR$(Math.round(m.vgv/m.area_vendavel))}/m²`, m.vgv)}
+      ${l(`Obra: ${n(m.area_constr)} m² construídos × CUB ${p.ref} ${_avR$(p.cub)} × ${P.fator_obra} (padrão ${p.lb})`, m.obra, true)}
       ${l(`Comissão ${P.comissao*100}% + marketing ${P.marketing*100}% + RET ${P.ret*100}% + adm. ${P.adm*100}%`, m.indiretos, true)}
       ${l(`Margem do incorporador ${P.margem*100}%`, m.margem, true)}
-      <tr style="border-top:2px solid #10b981;font-weight:700"><td style="padding:4px 8px">Terreno máximo (o que sobra)</td><td style="padding:4px 8px;text-align:right">${_avR$(Math.round(m.terreno_max))}</td></tr>
+      ${l(`Terreno máximo antes da outorga`, m.antes)}
+      ${m.outorga?l(`Outorga onerosa: ${n(m.area_adicional)} m² adicionais × (terreno/computável) × V ${_avR$(Math.round(m.v))}/m² (${m.v_origem}) × Fs ${P.outorga_fs} × Fp ${P.outorga_fp}`, m.outorga, true):''}
+      <tr style="border-top:2px solid #10b981;font-weight:700"><td style="padding:4px 8px">Terreno máximo (o que sobra)</td><td style="padding:4px 8px;text-align:right;white-space:nowrap">${_avR$(Math.round(m.terreno_max))}</td></tr>
     </tbody></table>
-    <div style="color:#94a3b8;font-size:.8em;margin-top:4px">CUB ${P.cub_ref}. Parâmetros padrão da NSP; ajustáveis em AV_PARAM.</div></details>`;
+    ${alertas}
+    <div style="color:#94a3b8;font-size:.8em;margin-top:6px">CUB ${P.cub_ref}. Outorga pela fórmula do PDE (Lei 16.050/2014, art. 117); Fp varia por macroárea — conferir para o endereço. Parâmetros padrão da NSP em AV_PARAM.</div></details>`;
 }
 // Reconstrói a memória de uma avaliação salva (padrão vem do texto do método; sem ele, médio)
 function _avMemoriaSalva(x){
   if(!x||!x.incorp_aplicavel||!x.terreno||!x.ca||!x.incorp_lancamento_rs_m2) return null;
-  const mp=/padrão (economico|medio|alto)/.exec(x.metodo||''); const padrao=mp?mp[1]:'medio';
-  return _avContaIncorp({terreno:Number(x.terreno), ca:Number(x.ca), rs_lanc:Number(x.incorp_lancamento_rs_m2), padrao});
+  let extra={}; try{ const mj=/\[incorp:(\{.*?\})\]/.exec(x.metodo||''); if(mj) extra=JSON.parse(mj[1]); }catch(_){}
+  const mp=/padrão (economico|medio|alto)/.exec(x.metodo||''); const padrao=extra.padrao||(mp?mp[1]:'medio');
+  return _avContaIncorp({terreno:Number(x.terreno), ca:Number(x.ca), ca_basico:extra.cab, rs_lanc:Number(x.incorp_lancamento_rs_m2), padrao, qvt:extra.qvt, frente:extra.frente, gabarito:extra.gab});
 }
 function _avCompara(pedido,mercado){
   const p=Number(pedido),m=Number(mercado); if(!p||!m) return '';
