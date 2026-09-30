@@ -30,11 +30,11 @@ const AV_PARAM = {
   cub_ref:'Sinduscon-SP jul/2026',
   fator_obra:1.30,      // custo total de obra sobre o CUB (fundação, projetos, elevadores, ligações, taxas)
   eficiencia:0.80,      // área vendável / área computável
-  comissao:0.05,        // corretagem sobre o VGV
-  marketing:0.02,       // publicidade e estande
-  ret:0.04,             // RET (tributos da incorporação)
-  adm:0.03,             // despesas administrativas
-  margem:0.20,          // margem do incorporador
+  comissao:0.05,        // corretagem sobre o VGV            (Rodrigo, 01/10/2026)
+  marketing:0.05,       // publicidade e estande              (Rodrigo, 01/10/2026)
+  ret:0.04,             // RET (tributos da incorporação)     (Rodrigo, 01/10/2026)
+  adm:0.10,             // despesas administrativas           (Rodrigo, 01/10/2026)
+  margem:0.15,          // margem do incorporador             (Rodrigo, 01/10/2026)
   lanc_sobre_usado:1.25,// se não houver lançamento anunciado no bairro: lançamento ≈ usado × 1,25
   casa_sobre_apto:0.60, // se não houver casa anunciada no bairro: R$/m² casa ≈ apto × 0,60 (mediana observada 30/09/2026)
   constr_sobre_computavel:1.40, // área construída real ≈ computável × 1,40 (subsolo/garagem, áreas técnicas e comuns não computam)
