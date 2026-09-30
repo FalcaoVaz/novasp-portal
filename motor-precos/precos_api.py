@@ -17,7 +17,7 @@ from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from coletor_anuncios import busca_quintoandar
+from coletor_anuncios import busca_quintoandar, busca_chavesnamao_lancamentos
 
 SB = os.environ.get('SB_URL', 'https://mqcduyvpuxdweqesgwrq.supabase.co')
 # anon key é PÚBLICA (já vai no navegador) — só serve p/ validar que quem
@@ -37,6 +37,11 @@ def _slug(b):
     b = re.sub(r'\(.*?\)', '', b)
     b = re.sub(r'[^a-z0-9]+', '-', b).strip('-')
     return f'{b}-sao-paulo-sp-brasil'
+
+
+def _slug_bairro(b):
+    b = unicodedata.normalize('NFD', (b or '').lower()).encode('ascii', 'ignore').decode()
+    return re.sub(r'[^a-z0-9]+', '-', re.sub(r'\(.*?\)', '', b)).strip('-')
 
 
 def _valida(authorization, apikey=None):
@@ -77,6 +82,7 @@ def precos(bairro: str, authorization: str = Header(None), apikey: str = Header(
 
     rs_apto = rs_casa = rs_lanc = None
     n_apto = n_casa = n_lanc = 0
+    fonte_lanc = None
     amostra = []
     try:
         an = busca_quintoandar(_slug(bairro))
@@ -88,9 +94,21 @@ def precos(bairro: str, authorization: str = Header(None), apikey: str = Header(
         if pc:
             rs_casa = round(statistics.median([a['rs_m2'] for a in pc]))
         # preço de LANÇAMENTO (insumo da conta de incorporação): só anúncios marcados como lançamento
-        pl = [a for a in pa if a.get('lancamento')]
+        # LANÇAMENTOS: página de lançamentos do Chaves na Mão (pública); se vazia, os anúncios
+        # marcados como lançamento no QuintoAndar. Só entra na conta de incorporação.
+        pl = []
+        try:
+            pl = busca_chavesnamao_lancamentos(_slug_bairro(bairro))
+        except Exception:
+            pl = []
+        fonte_lanc = 'chavesnamao' if pl else 'quintoandar'
+        if not pl:
+            pl = [a for a in pa if a.get('lancamento')]
+        pl = [a for a in pl if a.get('rs_m2') and 3000 <= a['rs_m2'] <= 60000]   # descarta lixo
         n_lanc = len(pl)
-        if pl:
+        # com menos de 3 lançamentos a mediana não representa o bairro (um único empreendimento
+        # de alto luxo distorce tudo): devolve None e o portal usa usado × 1,25 ou o valor digitado
+        if n_lanc >= 3:
             rs_lanc = round(statistics.median([a['rs_m2'] for a in pl]))
         for a in (pc + pa)[:8]:
             amostra.append({'tipo': a.get('tipo'), 'area': a.get('area'),
@@ -100,7 +118,7 @@ def precos(bairro: str, authorization: str = Header(None), apikey: str = Header(
         raise HTTPException(502, f'falha ao buscar anúncios: {e}')
 
     payload = {'bairro': bairro, 'rs_apto': rs_apto, 'rs_casa': rs_casa,
-               'n_apto': n_apto, 'n_casa': n_casa, 'rs_lanc': rs_lanc, 'n_lanc': n_lanc, 'amostra': amostra,
+               'n_apto': n_apto, 'n_casa': n_casa, 'rs_lanc': rs_lanc, 'n_lanc': n_lanc, 'fonte_lanc': fonte_lanc, 'amostra': amostra,
                'fonte': 'quintoandar', 'cache': False}
     _cache[bairro.upper()] = (time.time(), payload)
     return payload

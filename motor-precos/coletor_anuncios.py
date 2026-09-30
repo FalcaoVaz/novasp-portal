@@ -72,3 +72,41 @@ if __name__ == '__main__':
     for a in anuncios[:4]:
         tag = ' [LANÇAMENTO]' if a['lancamento'] else ''
         print(f"   {a['tipo']} {a['area']}m² {a['dorm']}dorm · R$ {a['preco']:,} (R${a['rs_m2']:,}/m²) · {a['rua']}{tag}")
+
+
+def busca_chavesnamao_lancamentos(bairro_slug, cidade_slug='sp-sao-paulo'):
+    """Lançamentos anunciados no Chaves na Mão por bairro (página pública, server-rendered).
+    bairro_slug ex.: 'moema'. Devolve lista normalizada só com anúncios de lançamento
+    (URL /lancamento/...). Área e preço vêm do card; em empreendimento com várias
+    plantas o card traz a maior unidade e o preço dela — serve como mediana de bairro,
+    não como preço de uma planta específica."""
+    import html as _h
+    url = f'https://www.chavesnamao.com.br/lancamentos/{cidade_slug}/{bairro_slug}/'
+    try:
+        page = _fetch(url)
+    except Exception:
+        return []
+    txt = page.replace('\\"', '"').replace('\\/', '/')
+    out, vistos = [], set()
+    for m in re.finditer(r'"listingPreview":(\{.*?\})\s*,\s*"singleProperty"', txt):
+        try:
+            it = json.loads(m.group(1))
+        except Exception:
+            continue
+        u = it.get('url') or ''
+        if '/lancamento/' not in u or it.get('id') in vistos:
+            continue
+        vistos.add(it.get('id'))
+        try:
+            area = float(str(it.get('area') or '0').replace(',', '.'))
+            preco = float(it.get('price') or 0)
+        except ValueError:
+            continue
+        if area <= 0 or preco <= 0:
+            continue
+        out.append({'portal': 'chavesnamao', 'url': 'https://www.chavesnamao.com.br' + u,
+                    'preco': preco, 'area': area, 'rs_m2': round(preco / area),
+                    'dorm': it.get('bedrooms'), 'vaga': it.get('garages'),
+                    'rua': _h.unescape(it.get('street') or ''), 'bairro': it.get('location'),
+                    'tipo': 'Apartamento', 'lancamento': True, 'titulo': _h.unescape(it.get('title') or '')})
+    return out
