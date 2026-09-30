@@ -460,6 +460,12 @@ async function avalCalcular(){
   delete dossie.metodo_unico;
   // ── Incorporação (conta reversa): casas, sobrados e terrenos em zona que permite adensar ──
   const ca=dossie.ca;
+  // Por que a conta de terreno NÃO aparece (transparência pro corretor)
+  _avForm.incorpMotivo=null;
+  if(!(ehcasa||ehterreno)) _avForm.incorpMotivo=null;                                   // apartamento: não se aplica, sem aviso
+  else if(!terreno) _avForm.incorpMotivo='Informe a área do terreno para calcular o valor como terreno de incorporação.';
+  else if(!geo.incorporavel || !ca || ca<2) _avForm.incorpMotivo=`Zoneamento ${geo.zona||'?'} (CA máximo ${ca||'?'}) não permite adensar o suficiente: o valor como terreno de incorporação não se aplica aqui.`;
+  else if(!rs_lanc) _avForm.incorpMotivo='Sem preço de lançamento no bairro: informe um valor de lançamento R$/m² para a conta de incorporação.';
   if((ehcasa||ehterreno) && geo.incorporavel && ca && ca>=2 && terreno && rs_lanc){
     const frente=+g('av-frente')||null, qvt=+g('av-qvt')||null;
     // referências de outorga concedida (GeoSampa) e fator de planejamento pelo ponto
@@ -517,6 +523,7 @@ function renderAvalPreview(x, precos){
       ${x.preco_pedido?`<div style="margin-top:8px;font-size:.9em">Pretendido: <b>${_avR$(x.preco_pedido)}</b> ${_avCompara(x.preco_pedido,x.valor_mercado)}</div>`:''}
     </div></div>`:`<div class="card" style="margin-bottom:12px"><div class="cb" style="color:#b45309">Sem preço de mercado (faltou área útil ou anúncios do bairro).</div></div>`}
     ${_avMetodoHTML(_avForm.metodoUnico, x)}
+    ${(!x.incorp_aplicavel && _avForm.incorpMotivo)?`<div class="card" style="margin-bottom:12px;border-left:3px solid #cbd5e1"><div class="cb" style="color:#64748b;font-size:.9em">🏗️ Terreno para incorporação: ${_avForm.incorpMotivo}</div></div>`:''}
     ${comps.some(c=>c.lat)?`<div class="card" style="margin-bottom:12px"><div class="cb"><div style="color:#64748b;font-size:.85em;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Mapa: imóvel, anúncios e fechamentos</div><div id="av-mapa-comps" style="height:320px;border-radius:10px;border:1px solid #e2e8f0"></div><div style="font-size:.8em;color:#94a3b8;margin-top:4px">Pino vermelho = imóvel avaliado · azul = anúncios ao vivo · verde = fechamentos ITBI. Anúncio marcado na rua (sem número).</div></div></div>`:''}
     ${inc}
     ${comps.length?`<div class="card" style="margin-bottom:12px"><div class="cb">
