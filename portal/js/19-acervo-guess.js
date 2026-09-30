@@ -11,12 +11,21 @@
    nome do inquilino, nº do contrato ou CPF/CNPJ; filtro por situação;
    ficha completa do contrato (imóvel + partes + demais campos do Guess).
    As consultas definitivas vêm do João Marcos e da Renata.
+
+   Privacidade (pedido v2 do Fabio, 29/09/2026): a tela só pede as colunas
+   liberadas em sql/2026-09-30-acervo-guess-acesso.sql (sem valores, renda,
+   cônjuge, telefone, e-mail, banco); CPF/CNPJ só com o miolo; linhas só para
+   quem está em guess_acesso (gerentes) ou é admin. A trava real é o banco.
    ===================================================================== */
 (function () {
   'use strict';
 
   const V_CONTRATOS = 'guess_v_contratos';
   const LIMITE = 200;
+  const COLS_V = 'contrato,situacao,situacao_j,data_contrato,vigencia_de,vigencia_ate,data_rescisao,tipo_contrato,tipo_fianca,periodo_contrato,dia_vencto,imovel,endereco,complemento,bairro,cidade,cep,situacao_imovel,proprietario,proprietario_nome,inquilino,inquilino_nome,inquilino2,inquilino2_nome,fiador,usuario_criacao,data_criacao';
+  const COLS_C = 'contrato,imovel,proprietario,inquilino,inquilino2,inquilino3,fiador,fiador2,fiador3,fiador4,situacao,situacao_j,data_contrato,vigencia_de,vigencia_ate,data_rescisao,usuario_rescisao,hora_rescisao,ctrl_pasta,tipo_contrato,tipo_mod_contrato,periodo_contrato,dia_vencto,prim_vencto,reajuste,tipo_indice,prox_reajuste,prox_renovacao,ult_renovacao,n_renovacao,n_meses,garantido,tipo_fianca,seguro_fianca,cod_seguradora,data_criacao,hora_criacao,usuario_criacao,carencia';
+  const COLS_I = 'imovel,proprietario,endereco,complemento,bairro,cidade,estado,cep,pasta,situacao,iptu_lote,n_cadastro,nro_registro_imovel,nro_reg_matric_imovel,administracao,contrato_ref';
+  const COLS_P = 'codigo,nome,fantasia,cpf_cnpj,bairro,cidade,categoria,situacao';
 
   // Legenda dos códigos do Guess — A CONFIRMAR COM O FABIO (só R e A têm
   // indício forte nos dados: R = 6.451 contratos, 3.649 com data de rescisão;
@@ -28,7 +37,11 @@
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const fmtData = d => { if (!d) return '—'; const [y, m, dd] = String(d).slice(0, 10).split('-'); return `${dd}/${m}/${y}`; };
   const fmtHora = iso => { const d = new Date(iso); return d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); };
-  const fmtVal = v => (v == null ? '—' : Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
+  // CPF/CNPJ: só o miolo, para diferenciar homônimos (pedido do Fabio)
+  const docMask = v => { const d = String(v == null ? '' : v).replace(/\D/g, '');
+    if (d.length === 11) return '***.' + d.substr(3, 3) + '.' + d.substr(6, 3) + '-**';
+    if (d.length === 14) return '**.' + d.substr(2, 3) + '.' + d.substr(5, 3) + '/' + d.substr(8, 4) + '-**';
+    return d ? '***' : '—'; };
   const podeVer = () => (typeof ehLiderGestao === 'function' ? ehLiderGestao() : false);
   const aviso = (m, t) => { if (typeof toast === 'function') toast(m, t || ''); };
   const ilike = s => '*' + String(s).replace(/[%*,()]/g, ' ').trim().replace(/\s+/g, '*') + '*';
@@ -66,6 +79,7 @@
       </div>
       <div id="ag-res"></div>`;
     _root.querySelector('#ag-btn').onclick = buscar;
+    _root.querySelector('#ag-tipo').onchange = e => { const t = e.target.value; _root.querySelector('#ag-busca').placeholder = t === 'documento' ? 'CPF ou CNPJ, com ou sem pontuação' : t === 'contrato' || t === 'imovel' ? 'Número…' : '🔍 Digite e pressione Enter…'; };
     _root.querySelector('#ag-busca').onkeydown = e => { if (e.key === 'Enter') buscar(); };
     carimbo();
   }
@@ -76,6 +90,9 @@
       const cargas = await db.get('guess_cargas', '?select=tabela,linhas,mascarado,carregado_em&order=carregado_em.desc&limit=4');
       if (!cargas || !cargas.length) { el.innerHTML = 'Acervo ainda não carregado neste ambiente. <small>(sandbox/carregar_guess.py)</small>'; return; }
       const ult = cargas[0];
+      // RLS: quem não está em guess_acesso recebe [] sem erro — avisa em vez de parecer vazio
+      const probe = await db.get('guess_contratos', '?select=contrato&limit=1');
+      if (!probe || !probe.length) { el.innerHTML = '<span style="color:#b45309;font-weight:600">Seu usuário não está na lista de acesso ao acervo.</span> Peça ao Rodrigo ou ao Fabio (T.I.) para incluir seu e-mail em guess_acesso.'; return; }
       const tot = {}; cargas.forEach(c => { if (!tot[c.tabela]) tot[c.tabela] = c.linhas; });
       el.innerHTML = `Acervo carregado em <strong>${fmtHora(ult.carregado_em)}</strong> · ` +
         Object.entries(tot).map(([t, n]) => `${t.replace('guess_', '')}: ${Number(n).toLocaleString('pt-BR')}`).join(' · ') +
@@ -93,7 +110,7 @@
     if (!termo && !sit) { aviso('Digite algo para buscar ou escolha uma situação.', 'err'); return; }
     res.innerHTML = '<div class="card cb" style="color:var(--muted)">Buscando…</div>';
     try {
-      let q = `?select=*&order=vigencia_ate.desc.nullslast&limit=${LIMITE}`;
+      let q = `?select=${COLS_V}&order=vigencia_ate.desc.nullslast&limit=${LIMITE}`;
       if (sit) q += `&situacao=eq.${encodeURIComponent(sit)}`;
       if (termo) {
         if (tipo === 'endereco')          q += `&endereco=ilike.${encodeURIComponent(ilike(termo))}`;
@@ -135,7 +152,7 @@
     res.innerHTML = `
       <div style="font-size:13px;color:var(--muted);margin-bottom:8px">${lista.length} contrato(s)${lista.length >= LIMITE ? ' (limite atingido — refine a busca)' : ''} · ${ativos} com situação A</div>
       <div class="card"><div class="tw tbl"><table>
-        <thead><tr><th>Contrato</th><th>Sit.</th><th>Imóvel</th><th>Proprietário</th><th>Inquilino</th><th>Vigência</th><th style="text-align:right">Aluguel</th><th>Rescisão</th></tr></thead>
+        <thead><tr><th>Contrato</th><th>Sit.</th><th>Imóvel</th><th>Proprietário</th><th>Inquilino</th><th>Vigência</th><th>Rescisão</th></tr></thead>
         <tbody>${lista.map((c, i) => `<tr class="ag-row" data-i="${i}" style="cursor:pointer">
           <td style="font-weight:700">${c.contrato}</td>
           <td>${badgeSit(c.situacao)}</td>
@@ -143,7 +160,6 @@
           <td>${esc(c.proprietario_nome || '—')}<br><small style="color:var(--muted)">cód. ${c.proprietario ?? '—'}</small></td>
           <td>${esc(c.inquilino_nome || '—')}${c.inquilino2_nome ? '<br><small>+ ' + esc(c.inquilino2_nome) + '</small>' : ''}</td>
           <td style="white-space:nowrap">${fmtData(c.vigencia_de)}<br>${fmtData(c.vigencia_ate)}</td>
-          <td style="text-align:right;white-space:nowrap">${fmtVal(c.val_contrato)}</td>
           <td style="white-space:nowrap">${fmtData(c.data_rescisao)}</td></tr>`).join('')}</tbody>
       </table></div></div>`;
     res.querySelectorAll('.ag-row').forEach(tr => tr.onclick = () => abrirFicha(lista[+tr.dataset.i].contrato));
@@ -165,17 +181,15 @@
   const fmtCampo = (k, v) => {
     if (v == null || v === '') return '—';
     if (/^(data_|prim_|vigencia_|prox_|ult_)/.test(k) || k === 'cadastro' || k === 'ultima_atividade') return fmtData(v);
-    if (/(_val|val_contrato|valor_|renda_)/.test(k)) return fmtVal(v);
-    if (k === 'situacao') return `${esc(v)} — ${esc(SITUACAO[v] || 'a confirmar')}`;
+        if (k === 'situacao') return `${esc(v)} — ${esc(SITUACAO[v] || 'a confirmar')}`;
     if (k === 'tipo_fianca') return `${esc(v)} — ${esc(TIPO_FIANCA[v] || 'a confirmar')}`;
     return esc(v);
   };
   const grade = (obj, chaves) => `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px 14px;font-size:13px">` +
     chaves.filter(k => k in obj).map(k => `<div><div style="font-size:11px;color:var(--muted)">${esc(rotulos[k] || k)}</div><div>${fmtCampo(k, obj[k])}</div></div>`).join('') + `</div>`;
   const secao = (t, html) => `<div style="font-weight:700;font-size:13px;margin:14px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--borda)">${t}</div>${html}`;
-  const pessoaHTML = p => p ? `<div style="font-size:13px"><strong>${esc(p.nome)}</strong> <small style="color:var(--muted)">cód. ${p.codigo} · ${esc(p.categoria || '')}</small><br>
-      ${esc([p.tipo_endereco, p.endereco, p.numero, p.complemento].filter(Boolean).join(' '))} · ${esc(p.bairro || '')} · ${esc(p.cidade || '')}/${esc(p.estado || '')} · ${esc(p.cep || '')}<br>
-      <small>CPF/CNPJ ${esc(p.cpf_cnpj || '—')} · tel. ${esc(p.telefone || '—')} · ${esc(p.email || '—')}${p.conjuge ? ' · cônjuge ' + esc(p.conjuge) : ''}</small></div>` : '<div style="font-size:13px;color:var(--muted)">— não encontrado no acervo —</div>';
+  const pessoaHTML = p => p ? `<div style="font-size:13px"><strong>${esc(p.nome)}</strong>${p.fantasia ? ' <small>(' + esc(p.fantasia) + ')</small>' : ''} <small style="color:var(--muted)">cód. ${p.codigo} · ${esc(p.categoria || '')}</small><br>
+      <small>CPF/CNPJ ${docMask(p.cpf_cnpj)} · ${esc(p.bairro || '—')} · ${esc(p.cidade || '—')}</small></div>` : '<div style="font-size:13px;color:var(--muted)">— não encontrado no acervo —</div>';
 
   async function abrirFicha(numero) {
     const old = document.getElementById('m-ag-ficha'); if (old) old.remove();
@@ -184,27 +198,24 @@
     document.body.appendChild(ov);
     const mb = ov.querySelector('.ag-mb');
     try {
-      const [c] = await db.get('guess_contratos', `?contrato=eq.${numero}&limit=1`);
+      const [c] = await db.get('guess_contratos', `?select=${COLS_C}&contrato=eq.${numero}&limit=1`);
       if (!c) { mb.textContent = 'Contrato não encontrado.'; return; }
       const codsInq = [c.inquilino, c.inquilino2, c.inquilino3].filter(x => x != null);
       const [imv, prop, inqs] = await Promise.all([
-        c.imovel != null ? db.get('guess_imoveis', `?imovel=eq.${c.imovel}&limit=1`).then(r => r && r[0]) : null,
-        c.proprietario != null ? db.get('guess_clientes', `?codigo=eq.${c.proprietario}&limit=1`).then(r => r && r[0]) : null,
-        codsInq.length ? db.get('guess_inquilinos', `?codigo=in.(${codsInq.join(',')})`) : [],
+        c.imovel != null ? db.get('guess_imoveis', `?select=${COLS_I}&imovel=eq.${c.imovel}&limit=1`).then(r => r && r[0]) : null,
+        c.proprietario != null ? db.get('guess_clientes', `?select=${COLS_P}&codigo=eq.${c.proprietario}&limit=1`).then(r => r && r[0]) : null,
+        codsInq.length ? db.get('guess_inquilinos', `?select=${COLS_P}&codigo=in.(${codsInq.join(',')})`) : [],
       ]);
-      const core = Object.keys(c).filter(k => k !== 'extra');
-      const extra = c.extra || {};
       mb.innerHTML =
-        secao('Contrato', grade(c, ['contrato', 'situacao', 'situacao_j', 'tipo_contrato', 'tipo_mod_contrato', 'data_contrato', 'vigencia_de', 'vigencia_ate', 'periodo_contrato', 'dia_vencto', 'prim_vencto', 'val_contrato', 'reajuste', 'tipo_indice', 'prox_reajuste', 'prox_renovacao', 'ult_renovacao', 'n_renovacao', 'n_meses'])) +
-        secao('Garantia e taxas', grade(c, ['tipo_fianca', 'garantido', 'seguro_fianca', 'cod_seguradora', 'valor_caucao', 'administracao_per', 'administracao_val', 'intermediacao_per', 'intermediacao_val', 'multa', 'juros', 'carencia', 'mes_adm', 'declara_irrf'])) +
+        secao('Contrato', grade(c, ['contrato', 'situacao', 'situacao_j', 'tipo_contrato', 'tipo_mod_contrato', 'data_contrato', 'vigencia_de', 'vigencia_ate', 'periodo_contrato', 'dia_vencto', 'prim_vencto', 'reajuste', 'tipo_indice', 'prox_reajuste', 'prox_renovacao', 'ult_renovacao', 'n_renovacao', 'n_meses'])) +
+        secao('Garantia', grade(c, ['tipo_fianca', 'garantido', 'seguro_fianca', 'cod_seguradora', 'carencia'])) +
         secao('Rescisão', grade(c, ['data_rescisao', 'usuario_rescisao', 'hora_rescisao'])) +
         secao(`Imóvel ${c.imovel ?? ''}`, imv ? `<div style="font-size:13px"><strong>${esc(imv.endereco || '—')}</strong>${imv.complemento ? ' ' + esc(imv.complemento) : ''} · ${esc(imv.bairro || '')} · ${esc(imv.cidade || '')}/${esc(imv.estado || '')} · CEP ${esc(imv.cep || '—')}<br>
-            <small>situação ${esc(imv.situacao || '—')} · pasta ${imv.pasta ?? '—'} · administração ${imv.administracao ?? '—'} · matrícula ${esc(imv.nro_reg_matric_imovel || '—')} · contrib. ${esc(imv.daem_n_contrib || '—')}</small></div>` : '<div style="font-size:13px;color:var(--muted)">— não encontrado no acervo —</div>') +
+            <small>situação ${esc(imv.situacao || '—')} · pasta ${imv.pasta ?? '—'} · administração ${imv.administracao ?? '—'} · lote IPTU ${esc(imv.iptu_lote || '—')} · registro ${esc(imv.nro_registro_imovel || '—')} · matrícula ${esc(imv.nro_reg_matric_imovel || '—')} · cadastro ${esc(imv.n_cadastro || '—')}</small></div>` : '<div style="font-size:13px;color:var(--muted)">— não encontrado no acervo —</div>') +
         secao(`Proprietário ${c.proprietario ?? ''}`, pessoaHTML(prop)) +
         secao('Inquilino(s)', codsInq.length ? codsInq.map(cod => pessoaHTML((inqs || []).find(p => p.codigo === cod))).join('<div style="height:6px"></div>') : '<div style="font-size:13px;color:var(--muted)">—</div>') +
-        secao('Cobrança e criação', grade(c, ['cob_endereco', 'cob_complemento', 'cob_bairro', 'cob_cidade', 'cob_estado', 'cob_cep', 'usuario_criacao', 'data_criacao', 'hora_criacao', 'observacao', 'ctrl_pasta', 'fiador', 'fiador2', 'fiador3', 'fiador4'])) +
-        (Object.keys(extra).length ? `<details style="margin-top:14px"><summary style="cursor:pointer;font-size:13px;color:var(--muted)">Demais campos do Guess (${Object.keys(extra).length})</summary>
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:4px 14px;font-size:12px;margin-top:8px">${Object.entries(extra).map(([k, v]) => `<div><span style="color:var(--muted)">${esc(k)}</span>: ${esc(v)}</div>`).join('')}</div></details>` : '');
+        secao('Fiadores e cadastro', grade(c, ['fiador', 'fiador2', 'fiador3', 'fiador4', 'ctrl_pasta', 'usuario_criacao', 'data_criacao', 'hora_criacao'])) +
+        `<div style="font-size:12px;color:var(--muted);margin-top:14px">Valores do contrato, dados de cobrança e demais dados pessoais ficam fora da consulta até a regra de retenção e acesso do Jurídico. Cadastro de fiadores ainda não carregado.</div>`;
     } catch (e) { mb.innerHTML = `<span style="color:#dc2626">Erro: ${esc(e.message)}</span>`; }
   }
 
