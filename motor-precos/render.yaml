@@ -1,0 +1,18 @@
+# Motor de preço ao vivo (Render, free). Hiberna sem uso e acorda no 1º acesso (~30-60 s);
+# o portal dá um "ping" no /health ao abrir a Avaliação para acordar antes do cálculo.
+services:
+  - type: web
+    name: novasp-motor-precos
+    runtime: python
+    plan: free
+    rootDir: motor-precos
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn precos_api:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: SB_URL
+        value: https://mqcduyvpuxdweqesgwrq.supabase.co
+      - key: SB_ANON
+        sync: false          # colar a anon key (pública) no painel do Render
+      - key: EXIGE_LOGIN
+        value: "1"

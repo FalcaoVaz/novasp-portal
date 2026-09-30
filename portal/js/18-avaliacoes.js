@@ -54,6 +54,8 @@ async function carregarAvalImoveis(){
       <button class="btn btn-p" onclick="avalNova()">＋ Nova avaliação</button>
     </div>
     <div id="aval-corpo"><div class="card"><div class="cb">Carregando avaliações salvas…</div></div></div>`;
+  // acorda o motor (Render free hiberna) enquanto a lista carrega — sem esperar a resposta
+  try{ fetch(`${AVAL_MOTOR}/health`,{mode:'cors'}).catch(()=>{}); }catch(_){}
   try{
     const q='?select=id,codigo,fonte,tipo,bairro,endereco,area_util,terreno,preco_pedido,'
       +'valor_mercado,zona,ca,incorp_aplicavel,incorp_valor_terreno,incorp_ganho_pct,'
@@ -259,7 +261,7 @@ async function avalCalcular(){
   let precos={}, semMotor=false;
   try{
     const ctrl=(typeof AbortController!=='undefined')?new AbortController():null;
-    const timer=ctrl?setTimeout(()=>ctrl.abort(),8000):null;
+    const timer=ctrl?setTimeout(()=>ctrl.abort(),45000):null;   // Render free acorda em 30-60 s
     const r=await fetch(`${AVAL_MOTOR}/precos?bairro=`+encodeURIComponent(bairro),Object.assign({headers:hdr()},ctrl?{signal:ctrl.signal}:{}));
     if(timer) clearTimeout(timer);
     if(!r.ok) throw new Error('motor HTTP '+r.status);
