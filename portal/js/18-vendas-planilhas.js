@@ -52,7 +52,11 @@
       desc: 'Imóveis da Seleção de Imóveis vendidos no mês' },
   ];
   const META_CAPTACAO = 5;
-  const REF_OK = /^[A-Z]+\d+$/;           // ex.: BI25354
+  // Referência: basta conter numeração; letras opcionais (BI25354, 25354, AP100B).
+  // Sem número ou com caractere especial BLOQUEIA a gravação (correção Anderson 30/09/2026).
+  const REF_OK = /^[A-Z0-9]*\d[A-Z0-9]*$/;
+  const refProblema = ref => !/\d/.test(ref) ? 'sem numeração'
+    : !REF_OK.test(ref) ? 'com caractere especial (use só letras e números)' : null;
 
   /* ---------- Utilitários -------------------------------------------- */
   const norm = s => String(s == null ? '' : s)
@@ -84,7 +88,8 @@
   function parseWorkbook(wb, XLSX) {
     const porNome = {};
     wb.SheetNames.forEach(n => { porNome[norm(n)] = n; });
-    const out = { linhas: [], limites: {}, avisos: [], abasFaltando: [] };
+    // avisos = conferir, mas pode gravar · bloqueios = impede gravar
+    const out = { linhas: [], limites: {}, avisos: [], bloqueios: [], abasFaltando: [] };
 
     SUBMODULOS.forEach(sm => {
       const nomeReal = porNome[sm.aba];
@@ -104,7 +109,7 @@
           const refBruta = txt(r[0]), corretor = txt(r[1]), tipo = norm(r[2]);
           if (!refBruta && !corretor) return;     // linha do modelo não preenchida
           const ref = refBruta.toUpperCase().replace(/\s+/g, '');
-          if (ref && !REF_OK.test(ref)) out.avisos.push(`${sm.aba}, linha ${linhaExcel}: referência "${refBruta}" fora do padrão (ex.: BI25354).`);
+          if (ref && refProblema(ref)) out.bloqueios.push(`${sm.aba}, linha ${linhaExcel}: referência "${refBruta}" ${refProblema(ref)} (ex.: BI25354 ou 25354).`);
           if (!ref) out.avisos.push(`${sm.aba}, linha ${linhaExcel}: corretor sem referência.`);
           if (!corretor) out.avisos.push(`${sm.aba}, linha ${linhaExcel}: referência ${ref} sem corretor.`);
           out.linhas.push({ submodulo: sm.key, linha_excel: linhaExcel, referencia: ref || null, corretor: corretor || null,
@@ -118,7 +123,7 @@
           const corretor = txt(r[0]), refBruta = txt(r[2]);
           if (!corretor && !refBruta) return;
           const ref = refBruta.toUpperCase().replace(/\s+/g, '');
-          if (ref && !REF_OK.test(ref)) out.avisos.push(`${sm.aba}, linha ${linhaExcel}: referência "${refBruta}" fora do padrão.`);
+          if (ref && refProblema(ref)) out.bloqueios.push(`${sm.aba}, linha ${linhaExcel}: referência "${refBruta}" ${refProblema(ref)}.`);
           out.linhas.push({ submodulo: sm.key, linha_excel: linhaExcel, corretor: corretor || null, equipe: txt(r[1]) || null, referencia: ref || null });
         }
       });
@@ -303,7 +308,7 @@
         const wb = XLSX.read(await f.arrayBuffer(), { type: 'array' });
         parsed = parseWorkbook(wb, XLSX);
         $('.vp-prev').innerHTML = previaHTML(parsed);
-        $('.vp-ok').disabled = parsed.linhas.length === 0;
+        $('.vp-ok').disabled = parsed.linhas.length === 0 || parsed.bloqueios.length > 0;
       } catch (err) { $('.vp-prev').innerHTML = `<p style="color:#dc2626">${esc(err.message)}</p>`; }
     };
 
@@ -326,6 +331,9 @@
     return `<div class="tw tbl"><table><thead><tr><th>Aba do Excel</th><th>Sub-módulo</th><th style="text-align:center">Linhas</th></tr></thead><tbody>` +
       SUBMODULOS.map(s => `<tr><td style="font-family:monospace;font-size:12px">${s.aba}</td><td>${esc(s.nome)}</td><td style="text-align:center">${parsed.abasFaltando.includes(s.aba) ? '<b style="color:#dc2626">aba não encontrada</b>' : parsed.linhas.filter(l => l.submodulo === s.key).length}</td></tr>`).join('') +
       `</tbody></table></div>` +
+      (parsed.bloqueios.length
+        ? `<details open style="margin-top:10px"><summary style="cursor:pointer;color:#dc2626;font-weight:600">${parsed.bloqueios.length} referência(s) a corrigir no Excel antes de gravar</summary><ul style="margin:6px 0;padding-left:18px;font-size:13px;color:#dc2626">${parsed.bloqueios.map(a => `<li>${esc(a)}</li>`).join('')}</ul></details>`
+        : '') +
       (parsed.avisos.length
         ? `<details open style="margin-top:10px"><summary style="cursor:pointer;color:#b45309;font-weight:600">${parsed.avisos.length} aviso(s) — conferir antes de gravar</summary><ul style="margin:6px 0;padding-left:18px;font-size:13px">${parsed.avisos.map(a => `<li>${esc(a)}</li>`).join('')}</ul></details>`
         : `<p style="color:#047857;margin-top:10px">Nenhum aviso.</p>`) +
