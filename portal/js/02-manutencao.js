@@ -668,8 +668,8 @@ function podeAcessarAcervo(){
 async function verificarAcessoAcervo(){
   try {
     const r = await fetch(SBU + '/rest/v1/rpc/acervo_pode_ler', { method:'POST', headers: hdr(), body: '{}' });
-    _ACERVO_OK = r.ok ? (await r.json()) === true : false;
-  } catch(_) { _ACERVO_OK = false; }
+    if (r.ok) _ACERVO_OK = (await r.json()) === true;   // erro de rede/RPC: mantém a regra local (admin/TI)
+  } catch(_) {}
   return _ACERVO_OK;
 }
 function podeGerenciarCorretores(){
