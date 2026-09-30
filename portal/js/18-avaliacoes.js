@@ -17,6 +17,43 @@ const AVAL_MOTOR = (typeof window!=='undefined' && window.AVAL_MOTOR_URL)
 const AV_CASA = ['CASA','CASA TÉRREA','CASA ASSOBRADADA','CASA DE VILA','SOBRADO','CONDOMÍNIO'];
 const AV_TIPOS = ['Apartamento','Studio','Cobertura','Casa térrea','Sobrado','Casa de vila','Casa em condomínio','Terreno','Comercial'];
 
+// ── Padrão construtivo → custo de obra (CUB/m² Sinduscon-SP, jul/2026, com oneração) ──
+// CUB não inclui fundações especiais, projetos, elevadores, ligações e taxas: custo total ≈ CUB × FATOR_OBRA.
+// Fonte: Sinduscon-SP, tabela de julho/2026 (R8 = residencial 8 pavimentos; B/N/A = baixo/normal/alto).
+const AV_PADROES = {
+  economico: { lb:'Econômico / MCMV', cub:1945.55, ref:'R8-B' },
+  medio:     { lb:'Médio',            cub:2231.37, ref:'R8-N' },
+  alto:      { lb:'Alto',             cub:2618.33, ref:'R8-A' },
+};
+// Parâmetros padrão da conta reversa (método involutivo). Editáveis aqui; o corretor não mexe.
+const AV_PARAM = {
+  cub_ref:'Sinduscon-SP jul/2026',
+  fator_obra:1.30,      // custo total de obra sobre o CUB (fundação, projetos, elevadores, ligações, taxas)
+  eficiencia:0.80,      // área vendável / área computável
+  comissao:0.05,        // corretagem sobre o VGV
+  marketing:0.02,       // publicidade e estande
+  ret:0.04,             // RET (tributos da incorporação)
+  adm:0.03,             // despesas administrativas
+  margem:0.20,          // margem do incorporador
+  lanc_sobre_usado:1.25,// se não houver lançamento anunciado no bairro: lançamento ≈ usado × 1,25
+  casa_sobre_apto:0.60, // se não houver casa anunciada no bairro: R$/m² casa ≈ apto × 0,60 (mediana observada 30/09/2026)
+};
+// Bairros onde o padrão sugerido é ALTO (o corretor pode trocar na tela)
+const AV_BAIRROS_ALTO = ['moema','itaim','vila nova conceicao','brooklin','campo belo','jardim paulista','jardins','paraiso','vila olimpia','ibirapuera','chacara klabin','vila mariana','pinheiros','perdizes'];
+const _avNormBairro = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+function _avPadraoSugerido(bairro){ const b=_avNormBairro(bairro); return AV_BAIRROS_ALTO.some(x=>b.includes(x)) ? 'alto' : 'medio'; }
+// Conta reversa de incorporação: quanto o terreno pode valer para o empreendimento fechar com margem.
+function _avContaIncorp({terreno, ca, rs_lanc, padrao}){
+  const p=AV_PADROES[padrao]||AV_PADROES.medio, P=AV_PARAM;
+  const area_constr=terreno*ca, area_vendavel=area_constr*P.eficiencia;
+  const vgv=area_vendavel*rs_lanc;
+  const obra=area_constr*p.cub*P.fator_obra;
+  const indiretos=vgv*(P.comissao+P.marketing+P.ret+P.adm);
+  const margem=vgv*P.margem;
+  const terreno_max=vgv-obra-indiretos-margem;
+  return {padrao, cub:p.cub, area_constr, area_vendavel, vgv, obra, indiretos, margem, terreno_max, custo_m2:p.cub*P.fator_obra};
+}
+
 let _avImoveis = [];
 let _avFiltro = { status:'', busca:'' };
 let _avPino = null;                 // {lat,lng} confirmado
@@ -150,6 +187,12 @@ function avalNova(){
         <input id="av-suite" type="number" placeholder="Suítes" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px">
         <input id="av-vaga" type="number" placeholder="Vagas" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px">
       </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+        <select id="av-padrao" title="Padrão construtivo do que seria construído no terreno (custo de obra pelo CUB Sinduscon-SP)" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px">
+          ${Object.entries(AV_PADROES).map(([k,v])=>`<option value="${k}">Padrão ${v.lb} — obra ≈ ${_avR$(Math.round(v.cub*AV_PARAM.fator_obra))}/m²</option>`).join('')}</select>
+        <input id="av-lanc" type="number" placeholder="Lançamento R$/m² no bairro (opcional — senão usa anúncios)" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px">
+      </div>
+      <div style="color:#94a3b8;font-size:.82em;margin-top:4px">Padrão e lançamento só entram na conta de incorporação (casas, sobrados e terrenos em zona que permite adensar). Custo de obra = CUB ${AV_PARAM.cub_ref} × ${AV_PARAM.fator_obra}.</div>
       <input id="av-preco" type="number" placeholder="Preço que o proprietário pensa em pedir (opcional)" style="margin-top:8px;width:100%;padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px">
       <button class="btn btn-p" style="margin-top:12px" onclick="avalCalcular()">⚙️ Gerar avaliação</button>
       <div id="av-calc-status" style="margin-top:8px;color:#64748b;font-size:.9em"></div>
@@ -227,7 +270,10 @@ async function _avMostrarMapa(lat,lng){
   }
   _avPino={lat,lng}; _avPinoInfo(); _avLiberaPasso2();
 }
-function _avLiberaPasso2(){ const p=document.getElementById('av-passo2'); if(p){p.style.opacity='1';p.style.pointerEvents='auto';} }
+function _avLiberaPasso2(){
+  const p=document.getElementById('av-passo2'); if(p){p.style.opacity='1';p.style.pointerEvents='auto';}
+  const sel=document.getElementById('av-padrao'); if(sel && !sel.dataset.tocado){ sel.value=_avPadraoSugerido(_avForm.bairro||document.getElementById('av-bairro')?.value); sel.onchange=()=>{ sel.dataset.tocado='1'; }; }
+}
 
 async function _avPinoInfo(){
   const el=document.getElementById('av-pino-info'); if(!el||!_avPino) return;
@@ -290,10 +336,16 @@ async function avalCalcular(){
   if(!_avForm.geo){
     try{ const z=await _avRpc('aval_geo',{p_lat:_avPino.lat,p_lng:_avPino.lng}); _avForm.geo=Array.isArray(z)?z[0]:z; }catch(_){}
   }
-  const ehcasa=_ehCasa(tipo);
-  const rs_apto=precos.rs_apto, rs_casa=precos.rs_casa;
-  const rs_tipo = ehcasa ? (rs_casa||rs_apto) : rs_apto;
+  const ehcasa=_ehCasa(tipo), ehterreno=/terreno/i.test(tipo);
+  const rs_apto=precos.rs_apto;
+  const rs_casa=precos.rs_casa || (rs_apto ? Math.round(rs_apto*AV_PARAM.casa_sobre_apto) : null);
+  const casaEstimada=!precos.rs_casa && !!rs_casa;
+  const rs_tipo = ehcasa ? rs_casa : (ehterreno ? null : rs_apto);
   const geo=_avForm.geo||{};
+  const padrao=g('av-padrao')||_avPadraoSugerido(bairro);
+  const lancInformado=+g('av-lanc')||null;
+  const rs_lanc = lancInformado || precos.rs_lanc || (rs_apto ? Math.round(rs_apto*AV_PARAM.lanc_sobre_usado) : null);
+  const lancOrigem = lancInformado ? 'informado' : (precos.rs_lanc ? `${precos.n_lanc} lançamentos anunciados` : `usado × ${AV_PARAM.lanc_sobre_usado} (sem lançamento anunciado)`);
 
   const dossie={
     fonte:'ondemand', codigo:'OD'+Date.now(),
@@ -312,18 +364,25 @@ async function avalCalcular(){
     const vm=area*rs_tipo;
     dossie.valor_mercado=Math.round(vm); dossie.faixa_min=Math.round(vm*0.9); dossie.faixa_max=Math.round(vm*1.1);
     const rsf=rs_tipo.toLocaleString('pt-BR');
-    dossie.metodo=`${area} m² × R$ ${rsf}/m² (${precos.base==='ITBI'?`mediana de ${precos.n_itbi} fechamentos ITBI em ${bairro} — modo teste`:`anúncios ${bairro}`})`;
+    dossie.metodo=`${area} m² × R$ ${rsf}/m² (${precos.base==='ITBI'?`mediana de ${precos.n_itbi} fechamentos ITBI em ${bairro} — modo teste`:(ehcasa?(casaEstimada?`casas: estimado como apto × ${AV_PARAM.casa_sobre_apto}, sem casa anunciada em ${bairro}`:`${precos.n_casa} casas anunciadas em ${bairro}`):`anúncios ${bairro}`)})`;
   }
+  // ── Incorporação (conta reversa): casas, sobrados e terrenos em zona que permite adensar ──
   const ca=dossie.ca;
-  if(ehcasa && geo.incorporavel && ca && ca>=2 && terreno && rs_apto){
-    const efic=0.80, fator=1.9, pct=0.17;
-    const lanc=rs_apto*fator, vgv=terreno*ca*efic*lanc, vt=vgv*pct;
-    dossie.incorp_aplicavel=true;
-    dossie.incorp_area_constr=Math.round(terreno*ca);
-    dossie.incorp_lancamento_rs_m2=Math.round(lanc);
-    dossie.incorp_vgv=Math.round(vgv);
-    dossie.incorp_valor_terreno=Math.round(vt);
-    dossie.incorp_ganho_pct = preco ? Math.round((vt/preco-1)*100) : null;
+  if((ehcasa||ehterreno) && geo.incorporavel && ca && ca>=2 && terreno && rs_lanc){
+    const m=_avContaIncorp({terreno, ca, rs_lanc, padrao});
+    _avForm.memoria=m; _avForm.lancOrigem=lancOrigem;
+    if(m.terreno_max>0){
+      dossie.incorp_aplicavel=true;
+      dossie.incorp_area_constr=Math.round(m.area_constr);
+      dossie.incorp_lancamento_rs_m2=Math.round(rs_lanc);
+      dossie.incorp_vgv=Math.round(m.vgv);
+      dossie.incorp_valor_terreno=Math.round(m.terreno_max);
+      const base = preco || dossie.valor_mercado;
+      dossie.incorp_ganho_pct = base ? Math.round((m.terreno_max/base-1)*100) : null;
+      dossie.metodo=(dossie.metodo?dossie.metodo+' · ':'')+`incorporação: padrão ${padrao}, lançamento ${lancOrigem}`;
+    }else{
+      dossie.metodo=(dossie.metodo?dossie.metodo+' · ':'')+`incorporação inviável no padrão ${padrao} (terreno máximo ≤ 0)`;
+    }
   }
   _avForm.dossie=dossie;
   renderAvalPreview(dossie, precos);
@@ -340,9 +399,10 @@ function renderAvalPreview(x, precos){
       <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px;font-size:.9em">
         <div><span style="color:#94a3b8">Zona/CA</span><br><b>${x.zona} · CA ${x.ca}</b></div>
         <div><span style="color:#94a3b8">Construível</span><br><b>${x.incorp_area_constr} m²</b></div>
-        <div><span style="color:#94a3b8">Lançamento estim.</span><br><b>${_avR$(x.incorp_lancamento_rs_m2)}/m²</b></div>
+        <div><span style="color:#94a3b8">Lançamento</span><br><b>${_avR$(x.incorp_lancamento_rs_m2)}/m²</b> <small style="color:#94a3b8">${_avForm.lancOrigem||''}</small></div>
         <div><span style="color:#94a3b8">VGV potencial</span><br><b>${_avR$(x.incorp_vgv)}</b></div>
-      </div></div></div>` : '';
+      </div>
+      ${_avMemoriaHTML(_avForm.memoria)}</div></div>` : '';
   corpo.innerHTML = `
     <div class="ph" style="display:flex;align-items:center;gap:12px">
       <button class="btn btn-o bsm" onclick="avalNova()">← Refazer</button>
@@ -372,6 +432,27 @@ function renderAvalPreview(x, precos){
       <span style="color:#94a3b8;font-size:.88em">Depois de salvar você revisa, aprova e gera o link pro proprietário.</span>
     </div></div>`;
 }
+// Memória da conta reversa. Recebe o objeto de _avContaIncorp ou reconstrói a partir da avaliação salva.
+function _avMemoriaHTML(m){
+  if(!m) return '';
+  const P=AV_PARAM, p=AV_PADROES[m.padrao]||AV_PADROES.medio;
+  const l=(r,v,neg)=>`<tr style="border-top:1px solid #f1f5f9"><td style="padding:3px 8px;color:#64748b">${r}</td><td style="padding:3px 8px;text-align:right;${neg?'color:#b91c1c':''}">${neg?'− ':''}${_avR$(Math.round(v))}</td></tr>`;
+  return `<details style="margin-top:10px"><summary style="cursor:pointer;color:#047857;font-size:.9em">Memória de cálculo (conta reversa)</summary>
+    <table style="width:100%;border-collapse:collapse;font-size:.86em;margin-top:6px"><tbody>
+      ${l(`VGV: ${Math.round(m.area_vendavel)} m² vendáveis (${Math.round(m.area_constr)} m² × ${P.eficiencia}) × lançamento`, m.vgv)}
+      ${l(`Obra: ${Math.round(m.area_constr)} m² × CUB ${p.ref} ${_avR$(p.cub)} × ${P.fator_obra} (padrão ${p.lb})`, m.obra, true)}
+      ${l(`Comissão ${P.comissao*100}% + marketing ${P.marketing*100}% + RET ${P.ret*100}% + adm. ${P.adm*100}%`, m.indiretos, true)}
+      ${l(`Margem do incorporador ${P.margem*100}%`, m.margem, true)}
+      <tr style="border-top:2px solid #10b981;font-weight:700"><td style="padding:4px 8px">Terreno máximo (o que sobra)</td><td style="padding:4px 8px;text-align:right">${_avR$(Math.round(m.terreno_max))}</td></tr>
+    </tbody></table>
+    <div style="color:#94a3b8;font-size:.8em;margin-top:4px">CUB ${P.cub_ref}. Parâmetros padrão da NSP; ajustáveis em AV_PARAM.</div></details>`;
+}
+// Reconstrói a memória de uma avaliação salva (padrão vem do texto do método; sem ele, médio)
+function _avMemoriaSalva(x){
+  if(!x||!x.incorp_aplicavel||!x.terreno||!x.ca||!x.incorp_lancamento_rs_m2) return null;
+  const mp=/padrão (economico|medio|alto)/.exec(x.metodo||''); const padrao=mp?mp[1]:'medio';
+  return _avContaIncorp({terreno:Number(x.terreno), ca:Number(x.ca), rs_lanc:Number(x.incorp_lancamento_rs_m2), padrao});
+}
 function _avCompara(pedido,mercado){
   const p=Number(pedido),m=Number(mercado); if(!p||!m) return '';
   const d=Math.round((p/m-1)*100);
@@ -400,7 +481,8 @@ function abrirAvalDetalhe(id){
     <div class="card" style="margin-bottom:12px;border-left:3px solid #10b981"><div class="cb">
       <div style="color:#047857;font-weight:600">💡 Potencial de incorporação</div>
       <div style="font-size:1.7em;font-weight:800;color:#047857;margin:4px 0">${_avR$(x.incorp_valor_terreno)}</div>
-      <div style="color:#64748b">${x.zona} · CA ${x.ca} · construível ${x.incorp_area_constr} m² · VGV ${_avR$(x.incorp_vgv)}${x.incorp_ganho_pct!=null?` · <b style="color:#059669">+${Math.round(x.incorp_ganho_pct)}%</b>`:''}</div>
+      <div style="color:#64748b">${x.zona} · CA ${x.ca} · construível ${x.incorp_area_constr} m² · lançamento ${_avR$(x.incorp_lancamento_rs_m2)}/m² · VGV ${_avR$(x.incorp_vgv)}${x.incorp_ganho_pct!=null?` · <b style="color:#059669">+${Math.round(x.incorp_ganho_pct)}%</b>`:''}</div>
+      ${_avMemoriaHTML(_avMemoriaSalva(x))}
     </div></div>`:'';
   const acoes = x.status==='aprovada' ? `
     <div class="card" style="background:#f0fdf4"><div class="cb">

@@ -75,8 +75,8 @@ def precos(bairro: str, authorization: str = Header(None), apikey: str = Header(
     if hit and time.time() - hit[0] < TTL:
         return {**hit[1], 'cache': True}
 
-    rs_apto = rs_casa = None
-    n_apto = n_casa = 0
+    rs_apto = rs_casa = rs_lanc = None
+    n_apto = n_casa = n_lanc = 0
     amostra = []
     try:
         an = busca_quintoandar(_slug(bairro))
@@ -87,6 +87,11 @@ def precos(bairro: str, authorization: str = Header(None), apikey: str = Header(
             rs_apto = round(statistics.median([a['rs_m2'] for a in pa]))
         if pc:
             rs_casa = round(statistics.median([a['rs_m2'] for a in pc]))
+        # preço de LANÇAMENTO (insumo da conta de incorporação): só anúncios marcados como lançamento
+        pl = [a for a in pa if a.get('lancamento')]
+        n_lanc = len(pl)
+        if pl:
+            rs_lanc = round(statistics.median([a['rs_m2'] for a in pl]))
         for a in (pc + pa)[:8]:
             amostra.append({'tipo': a.get('tipo'), 'area': a.get('area'),
                             'preco': a.get('preco'), 'rs_m2': round(a['rs_m2']),
@@ -95,7 +100,7 @@ def precos(bairro: str, authorization: str = Header(None), apikey: str = Header(
         raise HTTPException(502, f'falha ao buscar anúncios: {e}')
 
     payload = {'bairro': bairro, 'rs_apto': rs_apto, 'rs_casa': rs_casa,
-               'n_apto': n_apto, 'n_casa': n_casa, 'amostra': amostra,
+               'n_apto': n_apto, 'n_casa': n_casa, 'rs_lanc': rs_lanc, 'n_lanc': n_lanc, 'amostra': amostra,
                'fonte': 'quintoandar', 'cache': False}
     _cache[bairro.upper()] = (time.time(), payload)
     return payload
