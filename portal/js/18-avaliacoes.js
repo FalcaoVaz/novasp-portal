@@ -33,7 +33,7 @@ const AV_PARAM = {
   comissao:0.05,        // corretagem sobre o VGV            (Rodrigo, 01/10/2026)
   marketing:0.05,       // publicidade e estande              (Rodrigo, 01/10/2026)
   ret:0.04,             // RET (tributos da incorporação)     (Rodrigo, 01/10/2026)
-  adm:0.10,             // despesas administrativas           (Rodrigo, 01/10/2026)
+  adm:0.05,             // despesas administrativas           (Rodrigo, 01/10/2026: 10% → 5%)
   margem:0.15,          // margem do incorporador             (Rodrigo, 01/10/2026)
   lanc_sobre_usado:1.25,// se não houver lançamento anunciado no bairro: lançamento ≈ usado × 1,25
   casa_sobre_apto:0.60, // se não houver casa anunciada no bairro: R$/m² casa ≈ apto × 0,60 (mediana observada 30/09/2026)
