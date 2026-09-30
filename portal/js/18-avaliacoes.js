@@ -48,6 +48,20 @@ const AV_PARAM = {
   frente_min_m:12,        // idem para frente estreita
   cota_solidariedade_m2:20000, // acima disso, PDE exige 10% em HIS ou equivalente
 };
+// ── Índices macro → micro (método único: anúncio × ITBI) ──
+// pedido→fechado: fechamentos da própria NSP no NIDO (venda, 2019–2026, 1.773 pares): fechado/pedido mediano.
+// ITBI: a guia declara ~96,6% do valor negociado (validação do Foca, 1.734 pares, 28/09/2026) → +3,5%.
+// Área do cadastro (IPTU) ≈ 1,35 × área útil + 29 m² por vaga (medido no Foca, 13/09/2026) — usado só
+// para trazer o R$/m² do ITBI (por área construída) para a base de área útil dos anúncios.
+const AV_INDICES = {
+  pedido_fechado: { global:0.952, 'SAUDE':0.953, 'VILA GUARANI':0.955, 'VILA DA SAUDE':0.963, 'PLANALTO PAULISTA':0.931,
+                    'VILA MARIANA':0.952, 'VILA MONTE ALEGRE':0.964, 'MIRANDOPOLIS':0.950, 'JABAQUARA':0.940,
+                    'VILA CLEMENTINO':0.952, 'IPIRANGA':0.953, 'CHACARA INGLESA':0.950, 'JARDIM DA SAUDE':0.943, 'SAO JUDAS':0.953 },
+  itbi_subdeclaracao: 0.035,
+  iptu_por_util: 1.35, iptu_por_vaga: 29,
+  fonte: 'NIDO 2019–26 (pedido→fechado) · Foca 28/09/2026 (ITBI × fechamento) · Foca 13/09/2026 (área IPTU × útil)',
+};
+function _avIdxPedidoFechado(bairro){ const b=_avNormBairro(bairro).toUpperCase(); const k=Object.keys(AV_INDICES.pedido_fechado).find(k=>k!=='global' && b.includes(k)); return { idx: k?AV_INDICES.pedido_fechado[k]:AV_INDICES.pedido_fechado.global, origem: k?`${k} (NIDO)`:'média NSP (NIDO)' }; }
 // Bairros onde o padrão sugerido é ALTO (o corretor pode trocar na tela)
 const AV_BAIRROS_ALTO = ['moema','itaim','vila nova conceicao','brooklin','campo belo','jardim paulista','jardins','paraiso','vila olimpia','ibirapuera','chacara klabin','vila mariana','pinheiros','perdizes'];
 const _avNormBairro = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
@@ -358,7 +372,17 @@ async function avalCalcular(){
 
   // comparáveis de fechamento (ITBI) — do banco, via RPC
   let compsItbi=[];
-  try{ compsItbi=await _avRpc('aval_comps_itbi',{p_bairro:bairro,p_lim:semMotor?20:8}); }catch(_){}
+  try{ compsItbi=await _avRpc('aval_comps_itbi',{p_bairro:bairro,p_lim:20}); }catch(_){}
+  compsItbi=(compsItbi||[]).filter(c=>_ehCasa(tipo) ? /RESID|CASA|SOBRADO/i.test(c.uso||'') : /APART|CONDOM/i.test(c.uso||''));
+  // R$/m² do ITBI em base de ÁREA ÚTIL (cadastro ≈ 1,35 × útil + 29 m²/vaga; casa: área construída ≈ útil)
+  compsItbi.forEach(c=>{ const ac=Number(c.area_constr)||0; c.area_util_est=_ehCasa(tipo)?ac:Math.max(20,(ac-AV_INDICES.iptu_por_vaga)/AV_INDICES.iptu_por_util); c.rs_util=c.area_util_est?Math.round(Number(c.valor)/c.area_util_est):null; });
+  // endereços → coordenadas (base local de endereços do portal; o que não resolver fica sem pino)
+  const geocodar=async q=>{ try{ const r=await _avRpc('aval_geocode',{p_q:q}); const h=Array.isArray(r)?r[0]:null; return h?{lat:h.lat,lng:h.lng}:null; }catch(_){ return null; } };
+  const amostra=(precos.amostra||[]).slice(0,12);
+  await Promise.all([
+    ...amostra.map(async a=>{ if(a.rua){ const g=await geocodar(a.rua+' '+(a.bairro||bairro)); if(g) Object.assign(a,g); } }),
+    ...compsItbi.slice(0,12).map(async c=>{ const g=await geocodar(`${c.logradouro||''} ${c.numero||''}`); if(g) Object.assign(c,g); }),
+  ]);
 
   // MODO TESTE (motor de anúncios ao vivo ainda não hospedado): usa a mediana do R$/m²
   // dos fechamentos ITBI do bairro como preço de mercado, e avisa. Quando o motor entrar
@@ -389,6 +413,25 @@ async function avalCalcular(){
   const rs_lanc = lancInformado || precos.rs_lanc || (rs_apto ? Math.round(rs_apto*AV_PARAM.lanc_sobre_usado) : null);
   const lancOrigem = lancInformado ? 'informado' : (precos.rs_lanc ? `${precos.n_lanc} lançamentos anunciados` : `usado × ${AV_PARAM.lanc_sobre_usado} (sem lançamento anunciado)`);
 
+  // ── MÉTODO ÚNICO: macro (índices do bairro) aplicado no micro (este imóvel) ──
+  const idxPF=_avIdxPedidoFechado(bairro);
+  const rsItbiUtil=(()=>{ const v=compsItbi.map(c=>c.rs_util).filter(x=>x>0).sort((a,b)=>a-b); return v.length>=3?(v.length%2?v[(v.length-1)/2]:(v[v.length/2-1]+v[v.length/2])/2):null; })();
+  const metodoUnico = (()=>{
+    if(!area) return null;
+    const m={ idx_pedido_fechado:idxPF.idx, idx_origem:idxPF.origem, sub_itbi:AV_INDICES.itbi_subdeclaracao,
+              rs_anuncio: rs_tipo||null, n_anuncio: ehcasa?(precos.n_casa||0):(precos.n_apto||0),
+              rs_itbi_util: rsItbiUtil, n_itbi: compsItbi.filter(c=>c.rs_util>0).length };
+    m.rs_anuncio_ajust = m.rs_anuncio ? Math.round(m.rs_anuncio*m.idx_pedido_fechado) : null;     // pedido → fechado esperado
+    m.rs_itbi_ajust    = m.rs_itbi_util ? Math.round(m.rs_itbi_util*(1+m.sub_itbi)) : null;         // declarado → negociado
+    const partes=[m.rs_anuncio_ajust, m.rs_itbi_ajust].filter(x=>x>0);
+    m.rs_final = partes.length ? Math.round(partes.reduce((a,b)=>a+b,0)/partes.length) : null;
+    m.divergencia = partes.length===2 ? Math.round((m.rs_anuncio_ajust/m.rs_itbi_ajust-1)*100) : null;
+    m.valor_anuncio = m.rs_anuncio_ajust ? Math.round(area*m.rs_anuncio_ajust) : null;
+    m.valor_itbi    = m.rs_itbi_ajust ? Math.round(area*m.rs_itbi_ajust) : null;
+    m.valor_final   = m.rs_final ? Math.round(area*m.rs_final) : null;
+    return m; })();
+  _avForm.metodoUnico=metodoUnico;
+
   const dossie={
     fonte:'ondemand', codigo:'OD'+Date.now(),
     tipo, bairro, endereco:`${_avForm.rua||''}${_avForm.num?', '+_avForm.num:''}`.trim(),
@@ -399,15 +442,22 @@ async function avalCalcular(){
     valor_mercado:null, faixa_min:null, faixa_max:null, metodo:null,
     incorp_aplicavel:false, incorp_area_constr:null, incorp_lancamento_rs_m2:null,
     incorp_vgv:null, incorp_valor_terreno:null, incorp_ganho_pct:null,
-    comparaveis: JSON.stringify(((precos.amostra||[]).map(a=>({...a,origem:'anúncio'})))
-                  .concat((compsItbi||[]).map(c=>({tipo:'Fechamento',area:c.area_constr,preco:c.valor,rs_m2:c.rs_m2,origem:'ITBI '+(c.data||'')}))))
+    comparaveis: JSON.stringify(amostra.map(a=>({tipo:a.tipo,area:a.area,preco:a.preco,rs_m2:a.rs_m2,dorm:a.dorm,vaga:a.vaga,endereco:[a.rua,a.bairro].filter(Boolean).join(', '),url:a.url,lat:a.lat||null,lng:a.lng||null,origem:a.lancamento?'lançamento':'anúncio'}))
+                  .concat(compsItbi.map(c=>({tipo:'Fechamento',area:c.area_constr,area_util_est:Math.round(c.area_util_est||0),preco:c.valor,rs_m2:c.rs_m2,rs_util:c.rs_util,endereco:`${c.logradouro||''}${c.numero?', '+c.numero:''}`,data:c.data,lat:c.lat||null,lng:c.lng||null,origem:'ITBI '+(c.data||'')})))),
+    metodo_unico: null
   };
-  if(rs_tipo && area){
+  if(metodoUnico && metodoUnico.valor_final){
+    const mu=metodoUnico;
+    dossie.valor_mercado=mu.valor_final; dossie.faixa_min=Math.round(mu.valor_final*0.93); dossie.faixa_max=Math.round(mu.valor_final*1.07);
+    dossie.mercado_rs_m2=mu.rs_final;
+    dossie.metodo=`${area} m² × R$ ${mu.rs_final.toLocaleString('pt-BR')}/m² = média de [anúncios ${mu.rs_anuncio?mu.rs_anuncio.toLocaleString('pt-BR'):'—'} × ${mu.idx_pedido_fechado} (pedido→fechado, ${mu.idx_origem})`+
+      (mu.rs_itbi_ajust?` ; ITBI ${mu.rs_itbi_util.toLocaleString('pt-BR')}/m² útil est. × ${(1+mu.sub_itbi).toFixed(3)} (subdeclaração)`:'')+`]`+(mu.divergencia!=null?` · fontes divergem ${mu.divergencia}%`:'')+(precos.base==='ITBI'?' · modo teste (sem anúncios ao vivo)':'');
+  }else if(rs_tipo && area){
     const vm=area*rs_tipo;
     dossie.valor_mercado=Math.round(vm); dossie.faixa_min=Math.round(vm*0.9); dossie.faixa_max=Math.round(vm*1.1);
-    const rsf=rs_tipo.toLocaleString('pt-BR');
-    dossie.metodo=`${area} m² × R$ ${rsf}/m² (${precos.base==='ITBI'?`mediana de ${precos.n_itbi} fechamentos ITBI em ${bairro} — modo teste`:(ehcasa?(casaEstimada?`casas: estimado como apto × ${AV_PARAM.casa_sobre_apto}, sem casa anunciada em ${bairro}`:`${precos.n_casa} casas anunciadas em ${bairro}`):`anúncios ${bairro}`)})`;
+    dossie.metodo=`${area} m² × R$ ${rs_tipo.toLocaleString('pt-BR')}/m² (anúncios ${bairro}, sem ajuste)`;
   }
+  delete dossie.metodo_unico;
   // ── Incorporação (conta reversa): casas, sobrados e terrenos em zona que permite adensar ──
   const ca=dossie.ca;
   if((ehcasa||ehterreno) && geo.incorporavel && ca && ca>=2 && terreno && rs_lanc){
@@ -466,22 +516,18 @@ function renderAvalPreview(x, precos){
       <div style="color:#94a3b8;font-size:.88em;margin-top:6px">${x.metodo||''}${x.anuncios_usados?` · ${x.anuncios_usados} anúncios ao vivo`:''}</div>
       ${x.preco_pedido?`<div style="margin-top:8px;font-size:.9em">Pretendido: <b>${_avR$(x.preco_pedido)}</b> ${_avCompara(x.preco_pedido,x.valor_mercado)}</div>`:''}
     </div></div>`:`<div class="card" style="margin-bottom:12px"><div class="cb" style="color:#b45309">Sem preço de mercado (faltou área útil ou anúncios do bairro).</div></div>`}
+    ${_avMetodoHTML(_avForm.metodoUnico, x)}
+    ${comps.some(c=>c.lat)?`<div class="card" style="margin-bottom:12px"><div class="cb"><div style="color:#64748b;font-size:.85em;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Mapa: imóvel, anúncios e fechamentos</div><div id="av-mapa-comps" style="height:320px;border-radius:10px;border:1px solid #e2e8f0"></div><div style="font-size:.8em;color:#94a3b8;margin-top:4px">Pino vermelho = imóvel avaliado · azul = anúncios ao vivo · verde = fechamentos ITBI. Anúncio marcado na rua (sem número).</div></div></div>`:''}
     ${inc}
     ${comps.length?`<div class="card" style="margin-bottom:12px"><div class="cb">
       <div style="color:#64748b;font-size:.85em;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Comparáveis</div>
-      <table style="width:100%;border-collapse:collapse;font-size:.86em"><thead><tr style="text-align:left;color:#94a3b8">
-        <th style="padding:4px 8px">Origem</th><th style="padding:4px 8px;text-align:right">Área</th>
-        <th style="padding:4px 8px;text-align:right">Preço</th><th style="padding:4px 8px;text-align:right">R$/m²</th></tr></thead>
-      <tbody>${comps.slice(0,12).map(c=>`<tr style="border-top:1px solid #f1f5f9">
-        <td style="padding:4px 8px">${c.origem||c.tipo||'—'}</td>
-        <td style="padding:4px 8px;text-align:right">${c.area?Math.round(c.area)+' m²':'—'}</td>
-        <td style="padding:4px 8px;text-align:right">${_avR$(c.preco)}</td>
-        <td style="padding:4px 8px;text-align:right">${_avR$(c.rs_m2)}</td></tr>`).join('')}</tbody></table>
+      ${_avCompsTabela(comps)}
     </div></div>`:''}
     <div class="card"><div class="cb" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <button class="btn btn-p" onclick="avalSalvar()">💾 Salvar avaliação</button>
       <span style="color:#94a3b8;font-size:.88em">Depois de salvar você revisa, aprova e gera o link pro proprietário.</span>
     </div></div>`;
+  _avDesenharMapaComps(comps, _avPino?{lat:_avPino.lat,lng:_avPino.lng}:null);
 }
 // Memória da conta reversa. Recebe o objeto de _avContaIncorp ou reconstrói a partir da avaliação salva.
 function _avMemoriaHTML(m){
@@ -524,6 +570,46 @@ function _avMemoriaSalva(x){
   let extra={}; try{ const mj=/\[incorp:(\{.*?\})\]/.exec(x.metodo||''); if(mj) extra=JSON.parse(mj[1]); }catch(_){}
   const mp=/padrão (economico|medio|alto)/.exec(x.metodo||''); const padrao=extra.padrao||(mp?mp[1]:'medio');
   return _avContaIncorp({terreno:Number(x.terreno), ca:Number(x.ca), ca_basico:extra.cab, rs_lanc:Number(x.incorp_lancamento_rs_m2), padrao, qvt:extra.qvt, frente:extra.frente, gabarito:extra.gab, outorga_ref_m2:extra.oref, outorga_ref_n:extra.on||0, fp:extra.fp});
+}
+function _avCompsTabela(comps){
+  return `<table style="width:100%;border-collapse:collapse;font-size:.86em"><thead><tr style="text-align:left;color:#94a3b8">
+      <th style="padding:4px 8px">Origem</th><th style="padding:4px 8px">Endereço</th><th style="padding:4px 8px;text-align:right">Área</th>
+      <th style="padding:4px 8px;text-align:right">Preço</th><th style="padding:4px 8px;text-align:right">R$/m²</th></tr></thead>
+    <tbody>${comps.slice(0,24).map(c=>{ const itbi=/ITBI|Fechamento/i.test(c.origem||c.tipo||'');
+      return `<tr style="border-top:1px solid #f1f5f9">
+        <td style="padding:4px 8px;white-space:nowrap">${itbi?'<span style="color:#047857">●</span> ':'<span style="color:#2563eb">●</span> '}${c.origem||c.tipo||'—'}</td>
+        <td style="padding:4px 8px">${c.url?`<a href="${c.url}" target="_blank" style="color:#2563eb">${c.endereco||'anúncio'}</a>`:(c.endereco||'—')}${c.dorm?` <small style="color:#94a3b8">${c.dorm} dorm${c.vaga?' · '+c.vaga+' vg':''}</small>`:''}</td>
+        <td style="padding:4px 8px;text-align:right;white-space:nowrap">${c.area?Math.round(c.area)+' m²':'—'}${itbi&&c.area_util_est?`<br><small style="color:#94a3b8">≈ ${c.area_util_est} m² útil</small>`:''}</td>
+        <td style="padding:4px 8px;text-align:right;white-space:nowrap">${_avR$(c.preco)}</td>
+        <td style="padding:4px 8px;text-align:right;white-space:nowrap">${_avR$(c.rs_m2)}${itbi&&c.rs_util?`<br><small style="color:#94a3b8">${_avR$(c.rs_util)} útil</small>`:''}</td></tr>`; }).join('')}</tbody></table>
+    <div style="font-size:.8em;color:#94a3b8;margin-top:6px">ITBI: área do cadastro (IPTU); área útil estimada por (cadastro − ${AV_INDICES.iptu_por_vaga} m²) ÷ ${AV_INDICES.iptu_por_util} (casas: construída ≈ útil). Anúncio: área útil anunciada.</div>`;
+}
+function _avMetodoHTML(mu, x){
+  if(!mu || !mu.rs_final) return '';
+  const li=(t,v,sub)=>`<div style="padding:6px 0;border-top:1px solid #f1f5f9;display:flex;justify-content:space-between;gap:10px"><span>${t}${sub?`<br><small style="color:#94a3b8">${sub}</small>`:''}</span><b style="white-space:nowrap">${v}</b></div>`;
+  return `<div class="card" style="margin-bottom:12px"><div class="cb">
+    <div style="color:#64748b;font-size:.85em;text-transform:uppercase;letter-spacing:.04em">Método único · macro → micro</div>
+    <div style="font-size:.85em;color:#64748b;margin:4px 0 8px">Índices do bairro (macro) aplicados a este imóvel (micro): anúncios trazidos ao preço que fecha; ITBI trazido ao valor negociado e à área útil.</div>
+    ${mu.rs_anuncio?li(`Anúncios ao vivo: ${_avR$(mu.rs_anuncio)}/m² pedido × ${mu.idx_pedido_fechado}`, _avR$(mu.rs_anuncio_ajust)+'/m²', `pedido → fechado: ${mu.idx_origem}, ${mu.n_anuncio} anúncios`):''}
+    ${mu.rs_itbi_ajust?li(`Fechamentos ITBI: ${_avR$(mu.rs_itbi_util)}/m² útil est. × ${(1+mu.sub_itbi).toFixed(3)}`, _avR$(mu.rs_itbi_ajust)+'/m²', `subdeclaração média das guias: ${Math.round(mu.sub_itbi*100)}% · ${mu.n_itbi} fechamentos`):''}
+    ${li(`<b>R$/m² adotado</b> (média das fontes${mu.divergencia!=null?`; divergem ${mu.divergencia}%`:''})`, _avR$(mu.rs_final)+'/m²')}
+    ${mu.valor_anuncio&&mu.valor_itbi?li('Valor por anúncios × valor por ITBI', `${_avR$(mu.valor_anuncio)} × ${_avR$(mu.valor_itbi)}`):''}
+    <div style="font-size:.78em;color:#94a3b8;margin-top:8px">Fontes dos índices: ${AV_INDICES.fonte}.</div>
+  </div></div>`;
+}
+async function _avDesenharMapaComps(comps, centro){
+  const el=document.getElementById('av-mapa-comps'); if(!el) return;
+  try{ await _avCarregarLeaflet(); }catch(_){ el.textContent='(mapa indisponível)'; return; }
+  const pts=comps.filter(c=>c.lat&&c.lng);
+  const c0=centro||(pts.length?{lat:pts[0].lat,lng:pts[0].lng}:null); if(!c0) return;
+  const map=L.map(el).setView([c0.lat,c0.lng],14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+  const b=[];
+  if(centro){ L.marker([centro.lat,centro.lng]).addTo(map).bindPopup('Imóvel avaliado'); b.push([centro.lat,centro.lng]); }
+  pts.forEach(c=>{ const itbi=/ITBI|Fechamento/i.test(c.origem||''); L.circleMarker([c.lat,c.lng],{radius:7,color:itbi?'#047857':'#2563eb',fillColor:itbi?'#34d399':'#60a5fa',fillOpacity:.8,weight:2}).addTo(map)
+      .bindPopup(`<b>${c.origem||''}</b><br>${c.endereco||''}<br>${c.area?Math.round(c.area)+' m² · ':''}${_avR$(c.preco)} · ${_avR$(c.rs_m2)}/m²${c.url?`<br><a href="${c.url}" target="_blank">abrir anúncio</a>`:''}`); b.push([c.lat,c.lng]); });
+  if(b.length>1) map.fitBounds(b,{padding:[20,20]});
+  setTimeout(()=>map.invalidateSize(),200);
 }
 function _avCompara(pedido,mercado){
   const p=Number(pedido),m=Number(mercado); if(!p||!m) return '';
@@ -584,18 +670,13 @@ function abrirAvalDetalhe(id){
       ${x.preco_pedido?`<div style="margin-top:8px;font-size:.9em">Pretendido: <b>${_avR$(x.preco_pedido)}</b> ${_avCompara(x.preco_pedido,x.valor_mercado)}</div>`:''}
     </div></div>`:''}
     ${inc}
+    ${comps.some(c=>c.lat)?`<div class="card" style="margin-bottom:12px"><div class="cb"><div style="color:#64748b;font-size:.85em;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Mapa: imóvel, anúncios e fechamentos</div><div id="av-mapa-comps" style="height:320px;border-radius:10px;border:1px solid #e2e8f0"></div><div style="font-size:.8em;color:#94a3b8;margin-top:4px">Pino vermelho = imóvel avaliado · azul = anúncios · verde = fechamentos ITBI.</div></div></div>`:''}
     ${comps.length?`<div class="card" style="margin-bottom:12px"><div class="cb">
       <div style="color:#64748b;font-size:.85em;text-transform:uppercase;margin-bottom:6px">Comparáveis</div>
-      <table style="width:100%;border-collapse:collapse;font-size:.86em"><thead><tr style="text-align:left;color:#94a3b8">
-        <th style="padding:4px 8px">Origem</th><th style="padding:4px 8px;text-align:right">Área</th>
-        <th style="padding:4px 8px;text-align:right">Preço</th><th style="padding:4px 8px;text-align:right">R$/m²</th></tr></thead>
-      <tbody>${comps.slice(0,12).map(c=>`<tr style="border-top:1px solid #f1f5f9">
-        <td style="padding:4px 8px">${c.origem||c.tipo||'—'}</td>
-        <td style="padding:4px 8px;text-align:right">${c.area?Math.round(c.area)+' m²':'—'}</td>
-        <td style="padding:4px 8px;text-align:right">${_avR$(c.preco)}</td>
-        <td style="padding:4px 8px;text-align:right">${_avR$(c.rs_m2)}</td></tr>`).join('')}</tbody></table>
+      ${_avCompsTabela(comps)}
     </div></div>`:''}
     ${acoes}`;
+  (async()=>{ let centro=null; try{ const r=await _avRpc('aval_geocode',{p_q:(x.endereco||'')+' '+(x.bairro||'')}); const h=Array.isArray(r)?r[0]:null; if(h) centro={lat:h.lat,lng:h.lng}; }catch(_){} _avDesenharMapaComps(comps, centro); })();
 }
 
 async function _avAprovar(id, novoStatus){
