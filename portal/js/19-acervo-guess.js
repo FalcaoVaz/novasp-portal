@@ -42,7 +42,7 @@
     if (d.length === 11) return '***.' + d.substr(3, 3) + '.' + d.substr(6, 3) + '-**';
     if (d.length === 14) return '**.' + d.substr(2, 3) + '.' + d.substr(5, 3) + '/' + d.substr(8, 4) + '-**';
     return d ? '***' : '—'; };
-  const podeVer = () => (typeof ehLiderGestao === 'function' ? ehLiderGestao() : false);
+  const podeVer = () => (typeof podeAcessarAcervo === 'function' ? podeAcessarAcervo() : false);   // módulo Acervo (30/09)
   const aviso = (m, t) => { if (typeof toast === 'function') toast(m, t || ''); };
   const ilike = s => '*' + String(s).replace(/[%*,()]/g, ' ').trim().replace(/\s+/g, '*') + '*';
 
@@ -51,7 +51,7 @@
   function abrir() {
     _root = document.getElementById('acervo-guess-root');
     if (!_root) return;
-    if (!podeVer()) { _root.innerHTML = '<div class="card cb">Acesso restrito a gerentes.</div>'; return; }
+    if (!podeVer()) { _root.innerHTML = '<div class="card cb">Acesso restrito a gerentes (lista guess_acesso).</div>'; return; }
     _root.innerHTML = `
       <div class="ph">
         <div><h1 class="pt">Acervo Guess — locação</h1>

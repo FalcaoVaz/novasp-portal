@@ -485,8 +485,12 @@ const MENUS={
     {ic:'clipboard', lb:'Avaliações',       pg:'avaliacoes'},
     {ic:'target',    lb:'Tarefas / Bônus',  pg:'metas'},
     {ic:'dollar',    lb:'Apurar Bônus',     pg:'bonus'},
-    {ic:'star',      lb:'Avaliar Líder',    pg:'av-lider'},
-    {ic:'book',      lb:'Acervo Guess (locação)', pg:'acervo-guess'}   // frente 11 — só líderes (menuGestaoItens)
+    {ic:'star',      lb:'Avaliar Líder',    pg:'av-lider'}
+  ],
+  // Acervo — histórico dos sistemas antigos, só consulta (gerentes). Acesso real = banco (guess_acesso).
+  acervo:[
+    {ic:'home',      lb:'Acervo Nido (vendas)',   pg:'acervo-nido'},
+    {ic:'key',       lb:'Acervo Guess (locação)', pg:'acervo-guess'}
   ],
   regras:[
     {ic:'clipboardList', lb:'Processos (BPMN)', pg:'processos-bpmn'},
@@ -652,6 +656,22 @@ function podeImportarPlanilhaVendas(){
   const nome = _vendasNormaliza(CUR.nome||'');
   return PLANILHA_VENDAS_IMPORTADORES.some(n => nome.includes(_vendasNormaliza(n)));
 }
+// Acervo (Nido + Guess): quem pode ver o módulo. A trava real é o banco (guess_acesso +
+// admins, função acervo_pode_ler()); aqui só decidimos se o card/aba aparecem. O portal
+// pergunta ao banco uma vez após o login (verificarAcessoAcervo) e guarda em _ACERVO_OK.
+let _ACERVO_OK = null;
+function podeAcessarAcervo(){
+  if (!CUR) return false;
+  if (_ACERVO_OK !== null) return _ACERVO_OK;
+  return !!CUR.admin || ehAcessoTotal();          // até o banco responder
+}
+async function verificarAcessoAcervo(){
+  try {
+    const r = await fetch(SBU + '/rest/v1/rpc/acervo_pode_ler', { method:'POST', headers: hdr(), body: '{}' });
+    _ACERVO_OK = r.ok ? (await r.json()) === true : false;
+  } catch(_) { _ACERVO_OK = false; }
+  return _ACERVO_OK;
+}
 function podeGerenciarCorretores(){
   if (!CUR) return false;
   if (CUR.admin) return true;
@@ -779,6 +799,7 @@ const TITLES={
   'pauta-terca':'Pauta Mkt','pauta-quarta':'Pauta Adm','pauta-juridico':'Pauta Jurídico',
   'pauta-renata':'Pauta Vendas — Renata (Moema)','pauta-felippe':'Pauta Vendas — Felippe',
   'pauta-christiane':'Pauta Vendas — Christiane','pauta-emilia':'Pauta Vendas — Emilia',
+  'acervo-nido':'Acervo Nido — vendas e locação até 2026 (só leitura)',
   'acervo-guess':'Acervo Guess — locação (só leitura)',
   liderados:'Meus Liderados',organograma:'Organograma',avaliacoes:'Avaliações Trimestrais',
   'processos-bpmn':'Processos (BPMN)',

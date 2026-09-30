@@ -23,6 +23,12 @@ function initApp(){
   const tGes = document.getElementById('t-ges');
   if (tGes) tGes.classList.toggle('off', !(typeof podeAcessarGestao === 'function' && podeAcessarGestao()));
   // Gestao de Vendas: gerentes + assistentes + admin
+  const tAcv = document.getElementById('t-acv');
+  if (tAcv) tAcv.classList.toggle('off', !(typeof podeAcessarAcervo === 'function' && podeAcessarAcervo()));
+  if (typeof verificarAcessoAcervo === 'function') verificarAcessoAcervo().then(ok => {
+    if (tAcv) tAcv.classList.toggle('off', !ok);
+    if (document.getElementById('pgrid')) renderHome();
+  });
   const tVnd = document.getElementById('t-vnd');
   if (tVnd) tVnd.classList.toggle('off', !(typeof podeAcessarVendas === 'function' && podeAcessarVendas()));
 
@@ -66,7 +72,8 @@ function renderHome(){
     {id:'cal',tone:'purple', ic:'calendar', ti:'Calendar & Tarefas',ds:'Tarefas, agenda da equipe, horários livres e pauta das reuniões.',                  ac:!ehRepPuro && ((typeof podeAcessarCalendar==='function') ? podeAcessarCalendar() : CUR.acesso_calendar), mod:'calendar'},
     {id:'ges',tone:'amber',  ic:'users',    ti: soFeedback?'Avaliação & Feedback':'Gestão & Feedback', ds: soFeedback?'Avalie seu líder no trimestre.':'Liderados, avaliações trimestrais, metas e cálculo de bônus.', ac:podeGestao && !ehRepPuro, mod:'gestao'},
     {id:'reg',tone:'slate',  ic:'book',     ti:'Regras e Processos', ds:'Diretrizes padronizadas de Vendas, Locação, Financeiro e RH.',                      ac:!ehRepPuro,                 mod:'regras'},
-    {id:'vnd',tone:'blue',   ic:'briefcase',ti:'Gestão de Vendas',   ds:'Seleção de imóveis, presença em atividades, cotas de anúncios e agenda do fotógrafo.', ac:(typeof podeAcessarVendas==='function') && podeAcessarVendas(), mod:'vendas'}
+    {id:'vnd',tone:'blue',   ic:'briefcase',ti:'Gestão de Vendas',   ds:'Seleção de imóveis, presença em atividades, cotas de anúncios e agenda do fotógrafo.', ac:(typeof podeAcessarVendas==='function') && podeAcessarVendas(), mod:'vendas'},
+    {id:'acv',tone:'slate',  ic:'archive',  ti:'Acervo',             ds:'Histórico dos sistemas antigos, só consulta: Nido (vendas e locação até 2026) e Guess (locação).', ac:(typeof podeAcessarAcervo==='function') && podeAcessarAcervo() && !ehRepPuro, mod:'acervo'}
   ];
   const ic = (typeof icon==='function') ? icon : (n=>n);
   document.getElementById('pgrid').innerHTML=cards.map(c=>`
@@ -91,9 +98,10 @@ function setMod(mod){
   }
   if(mod==='gestao'&&typeof podeAcessarGestao==='function'&&!podeAcessarGestao())return;
   if(mod==='vendas'&&typeof podeAcessarVendas==='function'&&!podeAcessarVendas())return;
+  if(mod==='acervo'&&typeof podeAcessarAcervo==='function'&&!podeAcessarAcervo())return;
   // regras: liberado para todos os usuarios autenticados
-  const modAbreviada = {juridico:'jur', interno:'int', calendar:'cal', gestao:'ges', regras:'reg', vendas:'vnd'}[mod] || mod;
-  ['jur','int','cal','ges','reg','vnd'].forEach(k=>{
+  const modAbreviada = {juridico:'jur', interno:'int', calendar:'cal', gestao:'ges', regras:'reg', vendas:'vnd', acervo:'acv'}[mod] || mod;
+  ['jur','int','cal','ges','reg','vnd','acv'].forEach(k=>{
     const el = document.getElementById('t-'+k);
     if(el) el.classList.remove('active');
   });
@@ -154,7 +162,8 @@ function goTo(pg){
   if(pg==='vnd-presenca')  carregarVendasPresenca?.();
   if(pg==='vnd-cotas')     carregarVendasCotas?.();
   if(pg.startsWith('vp-')) window.VendasPlanilhas?.abrirPagina(pg.slice(3));   // Planilha Mensal por EQUIPE
-  if(pg==='acervo-guess')  window.AcervoGuess?.abrir();                        // frente 11
+  if(pg==='acervo-guess')  window.AcervoGuess?.abrir();                        // Acervo (frente 11)
+  if(pg==='acervo-nido')   window.AcervoNido?.abrir();
   if(pg==='vnd-fotografo') carregarAgendaFotografo?.();
   if(pg==='vnd-foto-disp') carregarFotoDisp?.();
   if(pg==='vnd-forum')     carregarForum?.();
