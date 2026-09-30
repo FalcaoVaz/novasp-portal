@@ -137,8 +137,10 @@ def conv(v, tipo):
         try: return int(float(v))
         except ValueError: return None
     if tipo in ('num', 'num6'):
-        try: return round(float(v), 6 if tipo == 'num6' else 2)
+        try: f = float(v)
         except ValueError: return None
+        if tipo == 'num6': return round(f, 6) if abs(f) <= 180 else None        # lat/long com lixo (ex.: 2e125)
+        return round(f, 2) if abs(f) < 1e11 else None                            # valores acima de R$ 100 bi = lixo (11111111111100)
     if tipo in ('date', 'dt'):
         s = str(v)[:10]
         if s.startswith('0000') or len(s) < 10: return None
