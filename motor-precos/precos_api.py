@@ -39,17 +39,24 @@ def _slug(b):
     return f'{b}-sao-paulo-sp-brasil'
 
 
-def _valida(authorization):
+def _valida(authorization, apikey=None):
+    # O portal manda 'apikey' (anon key, pública) + 'Authorization: Bearer <token do usuário>'
+    # em toda chamada (hdr() do 00-config.js). O /auth/v1/user do Supabase exige a anon key
+    # no header apikey — um JWT de usuário ali dá 401. Por isso usamos, nesta ordem:
+    # SB_ANON do ambiente (se houver) → apikey enviada pelo portal → falha.
     if not EXIGE_LOGIN:
         return True
     if not authorization or not authorization.lower().startswith('bearer '):
         raise HTTPException(401, 'sem token')
     tok = authorization.split(' ', 1)[1]
+    chave = ANON or apikey
+    if not chave:
+        raise HTTPException(401, 'sem apikey (o portal envia; SB_ANON no ambiente é opcional)')
     try:
         req = urllib.request.Request(f'{SB}/auth/v1/user',
-              headers={'apikey': ANON or tok, 'Authorization': 'Bearer ' + tok})
-        with urllib.request.urlopen(req, timeout=10):
-            return True
+              headers={'apikey': chave, 'Authorization': 'Bearer ' + tok})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            return r.status == 200
     except Exception:
         raise HTTPException(401, 'token inválido')
 
@@ -60,8 +67,8 @@ def health():
 
 
 @app.get('/precos')
-def precos(bairro: str, authorization: str = Header(None)):
-    _valida(authorization)
+def precos(bairro: str, authorization: str = Header(None), apikey: str = Header(None)):
+    _valida(authorization, apikey)
     if not bairro or len(bairro) < 2:
         raise HTTPException(400, 'bairro obrigatório')
     hit = _cache.get(bairro.upper())
