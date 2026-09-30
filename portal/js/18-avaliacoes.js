@@ -118,6 +118,8 @@ const _avR$ = v => (v==null||v===''||isNaN(Number(v))) ? '—'
   : 'R$ ' + Number(v).toLocaleString('pt-BR',{maximumFractionDigits:0});
 const _avNorm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
 const _ehCasa = t => AV_CASA.includes(String(t||'').toUpperCase());
+// Conta de terreno para incorporação vale para tudo que ocupa lote próprio: casas, terreno e comercial (loja, galpão, prédio)
+const _avPodeTerreno = t => _ehCasa(t) || /terreno|comercial|loja|galp|pr[eé]dio|sala/i.test(String(t||''));
 
 const AV_STATUS = {
   gerada:{lb:'Gerada',cor:'#b45309',bg:'#fef3c7'},
@@ -423,7 +425,7 @@ async function avalCalcular(opts){
   if(!_avForm.geo){
     try{ const z=await _avRpc('aval_geo',{p_lat:_avPino.lat,p_lng:_avPino.lng}); _avForm.geo=Array.isArray(z)?z[0]:z; }catch(_){}
   }
-  const ehcasa=_ehCasa(tipo), ehterreno=/terreno/i.test(tipo);
+  const ehcasa=_ehCasa(tipo), ehterreno=/terreno/i.test(tipo), ehlote=_avPodeTerreno(tipo);
   const rs_apto=precos.rs_apto;
   const rs_casa=precos.rs_casa || (rs_apto ? Math.round(rs_apto*AV_PARAM.casa_sobre_apto) : null);
   const casaEstimada=!precos.rs_casa && !!rs_casa;
@@ -478,6 +480,7 @@ async function avalCalcular(opts){
     metodo_unico: null
   };
   dossie.memoria={ metodo_unico: metodoUnico||null, indices:{fonte:AV_INDICES.fonte}, incorp:null, param:{cub_ref:AV_PARAM.cub_ref, fator_obra:AV_PARAM.fator_obra, eficiencia:AV_PARAM.eficiencia, comissao:AV_PARAM.comissao, marketing:AV_PARAM.marketing, ret:AV_PARAM.ret, adm:AV_PARAM.adm, margem:AV_PARAM.margem, constr:AV_PARAM.constr_sobre_computavel} };
+  if(/comercial|loja|galp|sala/i.test(tipo) && metodoUnico) metodoUnico.aviso='Imóvel comercial: o valor como imóvel pronto usa referências residenciais do bairro (o coletor ainda não busca anúncios comerciais); trate como ordem de grandeza.';
   if(metodoUnico && metodoUnico.valor_final){
     const mu=metodoUnico;
     dossie.valor_mercado=mu.valor_final; dossie.faixa_min=Math.round(mu.valor_final*0.93); dossie.faixa_max=Math.round(mu.valor_final*1.07);
@@ -494,11 +497,11 @@ async function avalCalcular(opts){
   const ca=dossie.ca;
   // Por que a conta de terreno NÃO aparece (transparência pro corretor)
   _avForm.incorpMotivo=null;
-  if(!(ehcasa||ehterreno)) _avForm.incorpMotivo=null;                                   // apartamento: não se aplica, sem aviso
-  else if(!terreno) _avForm.incorpMotivo='Informe a área do terreno para calcular o valor como terreno de incorporação.';
+  if(!ehlote) _avForm.incorpMotivo=null;                                                // apartamento/studio/cobertura: não se aplica, sem aviso
+  else if(!terreno) _avForm.incorpMotivo='Informe a área do terreno (m²) para calcular o valor como terreno de incorporação.';
   else if(!geo.incorporavel || !ca || ca<2) _avForm.incorpMotivo=`Zoneamento ${geo.zona||'?'} (CA máximo ${ca||'?'}) não permite adensar o suficiente: o valor como terreno de incorporação não se aplica aqui.`;
   else if(!rs_lanc) _avForm.incorpMotivo='Sem preço de lançamento no bairro: informe um valor de lançamento R$/m² para a conta de incorporação.';
-  if((ehcasa||ehterreno) && geo.incorporavel && ca && ca>=2 && terreno && rs_lanc){
+  if(ehlote && geo.incorporavel && ca && ca>=2 && terreno && rs_lanc){
     const frente=+g('av-frente')||null, qvt=+g('av-qvt')||null;
     // referências de outorga concedida (GeoSampa) e fator de planejamento pelo ponto
     let refs=[], refMed=null, fpInfo=null;
@@ -655,6 +658,7 @@ function _avMetodoHTML(mu, x){
     ${mu.rs_anuncio?li(`Anúncios ao vivo: ${_avR$(mu.rs_anuncio)}/m² pedido × ${mu.idx_pedido_fechado}`, _avR$(mu.rs_anuncio_ajust)+'/m²', `pedido → fechado: ${mu.idx_origem}, ${mu.n_anuncio} anúncios`):''}
     ${mu.rs_itbi_ajust?li(`Fechamentos ITBI: ${_avR$(mu.rs_itbi_util)}/m² útil est. × ${(1+mu.sub_itbi).toFixed(3)}`, _avR$(mu.rs_itbi_ajust)+'/m²', `subdeclaração média das guias: ${Math.round(mu.sub_itbi*100)}% · ${mu.n_itbi} fechamentos`):''}
     ${li(`<b>R$/m² adotado</b> (média das fontes${mu.divergencia!=null?`; divergem ${mu.divergencia}%`:''})`, _avR$(mu.rs_final)+'/m²')}
+    ${mu.aviso?`<div style="font-size:.85em;color:#b45309;margin-top:6px">⚠️ ${mu.aviso}</div>`:''}
     ${mu.valor_anuncio&&mu.valor_itbi?li('Valor por anúncios × valor por ITBI', `${_avR$(mu.valor_anuncio)} × ${_avR$(mu.valor_itbi)}`):''}
     <div style="font-size:.78em;color:#94a3b8;margin-top:8px">Fontes dos índices: ${AV_INDICES.fonte}.</div>
   </div></div>`;
