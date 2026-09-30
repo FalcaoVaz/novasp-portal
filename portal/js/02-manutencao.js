@@ -487,6 +487,10 @@ const MENUS={
     {ic:'dollar',    lb:'Apurar Bônus',     pg:'bonus'},
     {ic:'star',      lb:'Avaliar Líder',    pg:'av-lider'}
   ],
+  // Avaliação de Imóveis — módulo próprio (card na home); o mais usado do portal (centenas/mês)
+  avaliacao:[
+    {ic:'target',    lb:'Avaliação de Imóveis', pg:'aval-imoveis'}
+  ],
   // Acervo — histórico dos sistemas antigos, só consulta (gerentes). Acesso real = banco (guess_acesso).
   acervo:[
     {ic:'home',      lb:'Acervo Nido (vendas)',   pg:'acervo-nido'},
@@ -502,7 +506,6 @@ const MENUS={
   ],
   vendas:[
     {ic:'home',          lb:'Seleção de Imóveis',     pg:'vnd-selecao'},
-    {ic:'building',      lb:'Avaliação de Imóveis',   pg:'aval-imoveis'},
     {ic:'check',         lb:'Controle de Presença',   pg:'vnd-presenca'},
     // Planilha Mensal por EQUIPE (1 aba do Excel → 1 sub-módulo; pedido Anderson 29/09/2026)
     // "Cotas de Anúncios" (vnd-cotas) e "Captação Mensal" (vnd-captacao) saíram do menu:

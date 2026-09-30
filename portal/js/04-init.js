@@ -23,6 +23,8 @@ function initApp(){
   const tGes = document.getElementById('t-ges');
   if (tGes) tGes.classList.toggle('off', !(typeof podeAcessarGestao === 'function' && podeAcessarGestao()));
   // Gestao de Vendas: gerentes + assistentes + admin
+  const tAvl = document.getElementById('t-avl');
+  if (tAvl) tAvl.classList.toggle('off', ehRepPuro);
   const tAcv = document.getElementById('t-acv');
   if (tAcv) tAcv.classList.toggle('off', !(typeof podeAcessarAcervo === 'function' && podeAcessarAcervo()));
   if (typeof verificarAcessoAcervo === 'function') verificarAcessoAcervo().then(ok => {
@@ -73,6 +75,7 @@ function renderHome(){
     {id:'ges',tone:'amber',  ic:'users',    ti: soFeedback?'Avaliação & Feedback':'Gestão & Feedback', ds: soFeedback?'Avalie seu líder no trimestre.':'Liderados, avaliações trimestrais, metas e cálculo de bônus.', ac:podeGestao && !ehRepPuro, mod:'gestao'},
     {id:'reg',tone:'slate',  ic:'book',     ti:'Regras e Processos', ds:'Diretrizes padronizadas de Vendas, Locação, Financeiro e RH.',                      ac:!ehRepPuro,                 mod:'regras'},
     {id:'vnd',tone:'blue',   ic:'briefcase',ti:'Gestão de Vendas',   ds:'Seleção de imóveis, presença em atividades, cotas de anúncios e agenda do fotógrafo.', ac:(typeof podeAcessarVendas==='function') && podeAcessarVendas(), mod:'vendas'},
+    {id:'avl',tone:'emerald',ic:'target',   ti:'Avaliação de Imóveis', ds:'Avaliação por endereço em minutos: mercado, ITBI, zoneamento, potencial de incorporação e dossiê em PDF.', ac:!ehRepPuro, mod:'avaliacao'},
     {id:'acv',tone:'slate',  ic:'archive',  ti:'Acervo',             ds:'Histórico dos sistemas antigos, só consulta: Nido (vendas e locação até 2026) e Guess (locação).', ac:(typeof podeAcessarAcervo==='function') && podeAcessarAcervo() && !ehRepPuro, mod:'acervo'}
   ];
   const ic = (typeof icon==='function') ? icon : (n=>n);
@@ -99,9 +102,10 @@ function setMod(mod){
   if(mod==='gestao'&&typeof podeAcessarGestao==='function'&&!podeAcessarGestao())return;
   if(mod==='vendas'&&typeof podeAcessarVendas==='function'&&!podeAcessarVendas())return;
   if(mod==='acervo'&&typeof podeAcessarAcervo==='function'&&!podeAcessarAcervo())return;
+  if(mod==='avaliacao'&&ehRepPuro)return;
   // regras: liberado para todos os usuarios autenticados
-  const modAbreviada = {juridico:'jur', interno:'int', calendar:'cal', gestao:'ges', regras:'reg', vendas:'vnd', acervo:'acv'}[mod] || mod;
-  ['jur','int','cal','ges','reg','vnd','acv'].forEach(k=>{
+  const modAbreviada = {juridico:'jur', interno:'int', calendar:'cal', gestao:'ges', regras:'reg', vendas:'vnd', acervo:'acv', avaliacao:'avl'}[mod] || mod;
+  ['jur','int','cal','ges','reg','vnd','acv','avl'].forEach(k=>{
     const el = document.getElementById('t-'+k);
     if(el) el.classList.remove('active');
   });
@@ -149,7 +153,7 @@ function goTo(pg){
     // Representante puro (corretor rep, nao gerente/admin) so ve o Forum.
     // Esconde todos os outros cards de Vendas.
     if (typeof ehRepresentantePuro === 'function' && ehRepresentantePuro()) {
-      ['card-vnd-selecao','card-vnd-presenca','card-vnd-fotografo','card-vnd-peneira','card-vnd-aval',
+      ['card-vnd-selecao','card-vnd-presenca','card-vnd-fotografo','card-vnd-peneira',
        'card-vp-cota_anuncios_apto','card-vp-cota_extra_apto','card-vp-cota_anuncios_casas','card-vp-cota_extra_casas','card-vp-captacao_placas','card-vp-vendidos_selecao']
         .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
       // Redireciona direto pro forum (sem passar pelo home de Vendas)

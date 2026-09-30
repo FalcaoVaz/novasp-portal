@@ -186,6 +186,7 @@
       <button class="mtab" id="t-ges" onclick="setMod('gestao')" title="Gestão"><i data-icon="users"></i></button>
       <button class="mtab" id="t-reg" onclick="setMod('regras')" title="Regras e Processos"><i data-icon="book"></i></button>
       <button class="mtab" id="t-vnd" onclick="setMod('vendas')" title="Gestão de Vendas"><i data-icon="briefcase"></i></button>
+      <button class="mtab" id="t-avl" onclick="setMod('avaliacao')" title="Avaliação de Imóveis"><i data-icon="target"></i></button>
       <button class="mtab" id="t-acv" onclick="setMod('acervo')" title="Acervo"><i data-icon="archive"></i></button>
     </div>
     <nav id="nav"></nav>
@@ -347,12 +348,6 @@
             <div class="pct">Seleção de Imóveis</div>
             <div class="pcd">Envio pelas equipes, peneira pelos gerentes, validade de 3 meses.</div>
             <div class="pcb">Disponível</div>
-          </div>
-          <div class="pc" data-tone="blue" id="card-vnd-aval" onclick="goTo('aval-imoveis')">
-            <div class="pci"><i data-icon="building" data-size="32"></i></div>
-            <div class="pct">Avaliação de Imóveis</div>
-            <div class="pcd">Avaliação por endereço: mapa, zoneamento e comparáveis. Em teste: preço pela base ITBI até o motor de anúncios entrar no ar.</div>
-            <div class="pcb" style="background:#fef3c7;color:#92400e">Em teste</div>
           </div>
           <!-- Planilha Mensal por EQUIPE: 1 aba do Excel → 1 sub-módulo (pedido Anderson 29/09/2026) -->
           <div class="pc" data-tone="amber" id="card-vp-cota_anuncios_apto" onclick="goTo('vp-cota_anuncios_apto')">
@@ -1882,7 +1877,7 @@
 <script src="js/15-vendas.js?v=20260911d"></script>
 <script src="js/17-forum.js?v=20260911d"></script>
 <script>window.AVAL_MOTOR_URL='https://novasp-motor-precos.onrender.com';</script>   <!-- motor de preço ao vivo (Render); ver motor-precos/README.md -->
-<script src="js/18-avaliacoes.js?v=20261001c"></script>
+<script src="js/18-avaliacoes.js?v=20261001e"></script>
 <script src="js/18-vendas-planilhas.js?v=20260930b"></script>
 <script src="js/19-acervo-guess.js?v=20260930a"></script>
 <script src="js/20-acervo-nido.js?v=20260930a"></script>

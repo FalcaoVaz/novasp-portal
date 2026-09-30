@@ -5,49 +5,84 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <title>Avaliação do seu imóvel — Nova São Paulo</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
-  :root{ --navy:#1E2D4A; --emerald:#047857; --bg:#f6f7f9; --line:#e6e8ec; --muted:#6b7280; }
+  :root{ --navy:#1E2D4A; --azul:#0088CC; --emerald:#047857; --bg:#f6f7f9; --line:#e6e8ec; --muted:#6b7280; }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:#111827;font:15px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif}
-  .wrap{max-width:720px;margin:0 auto;padding:20px 16px 60px}
-  header{display:flex;align-items:center;gap:12px;padding:6px 0 18px}
-  .logo{width:40px;height:40px;border-radius:9px;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;letter-spacing:.5px}
+  .wrap{max-width:760px;margin:0 auto;padding:20px 16px 60px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0 14px;border-bottom:3px solid var(--azul);margin-bottom:16px}
+  header img{height:52px}
   .brand b{display:block;font-size:1.02em}
   .brand span{color:var(--muted);font-size:.85em}
-  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:14px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+  .firma{text-align:right;font-size:.8em;color:var(--muted);line-height:1.4}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:14px;box-shadow:0 1px 2px rgba(16,24,40,.04);page-break-inside:avoid}
   .kicker{color:var(--muted);font-size:.78em;text-transform:uppercase;letter-spacing:.05em;font-weight:600}
   .big{font-size:2.1em;font-weight:800;margin:6px 0 2px}
   .sub{color:var(--muted)}
   .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:14px}
-  .grid .kicker{font-weight:500}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px;font-size:.92em}
+  .grid .kicker,.grid3 .kicker{font-weight:500}
   .grid b{font-size:1.05em}
   .incorp{border-left:4px solid var(--emerald)}
   .incorp .big{color:var(--emerald)}
   .badge{display:inline-block;background:#d1fae5;color:var(--emerald);padding:2px 10px;border-radius:999px;font-size:.8em;font-weight:700}
-  table{width:100%;border-collapse:collapse;font-size:.9em;margin-top:8px}
+  table{width:100%;border-collapse:collapse;font-size:.86em;margin-top:8px}
   th{color:var(--muted);text-align:left;font-weight:500;padding:6px 8px}
-  td{padding:6px 8px;border-top:1px solid #f1f3f5}
+  td{padding:6px 8px;border-top:1px solid #f1f3f5;vertical-align:top}
+  .r{text-align:right;white-space:nowrap}
   .foot{color:var(--muted);font-size:.82em;margin-top:8px}
   .cta{background:var(--navy);color:#fff;border-radius:14px;padding:20px;text-align:center}
   .cta a{display:inline-block;margin-top:10px;background:#fff;color:var(--navy);text-decoration:none;font-weight:700;padding:10px 18px;border-radius:10px}
   .center{text-align:center;color:var(--muted);padding:60px 20px}
   .imovel{font-size:1.15em;font-weight:700}
+  .linha{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-top:1px solid #f1f3f5;font-size:.92em}
+  .linha b{white-space:nowrap}
+  .neg{color:#b91c1c}
+  .tot{border-top:2px solid var(--emerald);font-weight:700}
+  .metodo p{margin:6px 0;font-size:.92em}
+  #mapa{height:300px;border-radius:10px;border:1px solid var(--line)}
+  .assin{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:10px;font-size:.9em}
+  .assin .kicker{margin-bottom:4px}
+  .barra{display:flex;gap:8px;justify-content:flex-end;margin-bottom:10px}
+  .barra button{background:var(--navy);color:#fff;border:0;border-radius:9px;padding:9px 14px;font-weight:600;cursor:pointer}
+  @media print{
+    body{background:#fff;font-size:12px}
+    .wrap{max-width:none;padding:0}
+    .card{box-shadow:none;border:1px solid #ddd;border-radius:6px;padding:10px 12px;margin-bottom:8px}
+    .big{font-size:1.7em}
+    .cta,.barra,.no-print{display:none!important}
+    #mapa{height:260px}
+    a{color:inherit;text-decoration:none}
+    @page{margin:14mm 12mm}
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="logo">NSP</div>
-    <div class="brand"><b>Imobiliária Nova São Paulo</b><span>Avaliação do seu imóvel</span></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <img src="icons/logo-nsp.png" alt="Imobiliária Nova São Paulo" onerror="this.style.display='none'">
+      <div class="brand"><b>Imobiliária Nova São Paulo</b><span>Avaliação de imóvel · dossiê técnico</span></div>
+    </div>
+    <div class="firma" id="firma"></div>
   </header>
+  <div class="barra no-print" id="barra" style="display:none"><button onclick="window.print()">📄 Salvar em PDF / imprimir</button></div>
   <div id="conteudo"><div class="center">Carregando avaliação…</div></div>
 </div>
 
 <script>
 const SBU = 'https://mqcduyvpuxdweqesgwrq.supabase.co';
 const SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1xY2R1eXZwdXhkd2VxZXNnd3JxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4MzE5OTcsImV4cCI6MjA5MzQwNzk5N30.QdpRZRxnYF6GTh13wdTNqZTQ-9ztY3veef62mfGRphE';
+// Dados da imobiliária que vão no cabeçalho e na assinatura do dossiê
+const NSP = { nome:'Imobiliária Nova São Paulo', creci:'CRECI 02061-J', desde:'desde 1969',
+              endereco:'Av. Jabaquara, 1947 — Saúde, São Paulo/SP', site:'www.novasaopaulo.com.br', telefone:'' };
 const R$ = v => (v==null||v===''||isNaN(Number(v))) ? '—' : 'R$ ' + Number(v).toLocaleString('pt-BR',{maximumFractionDigits:0});
-const q = new URLSearchParams(location.search).get('t');
+const N  = v => (v==null||isNaN(Number(v))) ? '—' : Number(v).toLocaleString('pt-BR',{maximumFractionDigits:0});
+const params = new URLSearchParams(location.search);
+const q = params.get('t'); const modoPdf = params.get('pdf')==='1';
+
+document.getElementById('firma').innerHTML = `${NSP.creci} · ${NSP.desde}<br>${NSP.endereco}<br>${NSP.site}${NSP.telefone?' · '+NSP.telefone:''}`;
 
 async function carregar(){
   const box = document.getElementById('conteudo');
@@ -59,66 +94,144 @@ async function carregar(){
     const x = Array.isArray(arr) ? arr[0] : arr;
     if(!x){ box.innerHTML = '<div class="center">Esta avaliação não está disponível.<br>Fale com o seu corretor da Nova São Paulo.</div>'; return; }
     box.innerHTML = render(x);
-  }catch(e){
-    box.innerHTML = '<div class="center">Não foi possível abrir a avaliação agora.<br>Tente novamente em instantes.</div>';
-  }
+    document.getElementById('barra').style.display = '';
+    await desenharMapa(x);
+    if(modoPdf) setTimeout(()=>window.print(), 1800);
+  }catch(e){ box.innerHTML = '<div class="center">Não foi possível carregar a avaliação.</div>'; }
 }
 
 function render(x){
   let comps=[]; try{ comps = typeof x.comparaveis==='string'?JSON.parse(x.comparaveis):(x.comparaveis||[]); }catch(_){}
-  const mercado = x.valor_mercado ? `
-    <div class="card">
-      <div class="kicker">Valor de mercado estimado</div>
-      <div class="big">${R$(x.valor_mercado)}</div>
-      <div class="sub">Faixa de referência: ${R$(x.faixa_min)} — ${R$(x.faixa_max)}</div>
-      <div class="foot">${x.metodo||''}${x.anuncios_usados?` · baseado em ${x.anuncios_usados} anúncios da região`:''}</div>
-    </div>` : '';
-
-  const incorp = x.incorp_aplicavel ? `
-    <div class="card incorp">
-      <div class="kicker">Potencial para incorporação <span class="badge">exclusivo</span></div>
-      <div class="big">${R$(x.incorp_valor_terreno)}</div>
-      <div class="sub">valor estimado do terreno para um empreendimento — normalmente <b>acima</b> do valor como imóvel pronto.</div>
-      <div class="grid">
-        <div><div class="kicker">Zona</div><b>${x.zona||'—'}${x.ca?` · CA ${Number(x.ca)}`:''}</b></div>
-        <div><div class="kicker">Área construível</div><b>${x.incorp_area_constr?Math.round(x.incorp_area_constr)+' m²':'—'}</b></div>
-        <div><div class="kicker">Preço de lançamento na região</div><b>${R$(x.incorp_lancamento_rs_m2)}/m²</b></div>
-        <div><div class="kicker">VGV potencial</div><b>${R$(x.incorp_vgv)}</b></div>
-      </div>
-      <div class="foot">Estimativa técnica pelo método do valor residual, com base no zoneamento vigente. Sujeita à confirmação de recuos e viabilidade.</div>
-    </div>` : '';
-
-  const comptab = comps.length ? `
-    <div class="card">
-      <div class="kicker">Referências de mercado usadas</div>
-      <table><thead><tr><th>Tipo</th><th style="text-align:right">Área</th><th style="text-align:right">Preço</th><th style="text-align:right">R$/m²</th></tr></thead>
-      <tbody>${comps.map(c=>`<tr><td>${c.tipo||'—'}${c.dorm?' · '+c.dorm+'q':''}</td>
-        <td style="text-align:right">${c.area?Math.round(c.area)+' m²':'—'}</td>
-        <td style="text-align:right">${R$(c.preco)}</td>
-        <td style="text-align:right">${R$(c.rs_m2)}</td></tr>`).join('')}</tbody></table>
-    </div>` : '';
-
+  const mem = x.memoria || {}; const mu = mem.metodo_unico || null; const inc = mem.incorp || null; const P = mem.param || {};
   const dt = x.gerado_em ? new Date(x.gerado_em).toLocaleDateString('pt-BR') : '';
-  return `
+  const dtAp = x.aprovado_em ? new Date(x.aprovado_em).toLocaleDateString('pt-BR') : dt;
+  const ent = x.entorno || null;
+
+  const cabecalho = `
     <div class="card">
       <div class="imovel">${x.tipo||'Imóvel'} · ${x.bairro||''}</div>
-      <div class="sub">${x.endereco||''}${x.edificio?' — '+x.edificio:''}</div>
+      <div class="sub">${x.endereco||''}${x.edificio?' — '+x.edificio:''}${x.zona?` · zoneamento ${x.zona}${x.ca?' (CA '+Number(x.ca)+')':''}`:''}</div>
       <div class="grid">
         ${x.area_util?`<div><div class="kicker">Área útil</div><b>${Math.round(x.area_util)} m²</b></div>`:''}
         ${x.terreno?`<div><div class="kicker">Terreno</div><b>${Math.round(x.terreno)} m²</b></div>`:''}
         ${x.dorm?`<div><div class="kicker">Dormitórios</div><b>${x.dorm}${x.suite?` (${x.suite} suíte)`:''}</b></div>`:''}
         ${x.vaga?`<div><div class="kicker">Vagas</div><b>${x.vaga}</b></div>`:''}
+        ${x.preco_pedido?`<div><div class="kicker">Valor pretendido pelo proprietário</div><b>${R$(x.preco_pedido)}</b></div>`:''}
+        <div><div class="kicker">Data da avaliação</div><b>${dtAp}</b></div>
       </div>
-    </div>
-    ${mercado}
-    ${incorp}
-    ${comptab}
+    </div>`;
+
+  const mercado = x.valor_mercado ? `
+    <div class="card">
+      <div class="kicker">Valor de mercado estimado</div>
+      <div class="big">${R$(x.valor_mercado)}</div>
+      <div class="sub">Faixa de referência: ${R$(x.faixa_min)} — ${R$(x.faixa_max)}${x.mercado_rs_m2?` · ${R$(x.mercado_rs_m2)}/m² de área útil`:''}</div>
+      ${x.preco_pedido&&x.valor_mercado?`<div class="foot">Valor pretendido ${R$(x.preco_pedido)}: ${compara(x.preco_pedido,x.valor_mercado)}</div>`:''}
+    </div>` : '';
+
+  const entorno = ent ? `
+    <div class="card">
+      <div class="kicker">Entorno</div>
+      <div style="margin-top:6px;font-size:.95em">${ent.distrito?`<b>Distrito ${ent.distrito}</b>`:''}${ent.eixo?` · dentro de eixo de estruturação da transformação urbana (${ent.eixo}${ent.eixo_decreto?', decreto '+ent.eixo_decreto:''})`:''}</div>
+      ${(ent.metro||[]).length?`<div style="font-size:.95em;margin-top:4px">🚇 Estações mais próximas: ${ent.metro.map(m=>`${cap(m.nome)}${m.linha?' (linha '+cap(m.linha)+')':''} a ${N(m.dist_m)} m`).join(' · ')}</div>`:''}
+    </div>` : '';
+
+  const metodo = `
+    <div class="card metodo">
+      <div class="kicker">Como chegamos ao valor · método</div>
+      <p>A avaliação parte do <b>macro</b>, os índices do bairro, e aplica no <b>micro</b>, este imóvel. Duas fontes independentes de preço são combinadas:</p>
+      ${mu&&mu.rs_anuncio?`<p><b>1. Anúncios ao vivo.</b> Mediana de ${mu.n_anuncio||'—'} anúncios de venda de imóveis semelhantes no bairro, coletados no dia da avaliação: ${R$(mu.rs_anuncio)}/m² pedido. Como preço pedido não é preço fechado, aplicamos o índice pedido→fechado medido nos negócios da própria Nova São Paulo (${mu.idx_origem||'média'}): × ${mu.idx_pedido_fechado} → <b>${R$(mu.rs_anuncio_ajust)}/m²</b>.</p>`:''}
+      ${mu&&mu.rs_itbi_ajust?`<p><b>2. Negócios fechados (ITBI).</b> Mediana de ${mu.n_itbi||'—'} transações registradas na Prefeitura no mesmo bairro: ${R$(mu.rs_itbi_util)}/m² de área útil estimada. Como a guia de ITBI declara em média ${Math.round((mu.sub_itbi||0)*100)}% abaixo do valor negociado, corrigimos: × ${(1+(mu.sub_itbi||0)).toFixed(3)} → <b>${R$(mu.rs_itbi_ajust)}/m²</b>.</p>`:''}
+      ${mu&&mu.rs_final?`<p><b>Valor adotado:</b> média das fontes, <b>${R$(mu.rs_final)}/m²</b>${mu.divergencia!=null?` (as fontes divergem ${mu.divergencia}%)`:''}, vezes ${Math.round(x.area_util||0)} m² de área útil = <b>${R$(x.valor_mercado)}</b>. Faixa de ±7% para negociação.${mu.excluidos?` ${mu.excluidos} referência(s) destoante(s) foram excluídas pelo corretor.`:''}</p>`:`<p>${x.metodo||''}</p>`}
+      ${(ent&&ent.metro&&ent.metro.length)?`<p class="foot">O entorno (metrô, eixos de transformação urbana) é informado para leitura qualitativa; não altera a conta.</p>`:''}
+      <p class="foot">Fontes: anúncios públicos de portais imobiliários; ITBI da Prefeitura de São Paulo (Secretaria da Fazenda); negócios fechados da Nova São Paulo 2019–2026; zoneamento e outorga onerosa do GeoSampa (Prefeitura de São Paulo); CUB Sinduscon-SP.</p>
+    </div>`;
+
+  const incorp = x.incorp_aplicavel ? `
+    <div class="card incorp">
+      <div class="kicker">Potencial para incorporação <span class="badge">valor como terreno</span></div>
+      <div class="big">${R$(x.incorp_valor_terreno)}</div>
+      <div class="sub">valor máximo que um incorporador pode pagar pelo terreno para o empreendimento fechar com margem${x.incorp_ganho_pct!=null?` — <b>${x.incorp_ganho_pct>=0?'+':''}${Math.round(x.incorp_ganho_pct)}%</b> em relação ao ${x.preco_pedido?'valor pretendido':'valor como imóvel pronto'}`:''}.</div>
+      ${inc?`
+      <div class="grid3">
+        <div><div class="kicker">Terreno</div><b>${N(inc.terreno)} m²</b>${inc.frente?` · frente ${inc.frente} m`:''}</div>
+        <div><div class="kicker">CA básico / máximo</div><b>${inc.ca_basico!=null?inc.ca_basico:'?'} / ${inc.ca}</b></div>
+        <div><div class="kicker">Área computável</div><b>${N(inc.area_comput)} m²</b></div>
+        <div><div class="kicker">Área construída estimada</div><b>${N(inc.area_constr)} m²</b></div>
+        <div><div class="kicker">Área vendável</div><b>${N(inc.area_vendavel)} m²</b></div>
+        <div><div class="kicker">Padrão construtivo</div><b>${inc.padraoLb||inc.padrao||'—'}</b></div>
+      </div>
+      <div style="margin-top:12px">
+        <div class="linha"><span>VGV: ${N(inc.area_vendavel)} m² vendáveis × lançamento ${R$(x.incorp_lancamento_rs_m2)}/m²${inc.lancOrigem?` <span class="sub">(${inc.lancOrigem})</span>`:''}</span><b>${R$(inc.vgv)}</b></div>
+        <div class="linha"><span>Obra: ${N(inc.area_constr)} m² × CUB ${inc.cubRef||''} ${R$(inc.cub)} × ${P.fator_obra||'1,3'}</span><b class="neg">− ${R$(inc.obra)}</b></div>
+        <div class="linha"><span>Comissão ${pct(P.comissao)} + marketing ${pct(P.marketing)} + RET ${pct(P.ret)} + administração ${pct(P.adm)}</span><b class="neg">− ${R$(inc.indiretos)}</b></div>
+        <div class="linha"><span>Margem do incorporador ${pct(P.margem)}</span><b class="neg">− ${R$(inc.margem)}</b></div>
+        ${inc.outorga?`<div class="linha"><span>Outorga onerosa: ${N(inc.area_adicional)} m² acima do CA básico × ${R$(inc.v)}/m² <span class="sub">(${inc.v_origem||''})</span></span><b class="neg">− ${R$(inc.outorga)}</b></div>`:''}
+        <div class="linha tot"><span>Terreno máximo</span><b>${R$(inc.terreno_max)}</b></div>
+      </div>
+      ${(inc.alertas||[]).length?`<ul style="margin:8px 0 0;padding-left:18px;font-size:.85em;color:#b45309">${inc.alertas.map(a=>`<li>${a}</li>`).join('')}</ul>`:''}
+      ${(inc.refs||[]).length?`<div class="foot">Referência de outorga: ${inc.refs.length} concessões da Prefeitura num raio de 1,5 km (ex.: ${inc.refs.slice(0,3).map(r=>`${r.endereco} — ${R$(r.ct_m2)}/m²`).join('; ')}).</div>`:''}
+      `:''}
+      <div class="foot">Método do valor residual (involutivo), com o zoneamento vigente (Lei 16.402/2016) e a outorga onerosa do PDE (Lei 16.050/2014). Sujeito à confirmação de recuos, gabarito e viabilidade de projeto.</div>
+    </div>` : '';
+
+  const usados = comps.filter(c=>!c.excluido), excluidos = comps.filter(c=>c.excluido);
+  const comptab = comps.length ? `
+    <div class="card">
+      <div class="kicker">Referências de mercado usadas</div>
+      <table><thead><tr><th>Origem</th><th>Endereço</th><th class="r">Área</th><th class="r">Preço</th><th class="r">R$/m²</th></tr></thead>
+      <tbody>${usados.map(c=>{ const itbi=/ITBI|Fechamento/i.test(c.origem||c.tipo||''); return `<tr>
+        <td>${itbi?'Fechamento (ITBI)':'Anúncio'}${c.data?' '+String(c.data).slice(0,7):''}</td>
+        <td>${c.endereco||'—'}${c.dorm?` <span class="sub">${c.dorm} dorm${c.vaga?' · '+c.vaga+' vg':''}</span>`:''}</td>
+        <td class="r">${c.area?Math.round(c.area)+' m²':'—'}${itbi&&c.area_util_est?`<br><span class="sub">≈ ${c.area_util_est} m² útil</span>`:''}</td>
+        <td class="r">${R$(c.preco)}</td>
+        <td class="r">${R$(c.rs_m2)}${itbi&&c.rs_util?`<br><span class="sub">${R$(c.rs_util)} útil</span>`:''}</td></tr>`; }).join('')}</tbody></table>
+      ${excluidos.length?`<div class="foot">Excluídas pelo corretor por destoarem do conjunto: ${excluidos.map(c=>c.endereco||c.tipo).join('; ')}.</div>`:''}
+      <div class="foot">ITBI: área do cadastro da Prefeitura; área útil estimada pela relação medida entre cadastro e área útil na base da Nova São Paulo.</div>
+    </div>` : '';
+
+  const mapa = comps.some(c=>c.lat) || x.lat ? `
+    <div class="card"><div class="kicker">Mapa das referências</div><div id="mapa" style="margin-top:8px"></div>
+      <div class="foot">Pino = imóvel avaliado · azul = anúncios · verde = negócios fechados (ITBI).</div></div>` : '';
+
+  const assinatura = `
+    <div class="card">
+      <div class="kicker">Responsáveis</div>
+      <div class="assin">
+        <div><div class="kicker">Corretor responsável</div><b>${x.corretor_nome||'—'}</b><br><span class="sub">${x.corretor_creci?('CRECI '+x.corretor_creci):'CRECI —'}</span></div>
+        <div><div class="kicker">Imobiliária</div><b>${NSP.nome}</b><br><span class="sub">${NSP.creci} · ${NSP.desde}<br>${NSP.endereco}<br>${NSP.site}${NSP.telefone?' · '+NSP.telefone:''}</span></div>
+      </div>
+      <div class="foot">Avaliação gerada em ${dt}${x.aprovado_em?` e revisada em ${dtAp}`:''}. Documento de referência para orientação comercial; não constitui laudo de avaliação nos termos da NBR 14653.</div>
+    </div>`;
+
+  return cabecalho + mercado + incorp + entorno + metodo + mapa + comptab + assinatura + `
     <div class="cta">
       <div style="font-size:1.05em;font-weight:700">Quer vender pelo melhor valor possível?</div>
       <div style="opacity:.85;font-size:.92em;margin-top:4px">Nossa equipe apresenta a estratégia completa para o seu imóvel.</div>
       <a href="https://www.novasaopaulo.com.br" target="_blank">Falar com a Nova São Paulo</a>
-    </div>
-    <div class="foot" style="text-align:center">Avaliação gerada em ${dt} · Documento de referência, não constitui laudo oficial (NBR 14653).</div>`;
+    </div>`;
+}
+function pct(v){ return v==null?'—':Math.round(Number(v)*100)+'%'; }
+function cap(s){ return String(s||'').toLowerCase().replace(/(^|\s|-)([a-zà-ú])/g,(m,a,b)=>a+b.toUpperCase()); }
+function compara(pedido,mercado){
+  const p=Number(pedido),m=Number(mercado); if(!p||!m) return '';
+  const d=Math.round((p/m-1)*100);
+  if(Math.abs(d)<3) return 'alinhado ao mercado';
+  return d>0?`${d}% acima do valor de mercado`:`${-d}% abaixo do valor de mercado`;
+}
+async function desenharMapa(x){
+  const el=document.getElementById('mapa'); if(!el) return;
+  let comps=[]; try{ comps = typeof x.comparaveis==='string'?JSON.parse(x.comparaveis):(x.comparaveis||[]); }catch(_){}
+  await new Promise((ok,err)=>{ if(window.L) return ok(); const s=document.createElement('script'); s.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'; s.onload=ok; s.onerror=err; document.head.appendChild(s); }).catch(()=>null);
+  if(!window.L){ el.textContent='(mapa indisponível)'; return; }
+  const pts=comps.filter(c=>c.lat&&c.lng&&!c.excluido); const c0 = x.lat?{lat:x.lat,lng:x.lng}:(pts[0]||null); if(!c0) return;
+  const map=L.map(el,{zoomControl:!modoPdf,attributionControl:true}).setView([c0.lat,c0.lng],14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+  const b=[];
+  if(x.lat){ L.marker([x.lat,x.lng]).addTo(map).bindPopup('Imóvel avaliado'); b.push([x.lat,x.lng]); }
+  pts.forEach(c=>{ const itbi=/ITBI|Fechamento/i.test(c.origem||''); L.circleMarker([c.lat,c.lng],{radius:7,color:itbi?'#047857':'#2563eb',fillColor:itbi?'#34d399':'#60a5fa',fillOpacity:.8,weight:2}).addTo(map).bindPopup(`${c.endereco||''}<br>${R$(c.preco)} · ${R$(c.rs_m2)}/m²`); b.push([c.lat,c.lng]); });
+  if(b.length>1) map.fitBounds(b,{padding:[20,20]});
+  setTimeout(()=>map.invalidateSize(),300);
 }
 carregar();
 </script>
