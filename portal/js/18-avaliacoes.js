@@ -53,7 +53,7 @@ const AV_BAIRROS_ALTO = ['moema','itaim','vila nova conceicao','brooklin','campo
 const _avNormBairro = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 function _avPadraoSugerido(bairro){ const b=_avNormBairro(bairro); return AV_BAIRROS_ALTO.some(x=>b.includes(x)) ? 'alto' : 'medio'; }
 // Conta reversa de incorporação: quanto o terreno pode valer para o empreendimento fechar com margem.
-function _avContaIncorp({terreno, ca, ca_basico, rs_lanc, padrao, qvt, frente, gabarito}){
+function _avContaIncorp({terreno, ca, ca_basico, rs_lanc, padrao, qvt, frente, gabarito, outorga_ref_m2, outorga_ref_n, fp}){
   const p=AV_PADROES[padrao]||AV_PADROES.medio, P=AV_PARAM;
   const cab = (ca_basico!=null && ca_basico>0) ? Number(ca_basico) : null;
   const area_comput=terreno*ca;                       // o que conta no CA
@@ -65,12 +65,22 @@ function _avContaIncorp({terreno, ca, ca_basico, rs_lanc, padrao, qvt, frente, g
   const margem=vgv*P.margem;
   const antes=vgv-obra-indiretos-margem;              // terreno máximo SEM outorga
   // outorga onerosa sobre a área computável acima do CA básico
-  let outorga=0, area_adicional=0, v=null, v_origem='';
+  let outorga=0, area_adicional=0, v=null, v_origem='', outorga_modo='';
+  const fpUsado = (fp!=null && fp>0) ? Number(fp) : P.outorga_fp;
   if(cab!=null && ca>cab){
     area_adicional=terreno*(ca-cab);
-    if(qvt && qvt>0){ v=qvt; v_origem='QVT informado'; }
-    else if(antes>0){ v=(antes/terreno)*P.qvt_sobre_mercado; v_origem=`estimado: ${P.qvt_sobre_mercado*100}% do valor de mercado do terreno`; }
-    if(v){ outorga=area_adicional*(terreno/area_comput)*v*P.outorga_fs*P.outorga_fp; }
+    if(qvt && qvt>0){
+      // fórmula do PDE com o valor de terreno informado
+      v=qvt; v_origem='QVT informado'; outorga_modo='formula';
+      outorga=area_adicional*(terreno/area_comput)*v*P.outorga_fs*fpUsado;
+    }else if(outorga_ref_m2 && outorga_ref_n>=5){
+      // referência EMPÍRICA: o que a prefeitura cobrou por m² excedente nos processos vizinhos (GeoSampa)
+      v=outorga_ref_m2; v_origem=`mediana de ${outorga_ref_n} outorgas concedidas num raio de 1,5 km (GeoSampa)`; outorga_modo='referencia';
+      outorga=area_adicional*outorga_ref_m2;
+    }else if(antes>0){
+      v=(antes/terreno)*P.qvt_sobre_mercado; v_origem=`estimado: ${P.qvt_sobre_mercado*100}% do valor de mercado do terreno`; outorga_modo='formula';
+      outorga=area_adicional*(terreno/area_comput)*v*P.outorga_fs*fpUsado;
+    }
   }
   const terreno_max=antes-outorga;
   const alertas=[];
@@ -81,7 +91,7 @@ function _avContaIncorp({terreno, ca, ca_basico, rs_lanc, padrao, qvt, frente, g
   if(cab==null) alertas.push('CA básico não identificado na zona: outorga onerosa não calculada.');
   if(terreno_max<=0) alertas.push('Conta fechou negativa: neste padrão e preço de lançamento, a incorporação não paga o terreno.');
   return {padrao, cub:p.cub, custo_m2:p.cub*P.fator_obra, ca, ca_basico:cab, terreno, frente:frente||null, gabarito:gabarito||null,
-          area_comput, area_constr, area_vendavel, vgv, obra, indiretos, margem, antes, area_adicional, v, v_origem, outorga, terreno_max, alertas};
+          area_comput, area_constr, area_vendavel, vgv, obra, indiretos, margem, antes, area_adicional, v, v_origem, outorga, outorga_modo, fp:fpUsado, terreno_max, alertas};
 }
 
 let _avImoveis = [];
@@ -402,7 +412,13 @@ async function avalCalcular(){
   const ca=dossie.ca;
   if((ehcasa||ehterreno) && geo.incorporavel && ca && ca>=2 && terreno && rs_lanc){
     const frente=+g('av-frente')||null, qvt=+g('av-qvt')||null;
-    const m=_avContaIncorp({terreno, ca, ca_basico:geo.ca_basico, rs_lanc, padrao, qvt, frente, gabarito:geo.gabarito_m});
+    // referências de outorga concedida (GeoSampa) e fator de planejamento pelo ponto
+    let refs=[], refMed=null, fpInfo=null;
+    try{ refs=await _avRpc('aval_outorga_ref',{p_lat:_avPino.lat,p_lng:_avPino.lng,p_raio_m:1500,p_lim:30})||[]; }catch(_){}
+    if(refs.length){ const v=refs.map(r=>Number(r.ct_m2)).sort((a,b)=>a-b); refMed=v.length%2?v[(v.length-1)/2]:(v[v.length/2-1]+v[v.length/2])/2; }
+    try{ const f=await _avRpc('aval_fp',{p_lat:_avPino.lat,p_lng:_avPino.lng}); fpInfo=Array.isArray(f)?f[0]:f; }catch(_){}
+    const m=_avContaIncorp({terreno, ca, ca_basico:geo.ca_basico, rs_lanc, padrao, qvt, frente, gabarito:geo.gabarito_m, outorga_ref_m2:refMed, outorga_ref_n:refs.length, fp:fpInfo&&fpInfo.fp});
+    m.refs=refs.slice(0,10); m.fpInfo=fpInfo;
     _avForm.memoria=m; _avForm.lancOrigem=lancOrigem;
     if(m.terreno_max>0){
       dossie.incorp_aplicavel=true;
@@ -414,7 +430,7 @@ async function avalCalcular(){
       dossie.incorp_ganho_pct = base ? Math.round((m.terreno_max/base-1)*100) : null;
       dossie.metodo=(dossie.metodo?dossie.metodo+' · ':'')+`incorporação: padrão ${padrao}, lançamento ${lancOrigem}`+
         (m.outorga?`, outorga ${_avR$(Math.round(m.outorga))} (${m.v_origem})`:'')+
-        ` [incorp:${JSON.stringify({padrao, cab:m.ca_basico, qvt:qvt||null, frente:frente||null, gab:m.gabarito||null})}]`;
+        ` [incorp:${JSON.stringify({padrao, cab:m.ca_basico, qvt:qvt||null, frente:frente||null, gab:m.gabarito||null, oref:refMed?Math.round(refMed):null, on:refs.length, fp:m.fp})}]`;
     }else{
       dossie.metodo=(dossie.metodo?dossie.metodo+' · ':'')+`incorporação inviável no padrão ${padrao} (terreno máximo ≤ 0)`;
     }
@@ -490,18 +506,24 @@ function _avMemoriaHTML(m){
       ${l(`Comissão ${P.comissao*100}% + marketing ${P.marketing*100}% + RET ${P.ret*100}% + adm. ${P.adm*100}%`, m.indiretos, true)}
       ${l(`Margem do incorporador ${P.margem*100}%`, m.margem, true)}
       ${l(`Terreno máximo antes da outorga`, m.antes)}
-      ${m.outorga?l(`Outorga onerosa: ${n(m.area_adicional)} m² adicionais × (terreno/computável) × V ${_avR$(Math.round(m.v))}/m² (${m.v_origem}) × Fs ${P.outorga_fs} × Fp ${P.outorga_fp}`, m.outorga, true):''}
+      ${m.outorga?l(m.outorga_modo==='referencia'
+          ? `Outorga onerosa: ${n(m.area_adicional)} m² adicionais × ${_avR$(Math.round(m.v))}/m² (${m.v_origem})`
+          : `Outorga onerosa (fórmula PDE): ${n(m.area_adicional)} m² adicionais × (terreno/computável) × V ${_avR$(Math.round(m.v))}/m² (${m.v_origem}) × Fs ${P.outorga_fs} × Fp ${m.fp}`, m.outorga, true):''}
       <tr style="border-top:2px solid #10b981;font-weight:700"><td style="padding:4px 8px">Terreno máximo (o que sobra)</td><td style="padding:4px 8px;text-align:right;white-space:nowrap">${_avR$(Math.round(m.terreno_max))}</td></tr>
     </tbody></table>
     ${alertas}
-    <div style="color:#94a3b8;font-size:.8em;margin-top:6px">CUB ${P.cub_ref}. Outorga pela fórmula do PDE (Lei 16.050/2014, art. 117); Fp varia por macroárea — conferir para o endereço. Parâmetros padrão da NSP em AV_PARAM.</div></details>`;
+    ${m.fpInfo?`<div style="font-size:.84em;color:#64748b;margin-top:8px">Fator de planejamento (Quadro 6 do PDE) no ponto: <b>${m.fpInfo.fp_texto||m.fpInfo.fp||'—'}</b> · ${m.fpInfo.macroarea||''}${m.fpInfo.setor?' · '+m.fpInfo.setor:''}</div>`:''}
+    ${(m.refs||[]).length?`<div style="font-size:.84em;margin-top:8px"><div style="color:#64748b;margin-bottom:4px">Outorgas concedidas perto (GeoSampa) — contrapartida paga por m² excedente:</div>
+      <table style="width:100%;border-collapse:collapse;font-size:.92em"><thead><tr style="text-align:left;color:#94a3b8"><th style="padding:2px 6px">Endereço</th><th style="padding:2px 6px;text-align:right">Dist.</th><th style="padding:2px 6px;text-align:right">Terreno</th><th style="padding:2px 6px;text-align:right">Excedente</th><th style="padding:2px 6px;text-align:right">R$/m²</th><th style="padding:2px 6px">Situação</th></tr></thead>
+      <tbody>${m.refs.map(r=>`<tr style="border-top:1px solid #f1f5f9"><td style="padding:2px 6px">${r.endereco||''}</td><td style="padding:2px 6px;text-align:right">${r.dist_m} m</td><td style="padding:2px 6px;text-align:right">${n(r.area_terreno||0)} m²</td><td style="padding:2px 6px;text-align:right">${n(r.area_excedente||0)} m²</td><td style="padding:2px 6px;text-align:right">${_avR$(Math.round(r.ct_m2))}</td><td style="padding:2px 6px">${r.situacao||''}</td></tr>`).join('')}</tbody></table></div>`:''}
+    <div style="color:#94a3b8;font-size:.8em;margin-top:6px">CUB ${P.cub_ref}. Outorga: referência das concessões vizinhas (GeoSampa, 01/10/2026) ou fórmula do PDE (Lei 16.050/2014, art. 117) quando o QVT é informado. Parâmetros padrão da NSP em AV_PARAM.</div></details>`;
 }
 // Reconstrói a memória de uma avaliação salva (padrão vem do texto do método; sem ele, médio)
 function _avMemoriaSalva(x){
   if(!x||!x.incorp_aplicavel||!x.terreno||!x.ca||!x.incorp_lancamento_rs_m2) return null;
   let extra={}; try{ const mj=/\[incorp:(\{.*?\})\]/.exec(x.metodo||''); if(mj) extra=JSON.parse(mj[1]); }catch(_){}
   const mp=/padrão (economico|medio|alto)/.exec(x.metodo||''); const padrao=extra.padrao||(mp?mp[1]:'medio');
-  return _avContaIncorp({terreno:Number(x.terreno), ca:Number(x.ca), ca_basico:extra.cab, rs_lanc:Number(x.incorp_lancamento_rs_m2), padrao, qvt:extra.qvt, frente:extra.frente, gabarito:extra.gab});
+  return _avContaIncorp({terreno:Number(x.terreno), ca:Number(x.ca), ca_basico:extra.cab, rs_lanc:Number(x.incorp_lancamento_rs_m2), padrao, qvt:extra.qvt, frente:extra.frente, gabarito:extra.gab, outorga_ref_m2:extra.oref, outorga_ref_n:extra.on||0, fp:extra.fp});
 }
 function _avCompara(pedido,mercado){
   const p=Number(pedido),m=Number(mercado); if(!p||!m) return '';
