@@ -110,10 +110,13 @@ def precos(bairro: str, authorization: str = Header(None), apikey: str = Header(
         # de alto luxo distorce tudo): devolve None e o portal usa usado × 1,25 ou o valor digitado
         if n_lanc >= 3:
             rs_lanc = round(statistics.median([a['rs_m2'] for a in pl]))
-        for a in (pc + pa)[:8]:
+        # amostra com endereço (rua + bairro) e link, para a lista de comparáveis e o mapa do dossiê
+        for a in (pc + pa)[:16]:
             amostra.append({'tipo': a.get('tipo'), 'area': a.get('area'),
                             'preco': a.get('preco'), 'rs_m2': round(a['rs_m2']),
-                            'dorm': a.get('dorm')})
+                            'dorm': a.get('dorm'), 'vaga': a.get('vaga'),
+                            'rua': a.get('rua'), 'bairro': a.get('bairro'), 'url': a.get('url'),
+                            'lancamento': bool(a.get('lancamento'))})
     except Exception as e:
         raise HTTPException(502, f'falha ao buscar anúncios: {e}')
 
