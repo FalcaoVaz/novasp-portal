@@ -285,19 +285,29 @@ def carregar(dsn, dump, producao):
     if PROD_REF in dsn and not producao:
         raise SystemExit('DSN de PRODUÇÃO detectado. Use --producao explicitamente (só o Rodrigo).')
     dados, dup = ler_dump(dump)
-    conn = psycopg2.connect(dsn); conn.autocommit = False; cur = conn.cursor()
+    # keepalives: a carga leva minutos pelo pooler; sem isso a conexão pode "morrer em silêncio"
+    # e o cliente fica esperando uma resposta que não vem (sessão "idle in transaction" no servidor).
+    conn = psycopg2.connect(dsn, keepalives=1, keepalives_idle=20, keepalives_interval=10, keepalives_count=3)
+    conn.autocommit = False; cur = conn.cursor()
+    cur.execute("set statement_timeout = '600s'")
     try:
-        cur.execute("truncate " + ", ".join(t for t, *_ in TABELAS))
+        # uma transação POR TABELA: se cair no meio, o que já entrou fica e a próxima rodada
+        # recarrega só o que faltou (TRUNCATE por tabela).
         for tabela, arq, mapa, pk, _ in TABELAS:
             cols = [dst for _, dst, _ in mapa] + (['telefones', 'emails'] if tabela == 'nido_pessoas' else [])
             sql = f"insert into {tabela} ({', '.join(cols)}) values %s"
             vals = [tuple(r.get(c) for c in cols) for r in dados[tabela]]
-            for i in range(0, len(vals), 5000):
-                psycopg2.extras.execute_values(cur, sql, vals[i:i+5000], page_size=1000)
+            t0 = time.time()
+            cur.execute(f"truncate {tabela}")
+            cur.execute("delete from nido_cargas where tabela = %s", (tabela,))
+            for i in range(0, len(vals), 2000):
+                psycopg2.extras.execute_values(cur, sql, vals[i:i+2000], page_size=500)
+                print(f'\r  {tabela:18s} {min(i+2000, len(vals)):7d}/{len(vals)}', end='', flush=True)
             cur.execute("insert into nido_cargas (tabela, arquivo, linhas, observacao) values (%s,%s,%s,%s)",
                         (tabela, os.path.basename(dump), len(vals), f'duplicadas ignoradas: {dup[tabela]}'))
-            print(f'  {tabela:18s} {len(vals):7d} linhas (duplicadas: {dup[tabela]})')
-        conn.commit(); print('OK — carga concluída (produção)')
+            conn.commit()
+            print(f'\r  {tabela:18s} {len(vals):7d} linhas gravadas em {time.time()-t0:.0f}s (duplicadas: {dup[tabela]})')
+        print('OK — carga concluída (produção)')
     except Exception:
         conn.rollback(); raise
     finally:
