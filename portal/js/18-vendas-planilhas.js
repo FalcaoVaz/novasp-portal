@@ -163,7 +163,11 @@
       importado_por: cur ? cur.id : null, importado_por_nome: cur ? (cur.nome || null) : null,
       limites: parsed.limites, contagem, avisos: parsed.avisos,
     });
-    if (parsed.linhas.length) await api.post(T_LIN, parsed.linhas.map(l => ({ ...l, importacao_id: imp.id, mes_ref: mesRef + '-01' })));
+    // PostgREST exige as MESMAS colunas em todas as linhas de um insert em lote (abas de cota
+    // têm referência/tipo_anuncio; captação tem equipe/captacoes/placas). Normaliza tudo com null.
+    // (bug achado pelo Anderson em 30/09: gravava a importação e recusava as linhas)
+    const VAZIA = { linha_excel: null, referencia: null, corretor: null, equipe: null, tipo_anuncio: null, captacoes: null, placas: null };
+    if (parsed.linhas.length) await api.post(T_LIN, parsed.linhas.map(l => ({ ...VAZIA, ...l, importacao_id: imp.id, mes_ref: mesRef + '-01' })));
     return imp;
   }
   // Última importação do mês = a que vale (histórico fica guardado)
