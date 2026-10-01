@@ -47,8 +47,8 @@ const AV_PARAM = {
   outorga_fp:1.0,
   qvt_sobre_mercado:0.50, // sem QVT informado: V ≈ 50% do valor de mercado do terreno (o cadastro fica bem abaixo do mercado)
   // Incentivos do PDE/LPUOS na conta de incorporação (Rodrigo, 01/10/2026)
-  his_max_rs_m2:13000,    // lançamento até este R$/m² → tratado como HIS (outorga isenta, Fs = 0)
-  hmp_max_rs_m2:16000,    // até este R$/m² → HMP (Fs = 0,5); acima → mercado (Fs = 1)
+  his_max_rs_m2:12000,    // lançamento até este R$/m² → tratado como HIS (outorga isenta, Fs = 0)
+  hmp_max_rs_m2:15000,    // até este R$/m² → HMP (Fs = 0,5); acima → mercado (Fs = 1)
   fachada_ativa_bonus:0.50, // fachada ativa em eixo/centralidade: térreo comercial não computável até 50% do lote
   lote_min_m2:400,        // abaixo disso, alerta: CA máximo dificilmente é atingido
   frente_min_m:12,        // idem para frente estreita
