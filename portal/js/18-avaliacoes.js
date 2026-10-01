@@ -37,6 +37,10 @@ const AV_HIS_CA = {
 function _avCaSocial(zona, cat){ const z=String(zona||'').trim(); for(const g of Object.values(AV_HIS_CA)){ if(g.zonas.includes(z)) return {ca:g[cat], lb:g.lb}; } return null; }
 // Tetos de preço por unidade (Decreto 64.895/2026, atualização anual pelo INCC) — definem de fato o que é HIS-1, HIS-2 e HMP
 const AV_HIS_TETO = { his1:276102.20, his2:383636.74, hmp:537672.71, renda_his1:4863, renda_his2:9726, renda_hmp:16210, ref:'Decreto 64.895/2026' };
+// ── Terreno × construção, medido na carteira da NSP (Nido, anúncios de venda 2019–2026; analise de 01/10/2026) ──
+// lote = mediana R$/m² de lotes anunciados (preço pedido) · terreno/constr = regressão valor = a·terreno + b·construída nas casas anunciadas
+// share = fração do valor da casa que é terreno · casa_util = mediana R$/m² útil de casas · chave = bairro normalizado (_avNorm, sem o sufixo entre parênteses)
+const AV_TERRENO = {"aclimacao":{"terreno":3408,"constr":3091,"share":0.53,"n":98,"r2":0.63,"casa_util":6500,"casa_n":103},"americanopolis":{"lote":1303,"lote_n":12,"terreno":659,"constr":2340,"share":0.23,"n":133,"r2":0.44,"casa_util":3414,"casa_n":137},"bosque da saude":{"lote":2500,"lote_n":39,"terreno":1526,"constr":3556,"share":0.3,"n":500,"r2":0.57,"casa_util":5592,"casa_n":525},"brooklin paulista":{"lote":3875,"lote_n":11,"terreno":1497,"constr":5531,"share":0.21,"n":229,"r2":0.53,"casa_util":7753,"casa_n":250},"cambuci":{"lote":4000,"lote_n":13,"terreno":1949,"constr":3260,"share":0.37,"n":103,"r2":0.64,"casa_util":5345,"casa_n":106},"campo belo":{"lote":2778,"lote_n":11,"terreno":3201,"constr":3380,"share":0.49,"n":222,"r2":0.73,"casa_util":6477,"casa_n":238},"centro":{"lote":1684,"lote_n":72,"terreno":1091,"constr":1708,"share":0.4,"n":308,"r2":0.51,"casa_util":3200,"casa_n":321},"chacara inglesa":{"lote":2832,"lote_n":18,"terreno":1988,"constr":3787,"share":0.34,"n":150,"r2":0.49,"casa_util":6000,"casa_n":159},"cidade ademar":{"terreno":1882,"constr":153,"share":0.93,"n":59,"r2":0.46,"casa_util":2122,"casa_n":61},"cidade vargas":{"lote":2207,"lote_n":14,"terreno":1613,"constr":2444,"share":0.44,"n":241,"r2":0.49,"casa_util":5030,"casa_n":258},"conceicao":{"lote":1363,"lote_n":14,"casa_util":2376,"casa_n":110},"eldorado":{"lote":400,"lote_n":10,"terreno":287,"constr":1390,"share":0.31,"n":62,"r2":0.42,"casa_util":2400,"casa_n":65},"indianopolis":{"lote":6343,"lote_n":27,"terreno":2644,"constr":4282,"share":0.38,"n":274,"r2":0.35,"casa_util":7143,"casa_n":289},"ipiranga":{"lote":3614,"lote_n":29,"terreno":2134,"constr":2891,"share":0.42,"n":352,"r2":0.53,"casa_util":5047,"casa_n":368},"jabaquara":{"lote":2740,"lote_n":30,"terreno":1233,"constr":2938,"share":0.3,"n":365,"r2":0.58,"casa_util":4444,"casa_n":392},"jardim aeroporto":{"terreno":1967,"constr":3005,"share":0.4,"n":153,"r2":0.47,"casa_util":5143,"casa_n":163},"jardim da gloria":{"terreno":3261,"constr":2713,"share":0.52,"n":146,"r2":0.67,"casa_util":6410,"casa_n":155},"jardim da saude":{"lote":2988,"lote_n":22,"terreno":1137,"constr":3823,"share":0.26,"n":348,"r2":0.59,"casa_util":5520,"casa_n":370},"jardim europa":{"lote":8470,"lote_n":8},"jardim maria estela":{"casa_util":3065,"casa_n":81},"jardim miriam":{"casa_util":4318,"casa_n":72},"jardim oriental":{"lote":1754,"lote_n":32,"terreno":1312,"constr":2218,"share":0.39,"n":262,"r2":0.31,"casa_util":4269,"casa_n":276},"jardim paulista":{"lote":9731,"lote_n":8},"jardim saude":{"terreno":1393,"constr":4533,"share":0.25,"n":62,"r2":0.81,"casa_util":6000,"casa_n":66},"mirandopolis":{"lote":4861,"lote_n":36,"terreno":2583,"constr":4016,"share":0.37,"n":500,"r2":0.6,"casa_util":6746,"casa_n":530},"moema":{"casa_util":9702,"casa_n":66},"parque imperial":{"lote":2950,"lote_n":11,"casa_util":5000,"casa_n":120},"parque jabaquara":{"casa_util":4458,"casa_n":282},"pinheiros":{"lote":10608,"lote_n":13},"planalto paulista":{"lote":3000,"lote_n":82,"terreno":2078,"constr":3646,"share":0.36,"n":1516,"r2":0.65,"casa_util":5882,"casa_n":1608},"sacoma":{"lote":2500,"lote_n":33,"terreno":1039,"constr":2903,"share":0.26,"n":104,"r2":0.61,"casa_util":3929,"casa_n":111},"santo amaro":{"lote":3769,"lote_n":27},"sao joao climaco":{"lote":1201,"lote_n":9},"sao judas":{"lote":3670,"lote_n":36,"terreno":1147,"constr":4510,"share":0.2,"n":121,"r2":0.64,"casa_util":5932,"casa_n":125},"saude":{"lote":3542,"lote_n":117,"terreno":1455,"constr":4269,"share":0.25,"n":817,"r2":0.46,"casa_util":5739,"casa_n":870},"serraria":{"lote":152,"lote_n":7},"taboao":{"terreno":1360,"constr":1231,"share":0.52,"n":66,"r2":0.37,"casa_util":2652,"casa_n":67},"vila babilonia":{"casa_util":4333,"casa_n":71},"vila brasilina":{"casa_util":4290,"casa_n":213},"vila brasilio machado":{"lote":2367,"lote_n":14,"terreno":423,"constr":4298,"share":0.09,"n":120,"r2":0.46,"casa_util":5034,"casa_n":125},"vila campestre":{"lote":1570,"lote_n":16,"casa_util":3557,"casa_n":113},"vila clementino":{"lote":7645,"lote_n":24,"terreno":4443,"constr":2998,"share":0.58,"n":246,"r2":0.61,"casa_util":7475,"casa_n":263},"vila congonhas":{"casa_util":6286,"casa_n":63},"vila da saude":{"lote":3900,"lote_n":54,"terreno":1544,"constr":3903,"share":0.31,"n":268,"r2":0.64,"casa_util":6106,"casa_n":282},"vila das merces":{"lote":2575,"lote_n":12,"terreno":1081,"constr":3003,"share":0.27,"n":70,"r2":0.51,"casa_util":4236,"casa_n":73},"vila do bosque":{"lote":2957,"lote_n":11,"casa_util":5778,"casa_n":93},"vila do encontro":{"lote":1820,"lote_n":20,"terreno":1347,"constr":2055,"share":0.41,"n":140,"r2":0.62,"casa_util":3846,"casa_n":146},"vila dom pedro i":{"lote":4500,"lote_n":15,"terreno":1690,"constr":3607,"share":0.32,"n":136,"r2":0.37,"casa_util":5380,"casa_n":141},"vila fachini":{"lote":1645,"lote_n":12,"terreno":878,"constr":2258,"share":0.28,"n":110,"r2":0.51,"casa_util":3426,"casa_n":114},"vila firmiano pinto":{"lote":3097,"lote_n":8,"casa_util":5552,"casa_n":66},"vila guarani":{"lote":2768,"lote_n":85,"terreno":1358,"constr":3137,"share":0.31,"n":729,"r2":0.6,"casa_util":4750,"casa_n":775},"vila gumercindo":{"lote":2801,"lote_n":34,"terreno":2312,"constr":3440,"share":0.4,"n":270,"r2":0.5,"casa_util":5773,"casa_n":279},"vila mariana":{"lote":4500,"lote_n":51,"terreno":2473,"constr":4409,"share":0.35,"n":611,"r2":0.47,"casa_util":6917,"casa_n":646},"vila mascote":{"lote":7083,"lote_n":34},"vila moinho velho":{"lote":2385,"lote_n":17,"terreno":655,"constr":4049,"share":0.14,"n":128,"r2":0.58,"casa_util":5154,"casa_n":131},"vila monte alegre":{"lote":2615,"lote_n":31,"terreno":1928,"constr":2611,"share":0.42,"n":117,"r2":0.47,"casa_util":4749,"casa_n":124},"vila monumento":{"lote":1933,"lote_n":16,"terreno":1930,"constr":2663,"share":0.44,"n":115,"r2":0.51,"casa_util":5061,"casa_n":122},"vila moraes":{"lote":2083,"lote_n":13,"terreno":898,"constr":2711,"share":0.27,"n":190,"r2":0.36,"casa_util":3659,"casa_n":201},"vila nair":{"terreno":168,"constr":4609,"share":0.04,"n":105,"r2":0.54,"casa_util":5200,"casa_n":109},"vila nogueira":{"lote":1672,"lote_n":9},"vila nova conceicao":{"lote":14151,"lote_n":10},"vila olimpia":{"lote":19843,"lote_n":17},"vila parque jabaquara":{"lote":2129,"lote_n":37,"terreno":991,"constr":3081,"share":0.25,"n":211,"r2":0.48,"casa_util":4532,"casa_n":222},"vila santa catarina":{"lote":1530,"lote_n":22,"casa_util":4022,"casa_n":206},"vila santo estefano":{"lote":2317,"lote_n":24,"terreno":1315,"constr":2797,"share":0.32,"n":149,"r2":0.42,"casa_util":4418,"casa_n":156}};
 // Parâmetros padrão da conta reversa (método involutivo). Editáveis aqui; o corretor não mexe.
 const AV_PARAM = {
   cub_ref:'Sinduscon-SP jul/2026',
@@ -69,7 +73,8 @@ const AV_PARAM = {
   hmp_max_rs_m2:15000,    // até este R$/m² → HMP (Fs = 0,5; mesmas áreas extras); acima → mercado (Fs = 1)
   fachada_ativa_bonus:0.50, // fachada ativa em eixo/centralidade: térreo comercial não computável até 50% do lote
   // ── Casas e terrenos: método evolutivo (terreno + construção depreciada) ──
-  terreno_sobre_casa:0.50,     // sem referência de terreno: R$/m² de terreno ≈ 50% do R$/m² útil de casa do bairro (heurística Zona Sul; informe o valor se souber)
+  terreno_sobre_casa:0.31,     // casa vendida COMO CASA: R$/m² de terreno ≈ 31% do R$/m² útil de casa (regressão em 42 bairros da carteira NSP, 01/10/2026) — fallback quando o bairro não está em AV_TERRENO
+  lote_sobre_casa:0.53,        // casa vendida COMO LOTE (p/ construir): R$/m² de lote anunciado ≈ 53% do R$/m² útil de casa (41 bairros, carteira NSP) — fallback
   casa_obra_sobre_cub:1.25,    // custo de reposição de casa = CUB × 1,25 (sem BDI de incorporação)
   vida_util_casa:70,           // anos (Ross-Heidecke)
   fator_comercializacao:1.00,  // Fc sobre terreno + benfeitoria
@@ -195,7 +200,8 @@ function _avCamposTipo(){
     com:'Comercial: comparativo pela área construída (referência residencial, ordem de grandeza) e, com terreno, a conta para incorporadora.'}[gr];
 }
 // Método evolutivo: V = (terreno × R$/m² terreno + construída × custo de reposição × (1 − depreciação)) × Fc. Depreciação Ross-Heidecke.
-function _avContaEvolutivo({terreno, rs_terreno, rs_terreno_origem, constr, padrao, idade, estado}){
+function _avTerrenoBairro(bairro){ const k=_avNorm(bairro).split('(')[0].replace(/\s+/g,' ').trim(); return AV_TERRENO[k]||null; }
+function _avContaEvolutivo({terreno, rs_terreno, rs_terreno_origem, constr, padrao, idade, estado, rs_lote, lote_origem, ref}){
   const P=AV_PARAM, p=AV_PADROES[padrao]||AV_PADROES.medio;
   const v_terreno=terreno*rs_terreno;
   const custo_m2=p.cub*P.casa_obra_sobre_cub, v_novo=constr*custo_m2;
@@ -206,7 +212,8 @@ function _avContaEvolutivo({terreno, rs_terreno, rs_terreno_origem, constr, padr
   const total=Math.round((v_terreno+v_benf)*P.fator_comercializacao);
   return {terreno, rs_terreno, rs_terreno_origem, v_terreno:Math.round(v_terreno), constr, padrao, padraoLb:p.lb, cub:p.cub, cubRef:p.ref, custo_m2:Math.round(custo_m2),
           v_novo:Math.round(v_novo), idade:idade||0, estado, estadoLb:est[1], dep_ross:ross, dep_heidecke:heid, dep, v_benf:Math.round(v_benf), fc:P.fator_comercializacao, total,
-          pct_terreno: total? Math.round(v_terreno/(v_terreno+v_benf)*100):null};
+          pct_terreno: total? Math.round(v_terreno/(v_terreno+v_benf)*100):null,
+          rs_lote:rs_lote||null, lote_origem:lote_origem||null, v_lote: (rs_lote&&terreno)?Math.round(terreno*rs_lote):null, ref:ref||null};
 }
 
 const AV_STATUS = {
@@ -534,10 +541,15 @@ async function avalCalcular(opts){
   const casaEstimada=!precos.rs_casa && !!rs_casa;
   const rs_tipo = ehcasa ? rs_casa : (ehterreno ? null : rs_apto);
   const geo=_avForm.geo||{};
-  // R$/m² de terreno: informado > estimado pelo R$/m² de casa do bairro
+  // R$/m² de terreno — duas leituras, medidas na carteira da NSP (AV_TERRENO):
+  //  · rs_terreno: o que o terreno vale DENTRO de uma casa vendida como casa (regressão valor = a·terreno + b·construída)
+  //  · rs_lote:    o que o lote vale vendido PARA CONSTRUIR (mediana de lotes anunciados, trazida a preço fechado)
+  const tb=_avTerrenoBairro(bairro), idxPF0=_avIdxPedidoFechado(bairro);
   const rsTerrenoInf=+g('av-rs-terreno')||null;
-  const rs_terreno = rsTerrenoInf || (rs_casa ? Math.round(rs_casa*AV_PARAM.terreno_sobre_casa) : null);
-  const rsTerrenoOrigem = rsTerrenoInf ? 'informado pelo corretor' : (rs_casa ? `estimado: ${AV_PARAM.terreno_sobre_casa*100}% do R$/m² de casa do bairro (${casaEstimada?'casa ≈ apto × '+AV_PARAM.casa_sobre_apto:'anúncios de casas'})` : null);
+  const rs_terreno = rsTerrenoInf || (tb&&tb.terreno) || (rs_casa ? Math.round(rs_casa*AV_PARAM.terreno_sobre_casa) : null);
+  const rsTerrenoOrigem = rsTerrenoInf ? 'informado pelo corretor' : (tb&&tb.terreno ? `regressão sobre ${tb.n} casas anunciadas pela NSP em ${bairro} (terreno = ${Math.round(tb.share*100)}% do valor)` : (rs_casa ? `estimado: ${Math.round(AV_PARAM.terreno_sobre_casa*100)}% do R$/m² de casa do bairro (${casaEstimada?'casa ≈ apto × '+AV_PARAM.casa_sobre_apto:'anúncios de casas'})` : null));
+  const rs_lote = rsTerrenoInf || (tb&&tb.lote ? Math.round(tb.lote*idxPF0.idx) : null) || (rs_casa ? Math.round(rs_casa*AV_PARAM.lote_sobre_casa) : null);
+  const loteOrigem = rsTerrenoInf ? 'informado pelo corretor' : (tb&&tb.lote ? `mediana de ${tb.lote_n} lotes anunciados pela NSP em ${bairro} (R$ ${tb.lote.toLocaleString('pt-BR')}/m² pedido × ${idxPF0.idx} pedido→fechado)` : (rs_casa ? `estimado: ${Math.round(AV_PARAM.lote_sobre_casa*100)}% do R$/m² de casa do bairro` : null));
   const padrao=(_avForm.incorp&&_avForm.incorp.padrao)||_avPadraoSugerido(bairro);
   const lancInformado=(_avForm.incorp&&_avForm.incorp.lanc)||null;
   const rs_lanc = lancInformado || precos.rs_lanc || (rs_apto ? Math.round(rs_apto*AV_PARAM.lanc_sobre_usado) : null);
@@ -591,16 +603,16 @@ async function avalCalcular(opts){
   // ── EVOLUTIVO: casas (e comerciais com terreno) — terreno + construção depreciada ──
   let evolutivo=null;
   if((grupo==='casa'||grupo==='com') && terreno && area && rs_terreno){
-    evolutivo=_avContaEvolutivo({terreno, rs_terreno, rs_terreno_origem:rsTerrenoOrigem, constr:area, padrao:g('av-padrao-casa')||'medio', idade:+g('av-idade')||0, estado:g('av-estado')||'bom'});
+    evolutivo=_avContaEvolutivo({terreno, rs_terreno, rs_terreno_origem:rsTerrenoOrigem, constr:area, padrao:g('av-padrao-casa')||'medio', idade:+g('av-idade')||0, estado:g('av-estado')||'bom', rs_lote, lote_origem:loteOrigem, ref:tb});
     if(metodoUnico && metodoUnico.valor_final){ evolutivo.comparativo=metodoUnico.valor_final; evolutivo.divergencia=Math.round((evolutivo.total/metodoUnico.valor_final-1)*100); }
   }
   dossie.memoria.evolutivo=evolutivo; _avForm.evolutivo=evolutivo;
   if(grupo==='terreno'){
-    if(rs_terreno){
-      const vm=Math.round(terreno*rs_terreno);
-      dossie.valor_mercado=vm; dossie.faixa_min=Math.round(vm*0.9); dossie.faixa_max=Math.round(vm*1.1); dossie.mercado_rs_m2=rs_terreno;
-      dossie.metodo=`terreno nu: ${terreno} m² × R$ ${rs_terreno.toLocaleString('pt-BR')}/m² de terreno (${rsTerrenoOrigem})`;
-      dossie.memoria.evolutivo={terreno, rs_terreno, rs_terreno_origem:rsTerrenoOrigem, v_terreno:vm, total:vm, so_terreno:true};
+    if(rs_lote){
+      const vm=Math.round(terreno*rs_lote);
+      dossie.valor_mercado=vm; dossie.faixa_min=Math.round(vm*0.9); dossie.faixa_max=Math.round(vm*1.1); dossie.mercado_rs_m2=rs_lote;
+      dossie.metodo=`terreno nu: ${terreno} m² × R$ ${rs_lote.toLocaleString('pt-BR')}/m² de lote (${loteOrigem})`;
+      dossie.memoria.evolutivo={terreno, rs_terreno:rs_lote, rs_terreno_origem:loteOrigem, v_terreno:vm, total:vm, so_terreno:true, ref:tb};
     }
   }else if(metodoUnico && metodoUnico.valor_final && evolutivo){
     const mu=metodoUnico, vm=Math.round((mu.valor_final+evolutivo.total)/2);
@@ -774,7 +786,8 @@ function _avEvolutivoHTML(ev){
       ${l(`Construção depreciada`, ev.v_benf)}
       <tr style="border-top:2px solid #1E2D4A;font-weight:700"><td style="padding:4px 8px">Terreno + construção${ev.fc!==1?` × Fc ${ev.fc}`:''}</td><td style="padding:4px 8px;text-align:right">${_avR$(ev.total)}</td></tr>
     </tbody></table>
-    <div style="color:#94a3b8;font-size:.8em;margin-top:6px">Terreno pesa ${ev.pct_terreno}% do valor. ${/estimado/.test(ev.rs_terreno_origem||'')?'O R$/m² de terreno é estimado — informe o preço de lotes na região para refinar.':''}</div>
+    ${ev.v_lote?`<div style="font-size:.9em;margin-top:8px;padding:6px 8px;background:#f8fafc;border-radius:8px">🏗️ <b>Vendido como lote (para construir):</b> ${n(ev.terreno)} m² × ${_avR$(ev.rs_lote)}/m² = <b>${_avR$(ev.v_lote)}</b> <span style="color:#94a3b8">(${ev.lote_origem||''})</span>${ev.v_lote>ev.total?` — <span style="color:#047857">acima do valor como casa: vale ofertar a construtoras</span>`:''}</div>`:''}
+    <div style="color:#94a3b8;font-size:.8em;margin-top:6px">Terreno pesa ${ev.pct_terreno}% do valor como casa.${ev.ref&&ev.ref.constr?` Na carteira da NSP (${ev.ref.n} casas no bairro) a construção vale ≈ ${_avR$(ev.ref.constr)}/m² e o terreno ${Math.round(ev.ref.share*100)}% do preço.`:''} ${/estimado/.test(ev.rs_terreno_origem||'')?'O R$/m² de terreno é estimado — informe o preço de lotes na região para refinar.':''}</div>
   </div></div>`;
 }
 function renderAvalPreview(x, precos){
