@@ -156,7 +156,7 @@ function render(x){
       ${inc?`
       <div class="grid3">
         <div><div class="kicker">Terreno</div><b>${N(inc.terreno)} m²</b>${inc.frente?` · frente ${inc.frente} m`:''}</div>
-        <div><div class="kicker">CA básico / máximo</div><b>${inc.ca_basico!=null?inc.ca_basico:'?'} / ${inc.ca}</b></div>
+        <div><div class="kicker">CA básico / máximo usado</div><b>${inc.ca_basico!=null?inc.ca_basico:'?'} / ${inc.ca}</b>${inc.ca_zona&&inc.ca>inc.ca_zona?` <span class="sub">(zona ${inc.ca_zona}; ${String(inc.categoria).toUpperCase()} ${inc.ca})</span>`:''}</div>
         <div><div class="kicker">Área computável</div><b>${N(inc.area_comput)} m²</b></div>
         <div><div class="kicker">Área construída estimada</div><b>${N(inc.area_constr)} m²</b></div>
         <div><div class="kicker">Área vendável</div><b>${N(inc.area_vendavel)} m²</b></div>
@@ -176,6 +176,7 @@ function render(x){
         <div class="linha tot"><span>Terreno máximo (o que chega ao proprietário)${inc.terreno_vgv?` <span class="sub">· ${(inc.terreno_vgv*100).toFixed(1)}% do VGV</span>`:''}</span><b>${R$(inc.terreno_max)}</b></div>
       </div>
       ${(inc.alertas||[]).length?`<ul style="margin:8px 0 0;padding-left:18px;font-size:.85em;color:#b45309">${inc.alertas.map(a=>`<li>${a}</li>`).join('')}</ul>`:''}
+      ${(inc.base_legal||[]).length?`<div style="margin-top:10px;padding:8px 10px;background:#f0fdf4;border-radius:8px;font-size:.85em"><div style="font-weight:600;color:#047857;margin-bottom:4px">Por que a área vendável é ${inc.ca>(inc.ca_zona||inc.ca)?'maior que terreno × CA da zona':'essa'} — base legal</div><ul style="margin:0;padding-left:18px;color:#334155">${inc.base_legal.map(b=>`<li style="margin:2px 0">${b}</li>`).join('')}</ul></div>`:''}
       ${(inc.refs||[]).length?`<div class="foot">Referência de outorga: ${inc.refs.length} concessões da Prefeitura num raio de 1,5 km (ex.: ${inc.refs.slice(0,3).map(r=>`${r.endereco} — ${R$(r.ct_m2)}/m²`).join('; ')}).</div>`:''}
       `:''}
       <div class="foot">Método do valor residual (involutivo), com o zoneamento vigente (Lei 16.402/2016) e a outorga onerosa do PDE (Lei 16.050/2014). ${P.calibracao?P.calibracao.charAt(0).toUpperCase()+P.calibracao.slice(1)+'. ':''}Sujeito à confirmação de recuos, gabarito e viabilidade de projeto.</div>
