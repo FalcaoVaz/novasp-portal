@@ -19,7 +19,7 @@ print('feições:', len(rows), '| zonas distintas:', len({r[1] for r in rows}))
 c=psycopg2.connect(open(a.dsn).read().strip()); cur=c.cursor(); cur.execute("set statement_timeout='900s'")
 cur.execute('truncate aval_zona')
 for i in range(0, len(rows), 2000):
-    psycopg2.extras.execute_values(cur, "insert into aval_zona (id, zona, lei, geom) values %s", rows[i:i+2000], template="(%s,%s,%s, st_makevalid(st_setsrid(st_geomfromgeojson(%s),4326)))", page_size=200)
+    psycopg2.extras.execute_values(cur, "insert into aval_zona (id, zona, lei, geom) values %s", rows[i:i+2000], template="(%s,%s,%s, st_multi(st_makevalid(st_setsrid(st_geomfromgeojson(%s),4326))))", page_size=200)
     print(f'\r  {min(i+2000,len(rows))}/{len(rows)}', end='', flush=True)
 c.commit(); print()
 cur.execute("select count(*), pg_size_pretty(pg_total_relation_size('aval_zona')), st_extent(geom)::text from aval_zona"); print('aval_zona:', cur.fetchone())
