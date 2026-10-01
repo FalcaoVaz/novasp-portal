@@ -56,6 +56,7 @@
     a{color:inherit;text-decoration:none}
     @page{margin:14mm 12mm}
   }
+.av-tt{background:#dc2626;color:#fff;border:0;font-weight:600;font-size:.8em;padding:2px 8px;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,.3)} .av-tt:before{border-top-color:#dc2626}
 </style>
 </head>
 <body>
@@ -103,7 +104,7 @@ async function carregar(){
 
 function render(x){
   let comps=[]; try{ comps = typeof x.comparaveis==='string'?JSON.parse(x.comparaveis):(x.comparaveis||[]); }catch(_){}
-  const mem = x.memoria || {}; const mu = mem.metodo_unico || null; const inc = mem.incorp || null; const P = mem.param || {};
+  const mem = x.memoria || {}; const mu = mem.metodo_unico || null; const inc = mem.incorp || null; const P = mem.param || {}; const ev = mem.evolutivo || null;
   const dt = x.gerado_em ? new Date(x.gerado_em).toLocaleDateString('pt-BR') : '';
   const dtAp = x.aprovado_em ? new Date(x.aprovado_em).toLocaleDateString('pt-BR') : dt;
   const ent = x.entorno || null;
@@ -146,8 +147,11 @@ function render(x){
       <div class="kicker">Como chegamos ao valor · método</div>
       <p>A avaliação parte do <b>macro</b>, os índices do bairro, e aplica no <b>micro</b>, este imóvel. Duas fontes independentes de preço são combinadas:</p>
       ${mu&&mu.rs_anuncio?`<p><b>1. Anúncios ao vivo.</b> Mediana de ${mu.n_anuncio||'—'} anúncios de venda de imóveis semelhantes no bairro, coletados no dia da avaliação: ${R$(mu.rs_anuncio)}/m² pedido. Como preço pedido não é preço fechado, aplicamos o índice pedido→fechado medido nos negócios da própria Nova São Paulo (${mu.idx_origem||'média'}): × ${mu.idx_pedido_fechado} → <b>${R$(mu.rs_anuncio_ajust)}/m²</b>.</p>`:''}
-      ${mu&&mu.rs_itbi_ajust?`<p><b>2. Negócios fechados (ITBI).</b> Mediana de ${mu.n_itbi||'—'} transações registradas na Prefeitura no mesmo bairro: ${R$(mu.rs_itbi_util)}/m² de área útil estimada. Como a guia de ITBI declara em média ${Math.round((mu.sub_itbi||0)*100)}% abaixo do valor negociado, corrigimos: × ${(1+(mu.sub_itbi||0)).toFixed(3)} → <b>${R$(mu.rs_itbi_ajust)}/m²</b>.</p>`:''}
-      ${mu&&mu.rs_final?`<p><b>Valor adotado:</b> média das fontes, <b>${R$(mu.rs_final)}/m²</b>${mu.divergencia!=null?` (as fontes divergem ${mu.divergencia}%)`:''}, vezes ${Math.round(x.area_util||0)} m² de área útil = <b>${R$(x.valor_mercado)}</b>. Faixa de ±7% para negociação.${mu.excluidos?` ${mu.excluidos} referência(s) destoante(s) foram excluídas pelo corretor.`:''}</p>`:`<p>${x.metodo||''}</p>`}
+      ${mu&&mu.rs_itbi_ajust?`<p><b>2. Vendas reais (ITBI).</b> Mediana de ${mu.n_itbi||'—'} vendas efetivamente registradas na Prefeitura no mesmo bairro, com o preço declarado na guia de ITBI: ${R$(mu.rs_itbi_util)}/m² de área útil estimada. Como a guia de ITBI declara em média ${Math.round((mu.sub_itbi||0)*100)}% abaixo do valor negociado, corrigimos: × ${(1+(mu.sub_itbi||0)).toFixed(3)} → <b>${R$(mu.rs_itbi_ajust)}/m²</b>.</p>`:''}
+      ${mu&&mu.rs_final?`<p><b>${ev&&!ev.so_terreno?'Valor comparativo:':'Valor adotado:'}</b> média das fontes, <b>${R$(mu.rs_final)}/m²</b>${mu.divergencia!=null?` (as fontes divergem ${mu.divergencia}%)`:''}, vezes ${Math.round(x.area_util||0)} m² de área ${ev?'construída':'útil'} = <b>${R$(ev&&ev.comparativo?ev.comparativo:x.valor_mercado)}</b>.${ev&&!ev.so_terreno?'':' Faixa de ±7% para negociação.'}${mu.excluidos?` ${mu.excluidos} referência(s) destoante(s) foram excluídas pelo corretor.`:''}</p>`:(ev?'':`<p>${x.metodo||''}</p>`)}
+      ${ev&&ev.so_terreno?`<p><b>Terreno nu.</b> ${N(ev.terreno)} m² × ${R$(ev.rs_terreno)}/m² de terreno (${ev.rs_terreno_origem||''}) = <b>${R$(ev.total)}</b>.</p>`:''}
+      ${ev&&!ev.so_terreno?`<p><b>3. Terreno + construção (método evolutivo).</b> Em casa o terreno pesa: ${N(ev.terreno)} m² × ${R$(ev.rs_terreno)}/m² de terreno (${ev.rs_terreno_origem||''}) = ${R$(ev.v_terreno)}; mais a construção de ${N(ev.constr)} m² ao custo de reposição de ${R$(ev.custo_m2)}/m² (CUB ${ev.cubRef||''}, padrão ${ev.padraoLb||''}), depreciada ${Math.round((ev.dep||0)*100)}% por idade e estado (Ross-Heidecke: ${ev.idade} anos, ${ev.estadoLb||''}) = ${R$(ev.v_benf)}. Total <b>${R$(ev.total)}</b>; o terreno responde por ${ev.pct_terreno}% do valor.</p>
+      <p><b>Valor adotado:</b> média entre o comparativo (${R$(ev.comparativo)}) e o evolutivo (${R$(ev.total)}) = <b>${R$(x.valor_mercado)}</b>${ev.divergencia!=null?` (os métodos divergem ${ev.divergencia}%)`:''}. Faixa de ±7% para negociação.</p>`:''}
       ${(ent&&ent.metro&&ent.metro.length)?`<p class="foot">O entorno (transporte, parques, escolas, saúde, comércio) é informado para leitura qualitativa; não altera a conta.</p>`:''}
       <p class="foot">Fontes: anúncios públicos de portais imobiliários; ITBI da Prefeitura de São Paulo (Secretaria da Fazenda); negócios fechados da Nova São Paulo 2019–2026; zoneamento e outorga onerosa do GeoSampa (Prefeitura de São Paulo); CUB Sinduscon-SP.</p>
     </div>`;
@@ -156,7 +160,7 @@ function render(x){
     <div class="card incorp">
       <div class="kicker">Potencial para incorporação <span class="badge">valor como terreno</span></div>
       <div class="big">${R$(x.incorp_valor_terreno)}</div>
-      <div class="sub">valor máximo que um incorporador pode pagar pelo terreno para o empreendimento fechar com margem${x.incorp_ganho_pct!=null?` — <b>${x.incorp_ganho_pct>=0?'+':''}${Math.round(x.incorp_ganho_pct)}%</b> em relação ao ${x.preco_pedido?'valor pretendido':'valor como imóvel pronto'}`:''}.</div>
+      <div class="sub">valor máximo que um incorporador pode pagar pelo terreno para o empreendimento fechar com margem${x.incorp_ganho_pct!=null?` — <b>${x.incorp_ganho_pct>=0?'+':''}${Math.round(x.incorp_ganho_pct)}%</b> em relação ao valor como imóvel pronto`:''}.</div>
       ${inc?`
       <div class="grid3">
         <div><div class="kicker">Terreno</div><b>${N(inc.terreno)} m²</b>${inc.frente?` · frente ${inc.frente} m`:''}</div>
@@ -191,19 +195,19 @@ function render(x){
     <div class="card">
       <div class="kicker">Referências de mercado usadas</div>
       <table><thead><tr><th>Origem</th><th>Endereço</th><th class="r">Área</th><th class="r">Preço</th><th class="r">R$/m²</th></tr></thead>
-      <tbody>${usados.map(c=>{ const itbi=/ITBI|Fechamento/i.test(c.origem||c.tipo||''); return `<tr>
-        <td>${itbi?'Fechamento (ITBI)':'Anúncio'}${c.data?' '+String(c.data).slice(0,7):''}</td>
+      <tbody>${usados.map(c=>{ const itbi=/ITBI|Fechamento|Venda real/i.test(c.origem||c.tipo||''); return `<tr>
+        <td>${itbi?'<b style="color:#047857">Venda real</b> (ITBI)':'Anúncio'}${c.data?' '+String(c.data).slice(0,7):''}</td>
         <td>${c.endereco||'—'}${c.dorm?` <span class="sub">${c.dorm} dorm${c.vaga?' · '+c.vaga+' vg':''}</span>`:''}</td>
         <td class="r">${c.area?Math.round(c.area)+' m²':'—'}${itbi&&c.area_util_est?`<br><span class="sub">≈ ${c.area_util_est} m² útil</span>`:''}</td>
         <td class="r">${R$(c.preco)}</td>
         <td class="r">${R$(c.rs_m2)}${itbi&&c.rs_util?`<br><span class="sub">${R$(c.rs_util)} útil</span>`:''}</td></tr>`; }).join('')}</tbody></table>
       ${excluidos.length?`<div class="foot">Excluídas pelo corretor por destoarem do conjunto: ${excluidos.map(c=>c.endereco||c.tipo).join('; ')}.</div>`:''}
-      <div class="foot">ITBI: área do cadastro da Prefeitura; área útil estimada pela relação medida entre cadastro e área útil na base da Nova São Paulo.</div>
+      <div class="foot"><b>Venda real</b> = transação registrada na Prefeitura de São Paulo (guia de ITBI), com o preço efetivamente declarado na venda. <b>Anúncio</b> = preço pedido em portal imobiliário, ajustado pelo índice pedido→fechado. ITBI: área do cadastro da Prefeitura; área útil estimada pela relação medida entre cadastro e área útil na base da Nova São Paulo.</div>
     </div>` : '';
 
   const mapa = comps.some(c=>c.lat) || x.lat ? `
     <div class="card"><div class="kicker">Mapa das referências</div><div id="mapa" style="margin-top:8px"></div>
-      <div class="foot">Pino = imóvel avaliado · azul = anúncios · verde = negócios fechados (ITBI).</div></div>` : '';
+      <div class="foot"><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#dc2626;border:2px solid #fff;box-shadow:0 0 0 2px #dc2626;vertical-align:middle"></span> imóvel avaliado &nbsp; <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#60a5fa;border:2px solid #2563eb;vertical-align:middle"></span> anúncios à venda &nbsp; <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#34d399;border:2px solid #047857;vertical-align:middle"></span> vendas reais (ITBI)</div></div>` : '';
 
   const assinatura = `
     <div class="card">
@@ -240,8 +244,9 @@ async function desenharMapa(x){
   const map=L.map(el,{zoomControl:!modoPdf,attributionControl:true}).setView([c0.lat,c0.lng],14);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
   const b=[];
-  if(x.lat){ L.marker([x.lat,x.lng]).addTo(map).bindPopup('Imóvel avaliado'); b.push([x.lat,x.lng]); }
-  pts.forEach(c=>{ const itbi=/ITBI|Fechamento/i.test(c.origem||''); L.circleMarker([c.lat,c.lng],{radius:7,color:itbi?'#047857':'#2563eb',fillColor:itbi?'#34d399':'#60a5fa',fillOpacity:.8,weight:2}).addTo(map).bindPopup(`${c.endereco||''}<br>${R$(c.preco)} · ${R$(c.rs_m2)}/m²`); b.push([c.lat,c.lng]); });
+  if(x.lat){ L.circleMarker([x.lat,x.lng],{radius:18,color:'#dc2626',weight:2,fillColor:'#dc2626',fillOpacity:.15}).addTo(map);
+    L.circleMarker([x.lat,x.lng],{radius:9,color:'#fff',weight:3,fillColor:'#dc2626',fillOpacity:1}).addTo(map).bindTooltip('Imóvel avaliado',{permanent:true,direction:'top',offset:[0,-10],className:'av-tt'}); b.push([x.lat,x.lng]); }
+  pts.forEach(c=>{ const itbi=/ITBI|Fechamento|Venda real/i.test(c.origem||''); L.circleMarker([c.lat,c.lng],{radius:7,color:itbi?'#047857':'#2563eb',fillColor:itbi?'#34d399':'#60a5fa',fillOpacity:.8,weight:2}).addTo(map).bindPopup(`${c.endereco||''}<br>${R$(c.preco)} · ${R$(c.rs_m2)}/m²`); b.push([c.lat,c.lng]); });
   if(b.length>1) map.fitBounds(b,{padding:[20,20]});
   setTimeout(()=>map.invalidateSize(),300);
 }
