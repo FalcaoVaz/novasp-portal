@@ -167,6 +167,8 @@ function render(x){
         <div class="linha"><span>Obra: ${N(inc.area_constr)} m² × CUB ${inc.cubRef||''} ${R$(inc.cub)} × ${P.fator_obra||'1,3'}</span><b class="neg">− ${R$(inc.obra)}</b></div>
         <div class="linha"><span>Comissão ${pct(P.comissao)} + marketing ${pct(P.marketing)} + RET ${pct(P.ret)} + administração ${pct(P.adm)}</span><b class="neg">− ${R$(inc.indiretos)}</b></div>
         <div class="linha"><span>Margem do incorporador ${pct(P.margem)}</span><b class="neg">− ${R$(inc.margem)}</b></div>
+        ${inc.fachada_ativa?`<div class="linha"><span class="sub">Fachada ativa: +${N(inc.area_fachada)} m² de térreo comercial não computável, incluídos no VGV e na obra</span><b></b></div>`:''}
+        ${inc.categoria&&inc.categoria!=='mercado'?`<div class="linha"><span class="sub">Categoria ${String(inc.categoria).toUpperCase()}: fator social Fs = ${inc.fs} aplicado à outorga (PDE)</span><b></b></div>`:''}
         ${inc.outorga?`<div class="linha"><span>Outorga onerosa: ${N(inc.area_adicional)} m² acima do CA básico × ${R$(inc.v)}/m² <span class="sub">(${inc.v_origem||''})</span></span><b class="neg">− ${R$(inc.outorga)}</b></div>`:''}
         <div class="linha tot"><span>Terreno máximo</span><b>${R$(inc.terreno_max)}</b></div>
       </div>
