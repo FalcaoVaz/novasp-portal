@@ -170,6 +170,7 @@ function render(x){
         <div><div class="kicker">Área construída estimada</div><b>${N(inc.area_constr)} m²</b></div>
         <div><div class="kicker">Área vendável</div><b>${N(inc.area_vendavel)} m²</b></div>
         <div><div class="kicker">Padrão construtivo</div><b>${inc.padraoLb||inc.padrao||'—'}</b></div>
+        ${inc.comaer&&inc.comaer.pav!=null?`<div><div class="kicker">Altura máx. COMAER (estim.)</div><b>≈ ${N(inc.comaer.altura)} m · ~${inc.comaer.pav} pav.</b><div class="sub">superfície ${inc.comaer.sup}, PBZPA de Congonhas (ICA 11-408); terreno a ${N(inc.comaer.elev)} m</div></div>`:''}
       </div>
       <div style="margin-top:12px">
         <div class="linha"><span>VGV: ${N(inc.area_vendavel)} m² vendáveis × lançamento ${R$(x.incorp_lancamento_rs_m2)}/m²${inc.lancOrigem?` <span class="sub">(${inc.lancOrigem})</span>`:''}</span><b>${R$(inc.vgv)}</b></div>

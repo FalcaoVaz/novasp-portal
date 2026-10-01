@@ -44,6 +44,56 @@ const AV_HIS_TETO = { his1:276102.20, his2:383636.74, hmp:537672.71, renda_his1:
 // lote = mediana R$/m² de lotes anunciados (pedido) · share = fração do valor da casa que é terreno · casa_util = mediana R$/m² útil de casas
 // chave = bairro normalizado (_avNorm, sem o sufixo entre parênteses)
 const AV_TERRENO = {"aclimacao":{"terreno":3239,"constr":3085,"share":0.52,"n":103,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":6500,"casa_n":103},"americanopolis":{"casa_util":3414,"casa_n":137,"per":"2018–2026","lote":1303,"lote_n":12,"lote_per":"2018–2026"},"bosque da saude":{"terreno":2049,"constr":3662,"share":0.36,"n":211,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":6471,"casa_n":211,"lote":3220,"lote_n":9,"lote_per":"2024–2026"},"brooklin paulista":{"terreno":4508,"constr":3662,"share":0.55,"n":148,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":8744,"casa_n":148,"lote":3875,"lote_n":11,"lote_per":"2018–2026"},"cambuci":{"terreno":2092,"constr":3085,"share":0.4,"n":106,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":5345,"casa_n":106,"lote":4000,"lote_n":9,"lote_per":"2024–2026"},"campanario":{"casa_util":2270,"casa_n":32,"per":"2018–2026"},"campo belo":{"terreno":3398,"constr":3662,"share":0.48,"n":120,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":7132,"casa_n":120,"lote":2778,"lote_n":11,"lote_per":"2018–2026"},"centro":{"casa_util":3200,"casa_n":321,"per":"2018–2026","lote":1684,"lote_n":72,"lote_per":"2018–2026"},"chacara inglesa":{"terreno":2657,"constr":3662,"share":0.42,"n":64,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":7250,"casa_n":64,"lote":2832,"lote_n":18,"lote_per":"2018–2026"},"chacara santo antonio":{"casa_util":6794,"casa_n":30,"per":"2018–2026"},"cidade ademar":{"casa_util":2122,"casa_n":61,"per":"2018–2026"},"cidade domitila":{"casa_util":3116,"casa_n":42,"per":"2018–2026"},"cidade julia":{"casa_util":4607,"casa_n":42,"per":"2018–2026"},"cidade moncoes":{"casa_util":7000,"casa_n":55,"per":"2018–2026"},"cidade vargas":{"terreno":1221,"constr":3662,"share":0.28,"n":91,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":5083,"casa_n":91,"lote":2207,"lote_n":14,"lote_per":"2018–2026"},"conceicao":{"casa_util":2376,"casa_n":110,"per":"2018–2026","lote":1363,"lote_n":14,"lote_per":"2018–2026"},"conjunto residencial jardim canaa":{"casa_util":3664,"casa_n":36,"per":"2018–2026"},"eldorado":{"casa_util":2400,"casa_n":65,"per":"2018–2026","lote":400,"lote_n":10,"lote_per":"2018–2026"},"indianopolis":{"terreno":4803,"constr":3662,"share":0.57,"n":108,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":8323,"casa_n":108,"lote":6343,"lote_n":27,"lote_per":"2018–2026"},"interlagos":{"casa_util":4800,"casa_n":37,"per":"2018–2026"},"ipiranga":{"terreno":1589,"constr":3662,"share":0.3,"n":178,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":5371,"casa_n":178,"lote":5000,"lote_n":10,"lote_per":"2024–2026"},"jabaquara":{"terreno":1196,"constr":3662,"share":0.26,"n":169,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":5000,"casa_n":169,"lote":3370,"lote_n":13,"lote_per":"2024–2026"},"jardim aeroporto":{"terreno":1446,"constr":3662,"share":0.28,"n":69,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":5667,"casa_n":69},"jardim botucatu":{"casa_util":11250,"casa_n":39,"per":"2018–2026"},"jardim da gloria":{"terreno":2984,"constr":3085,"share":0.47,"n":155,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":6410,"casa_n":155},"jardim da saude":{"terreno":1962,"constr":3662,"share":0.36,"n":146,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":5963,"casa_n":146,"lote":3956,"lote_n":5,"lote_per":"2024–2026"},"jardim europa":{"lote":8470,"lote_n":8,"lote_per":"2018–2026"},"jardim jabaquara":{"casa_util":3459,"casa_n":38,"per":"2018–2026"},"jardim maria estela":{"terreno":568,"constr":3085,"share":0.12,"n":81,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":3065,"casa_n":81},"jardim miriam":{"casa_util":4318,"casa_n":72,"per":"2018–2026"},"jardim oriental":{"terreno":881,"constr":3662,"share":0.21,"n":127,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":4921,"casa_n":127,"lote":2500,"lote_n":10,"lote_per":"2024–2026"},"jardim paulista":{"casa_util":17893,"casa_n":50,"per":"2018–2026","lote":9731,"lote_n":8,"lote_per":"2018–2026"},"jardim paulistano":{"casa_util":13313,"casa_n":32,"per":"2018–2026"},"jardim prudencia":{"casa_util":4762,"casa_n":51,"per":"2018–2026"},"jardim santa cruz":{"casa_util":3790,"casa_n":31,"per":"2018–2026"},"jardim saude":{"terreno":2461,"constr":3085,"share":0.46,"n":66,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":6000,"casa_n":66},"jardim vergueiro":{"casa_util":3764,"casa_n":32,"per":"2018–2026"},"jardim vila mariana":{"casa_util":6138,"casa_n":36,"per":"2018–2026"},"mirandopolis":{"terreno":3790,"constr":3662,"share":0.5,"n":216,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":7452,"casa_n":216,"lote":4861,"lote_n":36,"lote_per":"2018–2026"},"moema":{"terreno":7002,"constr":3085,"share":0.7,"n":66,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":9702,"casa_n":66},"paraiso":{"casa_util":7043,"casa_n":36,"per":"2018–2026"},"parque colonial":{"casa_util":6600,"casa_n":39,"per":"2018–2026"},"parque imperial":{"terreno":1711,"constr":3085,"share":0.35,"n":120,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":5000,"casa_n":120,"lote":2950,"lote_n":11,"lote_per":"2018–2026"},"parque jabaquara":{"terreno":921,"constr":3662,"share":0.2,"n":109,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":4800,"casa_n":109},"pinheiros":{"lote":10608,"lote_n":13,"lote_per":"2018–2026"},"planalto paulista":{"terreno":2917,"constr":3662,"share":0.44,"n":656,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":6659,"casa_n":656,"lote":3235,"lote_n":29,"lote_per":"2024–2026"},"sacoma":{"terreno":685,"constr":3085,"share":0.18,"n":111,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":3929,"casa_n":111,"lote":2500,"lote_n":33,"lote_per":"2018–2026"},"santo amaro":{"casa_util":6414,"casa_n":55,"per":"2018–2026","lote":3769,"lote_n":27,"lote_per":"2018–2026"},"sao joao climaco":{"lote":1201,"lote_n":9,"lote_per":"2018–2026"},"sao judas":{"terreno":2498,"constr":3085,"share":0.45,"n":125,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":5932,"casa_n":125,"lote":4542,"lote_n":8,"lote_per":"2024–2026"},"saude":{"terreno":2696,"constr":3662,"share":0.42,"n":328,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":6876,"casa_n":328,"lote":4613,"lote_n":42,"lote_per":"2024–2026"},"serraria":{"lote":152,"lote_n":7,"lote_per":"2018–2026"},"taboao":{"casa_util":2652,"casa_n":67,"per":"2018–2026"},"vila agua funda":{"casa_util":4534,"casa_n":50,"per":"2018–2026"},"vila babilonia":{"casa_util":4333,"casa_n":71,"per":"2018–2026"},"vila brasilina":{"casa_util":4290,"casa_n":213,"per":"2018–2026"},"vila brasilio machado":{"terreno":1555,"constr":3085,"share":0.34,"n":125,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":5034,"casa_n":125,"lote":2367,"lote_n":14,"lote_per":"2018–2026"},"vila campestre":{"casa_util":3557,"casa_n":113,"per":"2018–2026","lote":1351,"lote_n":8,"lote_per":"2024–2026"},"vila caraguata":{"casa_util":4564,"casa_n":32,"per":"2018–2026"},"vila clementino":{"terreno":5556,"constr":3662,"share":0.59,"n":92,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":9326,"casa_n":92,"lote":7645,"lote_n":24,"lote_per":"2018–2026"},"vila congonhas":{"terreno":2572,"constr":3085,"share":0.48,"n":63,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":6286,"casa_n":63},"vila cordeiro":{"casa_util":6504,"casa_n":32,"per":"2018–2026"},"vila da saude":{"terreno":2290,"constr":3662,"share":0.39,"n":97,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":6825,"casa_n":97,"lote":4167,"lote_n":15,"lote_per":"2024–2026"},"vila das merces":{"terreno":1145,"constr":3085,"share":0.27,"n":73,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":4236,"casa_n":73,"lote":2575,"lote_n":12,"lote_per":"2018–2026"},"vila do bosque":{"terreno":1725,"constr":3085,"share":0.36,"n":93,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":5778,"casa_n":93,"lote":2957,"lote_n":11,"lote_per":"2018–2026"},"vila do encontro":{"casa_util":3846,"casa_n":146,"per":"2018–2026","lote":1882,"lote_n":6,"lote_per":"2024–2026"},"vila dom pedro i":{"terreno":2317,"constr":3085,"share":0.43,"n":141,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":5380,"casa_n":141,"lote":4500,"lote_n":7,"lote_per":"2024–2026"},"vila fachini":{"casa_util":3426,"casa_n":114,"per":"2018–2026","lote":1645,"lote_n":12,"lote_per":"2018–2026"},"vila firmiano pinto":{"terreno":2158,"constr":3085,"share":0.41,"n":66,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":5552,"casa_n":66,"lote":3097,"lote_n":8,"lote_per":"2018–2026"},"vila guarani":{"terreno":1296,"constr":3662,"share":0.27,"n":270,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":5411,"casa_n":270,"lote":3231,"lote_n":35,"lote_per":"2024–2026"},"vila gumercindo":{"terreno":2795,"constr":3662,"share":0.43,"n":127,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":7250,"casa_n":127,"lote":2801,"lote_n":34,"lote_per":"2018–2026"},"vila marari":{"casa_util":4293,"casa_n":38,"per":"2018–2026"},"vila mariana":{"terreno":4345,"constr":3662,"share":0.53,"n":284,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":8020,"casa_n":284,"lote":6034,"lote_n":14,"lote_per":"2024–2026"},"vila mascote":{"casa_util":6009,"casa_n":57,"per":"2018–2026","lote":7083,"lote_n":34,"lote_per":"2018–2026"},"vila moinho velho":{"terreno":1407,"constr":3085,"share":0.32,"n":131,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":5154,"casa_n":131,"lote":2385,"lote_n":17,"lote_per":"2018–2026"},"vila monte alegre":{"terreno":1508,"constr":3085,"share":0.33,"n":124,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":4749,"casa_n":124,"lote":2615,"lote_n":31,"lote_per":"2018–2026"},"vila monumento":{"terreno":1658,"constr":3085,"share":0.37,"n":122,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":5061,"casa_n":122,"lote":1933,"lote_n":16,"lote_per":"2018–2026"},"vila moraes":{"casa_util":3659,"casa_n":201,"per":"2018–2026","lote":2420,"lote_n":8,"lote_per":"2024–2026"},"vila nair":{"terreno":1479,"constr":3085,"share":0.32,"n":109,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":5200,"casa_n":109},"vila nogueira":{"casa_util":2157,"casa_n":32,"per":"2018–2026","lote":1672,"lote_n":9,"lote_per":"2018–2026"},"vila nova conceicao":{"casa_util":17741,"casa_n":39,"per":"2018–2026","lote":14151,"lote_n":10,"lote_per":"2018–2026"},"vila olimpia":{"casa_util":7500,"casa_n":39,"per":"2018–2026","lote":22756,"lote_n":7,"lote_per":"2024–2026"},"vila parque jabaquara":{"terreno":1012,"constr":3085,"share":0.25,"n":222,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":4532,"casa_n":222,"lote":2129,"lote_n":37,"lote_per":"2018–2026"},"vila paulista":{"casa_util":4558,"casa_n":39,"per":"2018–2026"},"vila santa catarina":{"terreno":815,"constr":3085,"share":0.21,"n":206,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":4022,"casa_n":206,"lote":1530,"lote_n":22,"lote_per":"2018–2026"},"vila santa maria":{"casa_util":2635,"casa_n":33,"per":"2018–2026"},"vila santo estefano":{"terreno":1074,"constr":3085,"share":0.26,"n":156,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":4418,"casa_n":156,"lote":2523,"lote_n":9,"lote_per":"2024–2026"},"vila sao jose":{"casa_util":5508,"casa_n":42,"per":"2018–2026"},"vila vera":{"casa_util":4144,"casa_n":36,"per":"2018–2026"}};
+// ── Altura máxima pelo COMAER: Plano Básico de Zona de Proteção do Aeroporto de Congonhas (SBSP), superfícies da ICA 11-408/2020, Tabela 4-3, código 4, IFR precisão ──
+// O GeoSampa não publica o PBZPA (conferido em 01/10/2026: nem WFS nem WMS). Aqui as superfícies são reconstruídas geometricamente a partir da pista principal;
+// a elevação do terreno vem da API pública Open-Meteo (modelo digital de 90 m). Resultado é ESTIMATIVA — a altura real é a da consulta prévia ao DECEA/COMAER.
+const AV_COMAER = {
+  nome:'Aeroporto de Congonhas (SBSP)', elev:802,                      // elevação do aeródromo (m)
+  thr17:{lat:-23.6186, lng:-46.6591}, azimute_pista:167.9, comprimento:1940, // cabeceira 17 e eixo da pista 17R/35L (mesma geometria usada no Foca)
+  hi:{h:45, raio:4000}, conica:{grad:0.05, h:100}, he:{h:145, raio:20000},  // horizontal interna, cônica (até 45+100 m), horizontal externa
+  aprox:{recuo:60, meia_largura:150, diverg:0.15, s1:{len:3000, grad:0.02}, s2:{len:3600, grad:0.025}, s3:{len:8400, h:150}},
+  trans:{grad:0.143, meia_faixa:150}, pe_direito:3.0,
+  ref:'ICA 11-408/2020 (DECEA), Tabela 4-3 — PBZPA, aeródromo código 4, operação IFR de precisão'
+};
+function _avComaerSuperficie(lat,lng){
+  const C=AV_COMAER, R=6371000, toR=d=>d*Math.PI/180;
+  const m_lat=111320, m_lng=111320*Math.cos(toR(lat));
+  const az=toR(C.azimute_pista), ux=Math.sin(az), uy=Math.cos(az);           // vetor unitário da pista (17 → 35), em metros (x=E, y=N)
+  const dx=(lng-C.thr17.lng)*m_lng, dy=(lat-C.thr17.lat)*m_lat;             // ponto relativo à cabeceira 17
+  const s=dx*ux+dy*uy, c=Math.abs(-dx*uy+dy*ux);                            // ao longo da pista (m) e lateral (m)
+  const arpx=ux*C.comprimento/2, arpy=uy*C.comprimento/2, d=Math.hypot(dx-arpx, dy-arpy);
+  const cand=[];
+  if(d<=C.hi.raio) cand.push({sup:'horizontal interna', alt:C.elev+C.hi.h});
+  else if(d<=C.hi.raio+C.conica.h/C.conica.grad) cand.push({sup:'cônica', alt:C.elev+C.hi.h+C.conica.grad*(d-C.hi.raio)});
+  else if(d<=C.he.raio) cand.push({sup:'horizontal externa', alt:C.elev+C.he.h});
+  // aproximação nas duas cabeceiras: 17 (chega do NNW: s<0) e 35 (chega do SSE: s>comprimento)
+  for(const [nome, sa] of [['aproximação 17', -s], ['aproximação 35', s-C.comprimento]]){
+    const A=C.aprox, t=sa-A.recuo; if(t<0) continue;
+    if(c>A.meia_largura+A.diverg*t) continue;
+    let alt;
+    if(t<=A.s1.len) alt=C.elev+A.s1.grad*t;
+    else if(t<=A.s1.len+A.s2.len) alt=C.elev+A.s1.grad*A.s1.len+A.s2.grad*(t-A.s1.len);
+    else if(t<=A.s1.len+A.s2.len+A.s3.len) alt=C.elev+A.s3.h;
+    else continue;
+    cand.push({sup:nome, alt});
+  }
+  if(s>=0 && s<=C.comprimento && c>C.trans.meia_faixa) cand.push({sup:'transição', alt:C.elev+C.trans.grad*(c-C.trans.meia_faixa)});
+  if(!cand.length) return null;
+  cand.sort((a,b)=>a.alt-b.alt); return {...cand[0], dist_arp:Math.round(d)};
+}
+async function _avComaer(lat,lng){
+  const sup=_avComaerSuperficie(lat,lng); if(!sup) return null;
+  let elev=null;
+  try{ const r=await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`); const j=await r.json(); elev=Array.isArray(j.elevation)?j.elevation[0]:null; }catch(_){}
+  if(elev==null) return {...sup, elev:null, altura:null, pav:null};
+  const altura=Math.max(0, Math.round(sup.alt-elev)), pav=Math.floor(altura/AV_COMAER.pe_direito);
+  return {...sup, alt:Math.round(sup.alt), elev:Math.round(elev), altura, pav};
+}
+function _avComaerTexto(k){
+  if(!k) return '';
+  if(k.altura==null) return `✈️ COMAER: superfície ${k.sup} do PBZPA de Congonhas, altitude máxima ${k.alt} m (sem elevação do terreno para converter em altura)`;
+  return `✈️ COMAER (Congonhas): altura máxima ≈ <b>${k.altura} m</b> (~${k.pav} pavimentos) — superfície ${k.sup}, altitude ${k.alt} m, terreno a ${k.elev} m. Estimativa; confirmar no DECEA.`;
+}
 // Parâmetros padrão da conta reversa (método involutivo). Editáveis aqui; o corretor não mexe.
 const AV_PARAM = {
   cub_ref:'Sinduscon-SP jul/2026',
@@ -106,7 +156,7 @@ const _avNormBairro = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036
 const n0 = v => Math.round(v||0).toLocaleString('pt-BR');
 function _avPadraoSugerido(bairro){ const b=_avNormBairro(bairro); return AV_BAIRROS_ALTO.some(x=>b.includes(x)) ? 'alto' : 'medio'; }
 // Conta reversa de incorporação: quanto o terreno pode valer para o empreendimento fechar com margem.
-function _avContaIncorp({terreno, ca, ca_basico, rs_lanc, padrao, qvt, frente, gabarito, outorga_ref_m2, outorga_ref_n, fp, categoria, fachada_ativa, zona}){
+function _avContaIncorp({terreno, ca, ca_basico, rs_lanc, padrao, qvt, frente, gabarito, outorga_ref_m2, outorga_ref_n, fp, categoria, fachada_ativa, zona, comaer}){
   const p=AV_PADROES[padrao]||AV_PADROES.medio, P=AV_PARAM;
   const cab = (ca_basico!=null && ca_basico>0) ? Number(ca_basico) : null;
   // categoria pelo preço de lançamento: HIS/HMP têm outorga isenta/reduzida (Fs) e áreas não computáveis a mais
@@ -166,6 +216,12 @@ function _avContaIncorp({terreno, ca, ca_basico, rs_lanc, padrao, qvt, frente, g
   if(terreno<P.lote_min_m2) alertas.push(`Lote de ${terreno} m²: abaixo de ${P.lote_min_m2} m² o CA máximo raramente é atingido (recuos e taxa de ocupação).`);
   if(frente && frente<P.frente_min_m) alertas.push(`Frente de ${frente} m: abaixo de ${P.frente_min_m} m a implantação de torre fica comprometida.`);
   if(gabarito && String(gabarito).trim() && !/sem|n[aã]o/i.test(String(gabarito))) alertas.push(`Gabarito de altura na zona: ${gabarito} — pode limitar o número de pavimentos antes do CA.`);
+  let pav_nec=null;
+  if(comaer && comaer.pav!=null){
+    pav_nec=Math.ceil(area_constr/(terreno*0.7));   // pavimentos para caber a área construída com ocupação de 70% do lote
+    if(pav_nec>comaer.pav) alertas.push(`Altura: o COMAER limita a ≈ ${comaer.altura} m (~${comaer.pav} pavimentos, superfície ${comaer.sup} do PBZPA de Congonhas); para construir ${n0(area_constr)} m² com 70% de ocupação seriam necessários ~${pav_nec} pavimentos. O CA ${ca_usado} provavelmente não é atingido — a conta é um teto, não o projeto.`);
+    else alertas.push(`Altura: COMAER limita a ≈ ${comaer.altura} m (~${comaer.pav} pavimentos); o projeto precisa de ~${pav_nec} com 70% de ocupação — cabe.`);
+  }
   if(area_comput>P.cota_solidariedade_m2) alertas.push(`Área computável acima de ${P.cota_solidariedade_m2.toLocaleString('pt-BR')} m²: PDE exige cota de solidariedade (10% em HIS ou equivalente).`);
   if(cab==null) alertas.push('CA básico não identificado na zona: outorga onerosa não calculada.');
   if(social) alertas.push(`Enquadrado como ${cat.toUpperCase()} pelo preço de lançamento (${cat==='his'?'até':'entre '+P.his_max_rs_m2.toLocaleString('pt-BR')+' e'} ${(cat==='his'?P.his_max_rs_m2:P.hmp_max_rs_m2).toLocaleString('pt-BR')} R$/m²): CA ${ca_usado}${ca_usado>ca_zona?' (zona: '+ca_zona+')':''}, outorga ${fs===0?'isenta':'com Fs 0,5'}. Veja "por que a área vendável é maior" abaixo.`);
@@ -175,7 +231,7 @@ function _avContaIncorp({terreno, ca, ca_basico, rs_lanc, padrao, qvt, frente, g
   return {padrao, cub:p.cub, custo_m2, ca:ca_usado, ca_zona, ca_social:cs?cs.ca:null, zona:zona||null, base_legal, ca_basico:cab, terreno, frente:frente||null, gabarito:gabarito||null,
           categoria:cat, fs, fachada_ativa:!!fachada_ativa, area_fachada, priv_fator,
           area_comput, area_constr, area_vendavel, vgv, obra, projetos, despesas, comissao, ret, financiamento, indiretos, margem, antes,
-          area_adicional, v, v_origem, outorga, outorga_modo, fp:fpUsado, bruto, custos_aquisicao, terreno_max, terreno_vgv: vgv?terreno_max/vgv:null, alertas};
+          area_adicional, v, v_origem, outorga, outorga_modo, fp:fpUsado, bruto, custos_aquisicao, terreno_max, terreno_vgv: vgv?terreno_max/vgv:null, alertas, comaer:comaer||null, pav_nec};
 }
 
 let _avImoveis = [];
@@ -332,6 +388,7 @@ function avalNova(){
       <div id="av-geo-res" style="margin-top:10px"></div>
       <div id="av-mapa" style="height:280px;border-radius:10px;margin-top:10px;display:none;border:1px solid #e2e8f0"></div>
       <div id="av-pino-info" style="margin-top:8px;color:#64748b;font-size:.9em"></div>
+      <div id="av-comaer-info" style="margin-top:4px;color:#64748b;font-size:.88em"></div>
       <div id="av-incorp-cta"></div>
       <div id="av-incorp-painel" style="display:none;margin-top:10px"></div>
       <div id="av-incorp-solo"></div>
@@ -446,6 +503,7 @@ async function _avPinoInfo(){
     const z=await _avRpc('aval_geo',{p_lat:_avPino.lat,p_lng:_avPino.lng});
     const zi=Array.isArray(z)?z[0]:z;
     _avForm.geo=zi||null;
+    _avForm.comaer=null; _avComaer(_avPino.lat,_avPino.lng).then(k=>{ _avForm.comaer=k; const e=document.getElementById('av-comaer-info'); if(e) e.innerHTML=_avComaerTexto(k); }).catch(()=>{});
     if(zi){
       el.innerHTML=`✅ <b>${zi.zona}</b> · CA máx <b>${Number(zi.ca_maximo)}</b>${zi.dist_m>0?` <span style="color:#94a3b8">(zona mais próxima, pino na rua a ${zi.dist_m} m)</span>`:''}`
         +`${zi.incorporavel?' · <span style="color:#047857">eixo (incorporável)</span>':''}`
@@ -734,7 +792,7 @@ async function _avCalcIncorp(){
     _avForm.cache.refs=refs; _avForm.cache.fpInfo=fpInfo;
   }
   if(refs.length){ const v=refs.map(r=>Number(r.ct_m2)).sort((a,b)=>a-b); refMed=v.length%2?v[(v.length-1)/2]:(v[v.length/2-1]+v[v.length/2])/2; }
-  const m=_avContaIncorp({terreno:inc.terreno, ca, ca_basico:geo.ca_basico, rs_lanc, padrao:inc.padrao, qvt:null, frente:inc.frente, gabarito:geo.gabarito_m, outorga_ref_m2:refMed, outorga_ref_n:refs.length, fp:fpInfo&&fpInfo.fp, categoria:inc.categoria, fachada_ativa:inc.fachada_ativa, zona:geo.zona});
+  const m=_avContaIncorp({terreno:inc.terreno, ca, ca_basico:geo.ca_basico, rs_lanc, padrao:inc.padrao, qvt:null, frente:inc.frente, gabarito:geo.gabarito_m, outorga_ref_m2:refMed, outorga_ref_n:refs.length, fp:fpInfo&&fpInfo.fp, categoria:inc.categoria, fachada_ativa:inc.fachada_ativa, zona:geo.zona, comaer:_avForm.comaer||null});
   m.refs=refs.slice(0,10); m.fpInfo=fpInfo;
   _avForm.memoria=m; _avForm.lancOrigem=lancOrigem; _avForm.incorpMotivo=null;
   dossie.memoria=dossie.memoria||{}; dossie.memoria.incorp={...m, lancOrigem, padraoLb:(AV_PADROES[inc.padrao]||{}).lb, cubRef:(AV_PADROES[inc.padrao]||{}).ref};
@@ -766,7 +824,7 @@ function _avIncorpCardHTML(x){
       <div style="font-size:1.7em;font-weight:800;color:#047857;margin:4px 0">${_avR$(x.incorp_valor_terreno)}</div>
       <div style="color:#64748b">terreno p/ incorporação${x.incorp_ganho_pct!=null?` — <b style="color:#059669">${x.incorp_ganho_pct>=0?'+':''}${x.incorp_ganho_pct}%</b> vs. ${_avForm.ctx&&_avForm.ctx.preco?'preço pretendido':'valor de mercado'}`:''}</div>
       <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px;font-size:.9em">
-        <div><span style="color:#94a3b8">Zona/CA</span><br><b>${x.zona} · CA ${x.ca}</b></div>
+        <div><span style="color:#94a3b8">Zona/CA</span><br><b>${x.zona} · CA ${x.ca}</b>${(_avForm.memoria&&_avForm.memoria.comaer&&_avForm.memoria.comaer.pav!=null)?`<br><small style="color:#64748b">✈️ altura máx. COMAER ≈ ${_avForm.memoria.comaer.altura} m (~${_avForm.memoria.comaer.pav} pav.)</small>`:''}</div>
         <div><span style="color:#94a3b8">Construível</span><br><b>${x.incorp_area_constr} m²</b></div>
         <div><span style="color:#94a3b8">Lançamento</span><br><b>${_avR$(x.incorp_lancamento_rs_m2)}/m²</b> <small style="color:#94a3b8">${_avForm.lancOrigem||''}</small></div>
         <div><span style="color:#94a3b8">VGV potencial</span><br><b>${_avR$(x.incorp_vgv)}</b></div>
@@ -876,7 +934,7 @@ function _avMemoriaSalva(x){
   if(!x||!x.incorp_aplicavel||!x.terreno||!x.ca||!x.incorp_lancamento_rs_m2) return null;
   let extra={}; try{ const mj=/\[incorp:(\{.*?\})\]/.exec(x.metodo||''); if(mj) extra=JSON.parse(mj[1]); }catch(_){}
   const mp=/padrão (economico|medio|alto)/.exec(x.metodo||''); const padrao=extra.padrao||(mp?mp[1]:'medio');
-  return _avContaIncorp({terreno:Number(x.terreno), ca:Number(x.ca), ca_basico:extra.cab, rs_lanc:Number(x.incorp_lancamento_rs_m2), padrao, qvt:extra.qvt, frente:extra.frente, gabarito:extra.gab, outorga_ref_m2:extra.oref, outorga_ref_n:extra.on||0, fp:extra.fp, categoria:extra.cat||'mercado', fachada_ativa:!!extra.fa, zona:x.zona});
+  return _avContaIncorp({terreno:Number(x.terreno), ca:Number(x.ca), ca_basico:extra.cab, rs_lanc:Number(x.incorp_lancamento_rs_m2), padrao, qvt:extra.qvt, frente:extra.frente, gabarito:extra.gab, outorga_ref_m2:extra.oref, outorga_ref_n:extra.on||0, fp:extra.fp, categoria:extra.cat||'mercado', fachada_ativa:!!extra.fa, zona:x.zona, comaer:(x.memoria&&x.memoria.incorp&&x.memoria.incorp.comaer)||null});
 }
 // Corretor exclui (ou reinclui) um comparável destoante: recalcula sem refazer as buscas
 async function _avExcluir(k){
