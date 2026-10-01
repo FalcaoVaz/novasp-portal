@@ -5,85 +5,110 @@
   "share": 0.53,
   "n": 98,
   "r2": 0.63,
+  "per": "2018–2026",
   "casa_util": 6500,
   "casa_n": 103
  },
  "americanopolis": {
   "lote": 1303,
   "lote_n": 12,
+  "lote_per": "2018–2026",
   "terreno": 659,
   "constr": 2340,
   "share": 0.23,
   "n": 133,
   "r2": 0.44,
+  "per": "2018–2026",
   "casa_util": 3414,
   "casa_n": 137
  },
  "bosque da saude": {
-  "lote": 2500,
-  "lote_n": 39,
+  "lote": 3220,
+  "lote_n": 9,
+  "lote_per": "2024–2026",
   "terreno": 1526,
   "constr": 3556,
   "share": 0.3,
   "n": 500,
   "r2": 0.57,
+  "per": "2018–2026",
   "casa_util": 5592,
   "casa_n": 525
  },
  "brooklin paulista": {
   "lote": 3875,
   "lote_n": 11,
-  "terreno": 1497,
-  "constr": 5531,
-  "share": 0.21,
-  "n": 229,
-  "r2": 0.53,
-  "casa_util": 7753,
-  "casa_n": 250
+  "lote_per": "2018–2026",
+  "terreno": 3463,
+  "constr": 4774,
+  "share": 0.42,
+  "n": 139,
+  "r2": 0.62,
+  "per": "2024–2026",
+  "casa_util": 8744,
+  "casa_n": 148
  },
  "cambuci": {
   "lote": 4000,
-  "lote_n": 13,
+  "lote_n": 9,
+  "lote_per": "2024–2026",
   "terreno": 1949,
   "constr": 3260,
   "share": 0.37,
   "n": 103,
   "r2": 0.64,
+  "per": "2018–2026",
   "casa_util": 5345,
   "casa_n": 106
+ },
+ "campanario": {
+  "casa_util": 2270,
+  "casa_n": 32,
+  "per": "2018–2026"
  },
  "campo belo": {
   "lote": 2778,
   "lote_n": 11,
-  "terreno": 3201,
-  "constr": 3380,
-  "share": 0.49,
-  "n": 222,
-  "r2": 0.73,
-  "casa_util": 6477,
-  "casa_n": 238
+  "lote_per": "2018–2026",
+  "terreno": 3474,
+  "constr": 3489,
+  "share": 0.5,
+  "n": 109,
+  "r2": 0.79,
+  "per": "2024–2026",
+  "casa_util": 7132,
+  "casa_n": 120
  },
  "centro": {
   "lote": 1684,
   "lote_n": 72,
+  "lote_per": "2018–2026",
   "terreno": 1091,
   "constr": 1708,
   "share": 0.4,
   "n": 308,
   "r2": 0.51,
+  "per": "2018–2026",
   "casa_util": 3200,
   "casa_n": 321
  },
  "chacara inglesa": {
   "lote": 2832,
   "lote_n": 18,
-  "terreno": 1988,
-  "constr": 3787,
-  "share": 0.34,
-  "n": 150,
-  "r2": 0.49,
-  "casa_util": 6000,
-  "casa_n": 159
+  "lote_per": "2018–2026",
+  "terreno": 1425,
+  "constr": 5125,
+  "share": 0.22,
+  "n": 58,
+  "r2": 0.51,
+  "per": "2024–2026",
+  "casa_util": 7250,
+  "casa_n": 64
+ },
+ "chacara santo antonio": {
+  "casa_util": 6794,
+  "casa_n": 30,
+  "per": "2018–2026"
  },
  "cidade ademar": {
   "terreno": 1882,
@@ -91,78 +116,122 @@
   "share": 0.93,
   "n": 59,
   "r2": 0.46,
+  "per": "2018–2026",
   "casa_util": 2122,
   "casa_n": 61
+ },
+ "cidade domitila": {
+  "casa_util": 3116,
+  "casa_n": 42,
+  "per": "2018–2026"
+ },
+ "cidade julia": {
+  "casa_util": 4607,
+  "casa_n": 42,
+  "per": "2018–2026"
+ },
+ "cidade moncoes": {
+  "casa_util": 7000,
+  "casa_n": 55,
+  "per": "2018–2026"
  },
  "cidade vargas": {
   "lote": 2207,
   "lote_n": 14,
-  "terreno": 1613,
-  "constr": 2444,
-  "share": 0.44,
-  "n": 241,
-  "r2": 0.49,
-  "casa_util": 5030,
-  "casa_n": 258
+  "lote_per": "2018–2026",
+  "terreno": 1942,
+  "constr": 2439,
+  "share": 0.48,
+  "n": 84,
+  "r2": 0.44,
+  "per": "2024–2026",
+  "casa_util": 5083,
+  "casa_n": 91
  },
  "conceicao": {
   "lote": 1363,
   "lote_n": 14,
+  "lote_per": "2018–2026",
   "casa_util": 2376,
-  "casa_n": 110
+  "casa_n": 110,
+  "per": "2018–2026"
+ },
+ "conjunto residencial jardim canaa": {
+  "casa_util": 3664,
+  "casa_n": 36,
+  "per": "2018–2026"
  },
  "eldorado": {
   "lote": 400,
   "lote_n": 10,
+  "lote_per": "2018–2026",
   "terreno": 287,
   "constr": 1390,
   "share": 0.31,
   "n": 62,
   "r2": 0.42,
+  "per": "2018–2026",
   "casa_util": 2400,
   "casa_n": 65
  },
  "indianopolis": {
   "lote": 6343,
   "lote_n": 27,
-  "terreno": 2644,
-  "constr": 4282,
-  "share": 0.38,
-  "n": 274,
-  "r2": 0.35,
-  "casa_util": 7143,
-  "casa_n": 289
+  "lote_per": "2018–2026",
+  "terreno": 1307,
+  "constr": 7108,
+  "share": 0.16,
+  "n": 102,
+  "r2": 0.58,
+  "per": "2024–2026",
+  "casa_util": 8323,
+  "casa_n": 108
+ },
+ "interlagos": {
+  "casa_util": 4800,
+  "casa_n": 37,
+  "per": "2018–2026"
  },
  "ipiranga": {
-  "lote": 3614,
-  "lote_n": 29,
-  "terreno": 2134,
-  "constr": 2891,
-  "share": 0.42,
-  "n": 352,
-  "r2": 0.53,
-  "casa_util": 5047,
-  "casa_n": 368
+  "lote": 5000,
+  "lote_n": 10,
+  "lote_per": "2024–2026",
+  "terreno": 1529,
+  "constr": 3723,
+  "share": 0.29,
+  "n": 176,
+  "r2": 0.48,
+  "per": "2024–2026",
+  "casa_util": 5371,
+  "casa_n": 178
  },
  "jabaquara": {
-  "lote": 2740,
-  "lote_n": 30,
-  "terreno": 1233,
-  "constr": 2938,
-  "share": 0.3,
-  "n": 365,
-  "r2": 0.58,
-  "casa_util": 4444,
-  "casa_n": 392
+  "lote": 3370,
+  "lote_n": 13,
+  "lote_per": "2024–2026",
+  "terreno": 1171,
+  "constr": 3584,
+  "share": 0.26,
+  "n": 162,
+  "r2": 0.63,
+  "per": "2024–2026",
+  "casa_util": 5000,
+  "casa_n": 169
  },
  "jardim aeroporto": {
-  "terreno": 1967,
-  "constr": 3005,
-  "share": 0.4,
-  "n": 153,
-  "r2": 0.47,
-  "casa_util": 5143,
-  "casa_n": 163
+  "terreno": 2126,
+  "constr": 3288,
+  "share": 0.39,
+  "n": 63,
+  "r2": 0.6,
+  "per": "2024–2026",
+  "casa_util": 5667,
+  "casa_n": 69
+ },
+ "jardim botucatu": {
+  "casa_util": 11250,
+  "casa_n": 39,
+  "per": "2018–2026"
  },
  "jardim da gloria": {
   "terreno": 3261,
@@ -170,46 +239,78 @@
   "share": 0.52,
   "n": 146,
   "r2": 0.67,
+  "per": "2018–2026",
   "casa_util": 6410,
   "casa_n": 155
  },
  "jardim da saude": {
-  "lote": 2988,
-  "lote_n": 22,
-  "terreno": 1137,
-  "constr": 3823,
-  "share": 0.26,
-  "n": 348,
-  "r2": 0.59,
-  "casa_util": 5520,
-  "casa_n": 370
+  "lote": 3956,
+  "lote_n": 5,
+  "lote_per": "2024–2026",
+  "terreno": 2455,
+  "constr": 3148,
+  "share": 0.45,
+  "n": 141,
+  "r2": 0.58,
+  "per": "2024–2026",
+  "casa_util": 5963,
+  "casa_n": 146
  },
  "jardim europa": {
   "lote": 8470,
-  "lote_n": 8
+  "lote_n": 8,
+  "lote_per": "2018–2026"
+ },
+ "jardim jabaquara": {
+  "casa_util": 3459,
+  "casa_n": 38,
+  "per": "2018–2026"
  },
  "jardim maria estela": {
   "casa_util": 3065,
-  "casa_n": 81
+  "casa_n": 81,
+  "per": "2018–2026"
  },
  "jardim miriam": {
   "casa_util": 4318,
-  "casa_n": 72
+  "casa_n": 72,
+  "per": "2018–2026"
  },
  "jardim oriental": {
-  "lote": 1754,
-  "lote_n": 32,
-  "terreno": 1312,
-  "constr": 2218,
-  "share": 0.39,
-  "n": 262,
-  "r2": 0.31,
-  "casa_util": 4269,
-  "casa_n": 276
+  "lote": 2500,
+  "lote_n": 10,
+  "lote_per": "2024–2026",
+  "terreno": 423,
+  "constr": 4179,
+  "share": 0.1,
+  "n": 121,
+  "r2": 0.75,
+  "per": "2024–2026",
+  "casa_util": 4921,
+  "casa_n": 127
  },
  "jardim paulista": {
   "lote": 9731,
-  "lote_n": 8
+  "lote_n": 8,
+  "lote_per": "2018–2026",
+  "casa_util": 17893,
+  "casa_n": 50,
+  "per": "2018–2026"
+ },
+ "jardim paulistano": {
+  "casa_util": 13313,
+  "casa_n": 32,
+  "per": "2018–2026"
+ },
+ "jardim prudencia": {
+  "casa_util": 4762,
+  "casa_n": 51,
+  "per": "2018–2026"
+ },
+ "jardim santa cruz": {
+  "casa_util": 3790,
+  "casa_n": 31,
+  "per": "2018–2026"
  },
  "jardim saude": {
   "terreno": 1393,
@@ -217,93 +318,135 @@
   "share": 0.25,
   "n": 62,
   "r2": 0.81,
+  "per": "2018–2026",
   "casa_util": 6000,
   "casa_n": 66
+ },
+ "jardim vergueiro": {
+  "casa_util": 3764,
+  "casa_n": 32,
+  "per": "2018–2026"
+ },
+ "jardim vila mariana": {
+  "casa_util": 6138,
+  "casa_n": 36,
+  "per": "2018–2026"
  },
  "mirandopolis": {
   "lote": 4861,
   "lote_n": 36,
-  "terreno": 2583,
-  "constr": 4016,
-  "share": 0.37,
-  "n": 500,
-  "r2": 0.6,
-  "casa_util": 6746,
-  "casa_n": 530
+  "lote_per": "2018–2026",
+  "terreno": 3175,
+  "constr": 4230,
+  "share": 0.42,
+  "n": 206,
+  "r2": 0.59,
+  "per": "2024–2026",
+  "casa_util": 7452,
+  "casa_n": 216
  },
  "moema": {
   "casa_util": 9702,
-  "casa_n": 66
+  "casa_n": 66,
+  "per": "2018–2026"
+ },
+ "paraiso": {
+  "casa_util": 7043,
+  "casa_n": 36,
+  "per": "2018–2026"
+ },
+ "parque colonial": {
+  "casa_util": 6600,
+  "casa_n": 39,
+  "per": "2018–2026"
  },
  "parque imperial": {
   "lote": 2950,
   "lote_n": 11,
+  "lote_per": "2018–2026",
   "casa_util": 5000,
-  "casa_n": 120
+  "casa_n": 120,
+  "per": "2018–2026"
  },
  "parque jabaquara": {
   "casa_util": 4458,
-  "casa_n": 282
+  "casa_n": 282,
+  "per": "2018–2026"
  },
  "pinheiros": {
   "lote": 10608,
-  "lote_n": 13
+  "lote_n": 13,
+  "lote_per": "2018–2026"
  },
  "planalto paulista": {
-  "lote": 3000,
-  "lote_n": 82,
-  "terreno": 2078,
-  "constr": 3646,
-  "share": 0.36,
-  "n": 1516,
-  "r2": 0.65,
-  "casa_util": 5882,
-  "casa_n": 1608
+  "lote": 3235,
+  "lote_n": 29,
+  "lote_per": "2024–2026",
+  "terreno": 3639,
+  "constr": 2884,
+  "share": 0.56,
+  "n": 618,
+  "r2": 0.76,
+  "per": "2024–2026",
+  "casa_util": 6659,
+  "casa_n": 656
  },
  "sacoma": {
   "lote": 2500,
   "lote_n": 33,
+  "lote_per": "2018–2026",
   "terreno": 1039,
   "constr": 2903,
   "share": 0.26,
   "n": 104,
   "r2": 0.61,
+  "per": "2018–2026",
   "casa_util": 3929,
   "casa_n": 111
  },
  "santo amaro": {
   "lote": 3769,
-  "lote_n": 27
+  "lote_n": 27,
+  "lote_per": "2018–2026",
+  "casa_util": 6414,
+  "casa_n": 55,
+  "per": "2018–2026"
  },
  "sao joao climaco": {
   "lote": 1201,
-  "lote_n": 9
+  "lote_n": 9,
+  "lote_per": "2018–2026"
  },
  "sao judas": {
-  "lote": 3670,
-  "lote_n": 36,
+  "lote": 4542,
+  "lote_n": 8,
+  "lote_per": "2024–2026",
   "terreno": 1147,
   "constr": 4510,
   "share": 0.2,
   "n": 121,
   "r2": 0.64,
+  "per": "2018–2026",
   "casa_util": 5932,
   "casa_n": 125
  },
  "saude": {
-  "lote": 3542,
-  "lote_n": 117,
-  "terreno": 1455,
-  "constr": 4269,
-  "share": 0.25,
-  "n": 817,
-  "r2": 0.46,
-  "casa_util": 5739,
-  "casa_n": 870
+  "lote": 4613,
+  "lote_n": 42,
+  "lote_per": "2024–2026",
+  "terreno": 2542,
+  "constr": 3801,
+  "share": 0.4,
+  "n": 310,
+  "r2": 0.45,
+  "per": "2024–2026",
+  "casa_util": 6876,
+  "casa_n": 328
  },
  "serraria": {
   "lote": 152,
-  "lote_n": 7
+  "lote_n": 7,
+  "lote_per": "2018–2026"
  },
  "taboao": {
   "terreno": 1360,
@@ -311,194 +454,256 @@
   "share": 0.52,
   "n": 66,
   "r2": 0.37,
+  "per": "2018–2026",
   "casa_util": 2652,
   "casa_n": 67
  },
+ "vila agua funda": {
+  "casa_util": 4534,
+  "casa_n": 50,
+  "per": "2018–2026"
+ },
  "vila babilonia": {
   "casa_util": 4333,
-  "casa_n": 71
+  "casa_n": 71,
+  "per": "2018–2026"
  },
  "vila brasilina": {
   "casa_util": 4290,
-  "casa_n": 213
+  "casa_n": 213,
+  "per": "2018–2026"
  },
  "vila brasilio machado": {
   "lote": 2367,
   "lote_n": 14,
+  "lote_per": "2018–2026",
   "terreno": 423,
   "constr": 4298,
   "share": 0.09,
   "n": 120,
   "r2": 0.46,
+  "per": "2018–2026",
   "casa_util": 5034,
   "casa_n": 125
  },
  "vila campestre": {
-  "lote": 1570,
-  "lote_n": 16,
+  "lote": 1351,
+  "lote_n": 8,
+  "lote_per": "2024–2026",
   "casa_util": 3557,
-  "casa_n": 113
+  "casa_n": 113,
+  "per": "2018–2026"
+ },
+ "vila caraguata": {
+  "casa_util": 4564,
+  "casa_n": 32,
+  "per": "2018–2026"
  },
  "vila clementino": {
   "lote": 7645,
   "lote_n": 24,
-  "terreno": 4443,
-  "constr": 2998,
-  "share": 0.58,
-  "n": 246,
-  "r2": 0.61,
-  "casa_util": 7475,
-  "casa_n": 263
+  "lote_per": "2018–2026",
+  "terreno": 4316,
+  "constr": 4895,
+  "share": 0.46,
+  "n": 87,
+  "r2": 0.69,
+  "per": "2024–2026",
+  "casa_util": 9326,
+  "casa_n": 92
  },
  "vila congonhas": {
   "casa_util": 6286,
-  "casa_n": 63
+  "casa_n": 63,
+  "per": "2018–2026"
+ },
+ "vila cordeiro": {
+  "casa_util": 6504,
+  "casa_n": 32,
+  "per": "2018–2026"
  },
  "vila da saude": {
-  "lote": 3900,
-  "lote_n": 54,
-  "terreno": 1544,
-  "constr": 3903,
-  "share": 0.31,
-  "n": 268,
-  "r2": 0.64,
-  "casa_util": 6106,
-  "casa_n": 282
+  "lote": 4167,
+  "lote_n": 15,
+  "lote_per": "2024–2026",
+  "terreno": 1010,
+  "constr": 4919,
+  "share": 0.17,
+  "n": 92,
+  "r2": 0.47,
+  "per": "2024–2026",
+  "casa_util": 6825,
+  "casa_n": 97
  },
  "vila das merces": {
   "lote": 2575,
   "lote_n": 12,
+  "lote_per": "2018–2026",
   "terreno": 1081,
   "constr": 3003,
   "share": 0.27,
   "n": 70,
   "r2": 0.51,
+  "per": "2018–2026",
   "casa_util": 4236,
   "casa_n": 73
  },
  "vila do bosque": {
   "lote": 2957,
   "lote_n": 11,
+  "lote_per": "2018–2026",
   "casa_util": 5778,
-  "casa_n": 93
+  "casa_n": 93,
+  "per": "2018–2026"
  },
  "vila do encontro": {
-  "lote": 1820,
-  "lote_n": 20,
+  "lote": 1882,
+  "lote_n": 6,
+  "lote_per": "2024–2026",
   "terreno": 1347,
   "constr": 2055,
   "share": 0.41,
   "n": 140,
   "r2": 0.62,
+  "per": "2018–2026",
   "casa_util": 3846,
   "casa_n": 146
  },
  "vila dom pedro i": {
   "lote": 4500,
-  "lote_n": 15,
+  "lote_n": 7,
+  "lote_per": "2024–2026",
   "terreno": 1690,
   "constr": 3607,
   "share": 0.32,
   "n": 136,
   "r2": 0.37,
+  "per": "2018–2026",
   "casa_util": 5380,
   "casa_n": 141
  },
  "vila fachini": {
   "lote": 1645,
   "lote_n": 12,
+  "lote_per": "2018–2026",
   "terreno": 878,
   "constr": 2258,
   "share": 0.28,
   "n": 110,
   "r2": 0.51,
+  "per": "2018–2026",
   "casa_util": 3426,
   "casa_n": 114
  },
  "vila firmiano pinto": {
   "lote": 3097,
   "lote_n": 8,
+  "lote_per": "2018–2026",
   "casa_util": 5552,
-  "casa_n": 66
+  "casa_n": 66,
+  "per": "2018–2026"
  },
  "vila guarani": {
-  "lote": 2768,
-  "lote_n": 85,
-  "terreno": 1358,
-  "constr": 3137,
-  "share": 0.31,
-  "n": 729,
-  "r2": 0.6,
-  "casa_util": 4750,
-  "casa_n": 775
+  "lote": 3231,
+  "lote_n": 35,
+  "lote_per": "2024–2026",
+  "terreno": 1755,
+  "constr": 3190,
+  "share": 0.36,
+  "n": 254,
+  "r2": 0.65,
+  "per": "2024–2026",
+  "casa_util": 5411,
+  "casa_n": 270
  },
  "vila gumercindo": {
   "lote": 2801,
   "lote_n": 34,
-  "terreno": 2312,
-  "constr": 3440,
-  "share": 0.4,
-  "n": 270,
-  "r2": 0.5,
-  "casa_util": 5773,
-  "casa_n": 279
+  "lote_per": "2018–2026",
+  "terreno": 2673,
+  "constr": 3812,
+  "share": 0.41,
+  "n": 127,
+  "r2": 0.56,
+  "per": "2024–2026",
+  "casa_util": 7250,
+  "casa_n": 127
+ },
+ "vila marari": {
+  "casa_util": 4293,
+  "casa_n": 38,
+  "per": "2018–2026"
  },
  "vila mariana": {
-  "lote": 4500,
-  "lote_n": 51,
-  "terreno": 2473,
-  "constr": 4409,
+  "lote": 6034,
+  "lote_n": 14,
+  "lote_per": "2024–2026",
+  "terreno": 2936,
+  "constr": 5110,
   "share": 0.35,
-  "n": 611,
-  "r2": 0.47,
-  "casa_util": 6917,
-  "casa_n": 646
+  "n": 268,
+  "r2": 0.59,
+  "per": "2024–2026",
+  "casa_util": 8020,
+  "casa_n": 284
  },
  "vila mascote": {
   "lote": 7083,
-  "lote_n": 34
+  "lote_n": 34,
+  "lote_per": "2018–2026",
+  "casa_util": 6009,
+  "casa_n": 57,
+  "per": "2018–2026"
  },
  "vila moinho velho": {
   "lote": 2385,
   "lote_n": 17,
+  "lote_per": "2018–2026",
   "terreno": 655,
   "constr": 4049,
   "share": 0.14,
   "n": 128,
   "r2": 0.58,
+  "per": "2018–2026",
   "casa_util": 5154,
   "casa_n": 131
  },
  "vila monte alegre": {
   "lote": 2615,
   "lote_n": 31,
+  "lote_per": "2018–2026",
   "terreno": 1928,
   "constr": 2611,
   "share": 0.42,
   "n": 117,
   "r2": 0.47,
+  "per": "2018–2026",
   "casa_util": 4749,
   "casa_n": 124
  },
  "vila monumento": {
   "lote": 1933,
   "lote_n": 16,
+  "lote_per": "2018–2026",
   "terreno": 1930,
   "constr": 2663,
   "share": 0.44,
   "n": 115,
   "r2": 0.51,
+  "per": "2018–2026",
   "casa_util": 5061,
   "casa_n": 122
  },
  "vila moraes": {
-  "lote": 2083,
-  "lote_n": 13,
+  "lote": 2420,
+  "lote_n": 8,
+  "lote_per": "2024–2026",
   "terreno": 898,
   "constr": 2711,
   "share": 0.27,
   "n": 190,
   "r2": 0.36,
+  "per": "2018–2026",
   "casa_util": 3659,
   "casa_n": 201
  },
@@ -508,47 +713,91 @@
   "share": 0.04,
   "n": 105,
   "r2": 0.54,
+  "per": "2018–2026",
   "casa_util": 5200,
   "casa_n": 109
  },
  "vila nogueira": {
   "lote": 1672,
-  "lote_n": 9
+  "lote_n": 9,
+  "lote_per": "2018–2026",
+  "casa_util": 2157,
+  "casa_n": 32,
+  "per": "2018–2026"
  },
  "vila nova conceicao": {
   "lote": 14151,
-  "lote_n": 10
+  "lote_n": 10,
+  "lote_per": "2018–2026",
+  "casa_util": 17741,
+  "casa_n": 39,
+  "per": "2018–2026"
  },
  "vila olimpia": {
-  "lote": 19843,
-  "lote_n": 17
+  "lote": 22756,
+  "lote_n": 7,
+  "lote_per": "2024–2026",
+  "casa_util": 7500,
+  "casa_n": 39,
+  "per": "2018–2026"
  },
  "vila parque jabaquara": {
   "lote": 2129,
   "lote_n": 37,
+  "lote_per": "2018–2026",
   "terreno": 991,
   "constr": 3081,
   "share": 0.25,
   "n": 211,
   "r2": 0.48,
+  "per": "2018–2026",
   "casa_util": 4532,
   "casa_n": 222
+ },
+ "vila paulista": {
+  "casa_util": 4558,
+  "casa_n": 39,
+  "per": "2018–2026"
  },
  "vila santa catarina": {
   "lote": 1530,
   "lote_n": 22,
-  "casa_util": 4022,
-  "casa_n": 206
+  "lote_per": "2018–2026",
+  "terreno": 624,
+  "constr": 3714,
+  "share": 0.14,
+  "n": 63,
+  "r2": 0.38,
+  "per": "2024–2026",
+  "casa_util": 4714,
+  "casa_n": 63
+ },
+ "vila santa maria": {
+  "casa_util": 2635,
+  "casa_n": 33,
+  "per": "2018–2026"
  },
  "vila santo estefano": {
-  "lote": 2317,
-  "lote_n": 24,
+  "lote": 2523,
+  "lote_n": 9,
+  "lote_per": "2024–2026",
   "terreno": 1315,
   "constr": 2797,
   "share": 0.32,
   "n": 149,
   "r2": 0.42,
+  "per": "2018–2026",
   "casa_util": 4418,
   "casa_n": 156
+ },
+ "vila sao jose": {
+  "casa_util": 5508,
+  "casa_n": 42,
+  "per": "2018–2026"
+ },
+ "vila vera": {
+  "casa_util": 4144,
+  "casa_n": 36,
+  "per": "2018–2026"
  }
 }
