@@ -134,7 +134,11 @@ function render(x){
     <div class="card">
       <div class="kicker">Entorno</div>
       <div style="margin-top:6px;font-size:.95em">${ent.distrito?`<b>Distrito ${ent.distrito}</b>`:''}${ent.eixo?` · dentro de eixo de estruturação da transformação urbana (${ent.eixo}${ent.eixo_decreto?', decreto '+ent.eixo_decreto:''})`:''}</div>
-      ${(ent.metro||[]).length?`<div style="font-size:.95em;margin-top:4px">🚇 Estações mais próximas: ${ent.metro.map(m=>`${cap(m.nome)}${m.linha?' (linha '+cap(m.linha)+')':''} a ${N(m.dist_m)} m`).join(' · ')}</div>`:''}
+      ${(ent.metro||[]).length?`<div style="font-size:.95em;margin-top:4px">🚇 <b>Metrô/trem:</b> ${ent.metro.map(m=>`${cap(m.nome)}${m.linha?' (linha '+cap(m.linha)+')':''} <span class="sub">a ${N(m.dist_m)} m</span>`).join(' · ')}</div>`:''}
+      ${(()=>{ const pois=ent.pois||{}, n500=ent.n500||{}, n1000=ent.n1000||{};
+        const CAT=[['onibus','🚌','Ônibus'],['parque','🌳','Parques e praças'],['escola','🏫','Escolas'],['hospital','🏥','Hospitais'],['feira','🥬','Feiras livres'],['clube','🏊','Clubes e centros esportivos'],['ciclovia','🚲','Ciclovias']];
+        return CAT.filter(([k])=>(pois[k]||[]).length).map(([k,ic,lb])=>`<div style="font-size:.93em;margin-top:3px">${ic} <b>${lb}:</b> ${(pois[k]||[]).slice(0,k==='onibus'?1:3).map(p=>`${cap(p.nome)} <span class="sub">a ${N(p.dist_m)} m</span>`).join(' · ')}${n1000[k]?` <span class="sub">(${n500[k]||0} a 500 m, ${n1000[k]} a 1 km)</span>`:''}</div>`).join(''); })()}
+      <div class="foot">Distâncias em linha reta. Fontes: GeoSampa (Prefeitura de São Paulo: equipamentos, parques, ônibus, ciclovias, metrô) e OpenStreetMap (hospitais particulares).</div>
     </div>` : '';
 
   const metodo = `
@@ -144,7 +148,7 @@ function render(x){
       ${mu&&mu.rs_anuncio?`<p><b>1. Anúncios ao vivo.</b> Mediana de ${mu.n_anuncio||'—'} anúncios de venda de imóveis semelhantes no bairro, coletados no dia da avaliação: ${R$(mu.rs_anuncio)}/m² pedido. Como preço pedido não é preço fechado, aplicamos o índice pedido→fechado medido nos negócios da própria Nova São Paulo (${mu.idx_origem||'média'}): × ${mu.idx_pedido_fechado} → <b>${R$(mu.rs_anuncio_ajust)}/m²</b>.</p>`:''}
       ${mu&&mu.rs_itbi_ajust?`<p><b>2. Negócios fechados (ITBI).</b> Mediana de ${mu.n_itbi||'—'} transações registradas na Prefeitura no mesmo bairro: ${R$(mu.rs_itbi_util)}/m² de área útil estimada. Como a guia de ITBI declara em média ${Math.round((mu.sub_itbi||0)*100)}% abaixo do valor negociado, corrigimos: × ${(1+(mu.sub_itbi||0)).toFixed(3)} → <b>${R$(mu.rs_itbi_ajust)}/m²</b>.</p>`:''}
       ${mu&&mu.rs_final?`<p><b>Valor adotado:</b> média das fontes, <b>${R$(mu.rs_final)}/m²</b>${mu.divergencia!=null?` (as fontes divergem ${mu.divergencia}%)`:''}, vezes ${Math.round(x.area_util||0)} m² de área útil = <b>${R$(x.valor_mercado)}</b>. Faixa de ±7% para negociação.${mu.excluidos?` ${mu.excluidos} referência(s) destoante(s) foram excluídas pelo corretor.`:''}</p>`:`<p>${x.metodo||''}</p>`}
-      ${(ent&&ent.metro&&ent.metro.length)?`<p class="foot">O entorno (metrô, eixos de transformação urbana) é informado para leitura qualitativa; não altera a conta.</p>`:''}
+      ${(ent&&ent.metro&&ent.metro.length)?`<p class="foot">O entorno (transporte, parques, escolas, saúde, comércio) é informado para leitura qualitativa; não altera a conta.</p>`:''}
       <p class="foot">Fontes: anúncios públicos de portais imobiliários; ITBI da Prefeitura de São Paulo (Secretaria da Fazenda); negócios fechados da Nova São Paulo 2019–2026; zoneamento e outorga onerosa do GeoSampa (Prefeitura de São Paulo); CUB Sinduscon-SP.</p>
     </div>`;
 

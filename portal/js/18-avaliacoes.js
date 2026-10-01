@@ -736,13 +736,30 @@ async function _avExcluir(k){
   if(_avForm.excl.has(k)) _avForm.excl.delete(k); else _avForm.excl.add(k);
   await avalCalcular({recalc:true});
 }
+// Categorias do entorno (aval_poi: GeoSampa + OSM, mesma base de vizinhança do site). Ordem = ordem de exibição.
+const AV_POI_CAT = [
+  ['onibus','🚌','Ônibus','ponto'], ['parque','🌳','Parques e praças','parque'], ['escola','🏫','Escolas','escola'],
+  ['hospital','🏥','Hospitais','hospital'], ['feira','🥬','Feiras livres','feira'], ['clube','🏊','Clubes e centros esportivos','clube'], ['ciclovia','🚲','Ciclovias','ciclovia'],
+];
+const _avCap = s => String(s||'').toLowerCase().replace(/(^|\s|-)(\S)/g,(m,a,b)=>a+b.toUpperCase()).replace(/\bDe\b|\bDa\b|\bDo\b|\bDos\b|\bDas\b|\bE\b/g,w=>w.toLowerCase());
+function _avEntornoLinhas(e, n){
+  n=n||(v=>Number(v||0).toLocaleString('pt-BR'));
+  const pois=e.pois||{}, n500=e.n500||{}, n1000=e.n1000||{};
+  return AV_POI_CAT.filter(([k])=>(pois[k]||[]).length).map(([k,ic,lb,un])=>{
+    const itens=(pois[k]||[]).slice(0,k==='onibus'?1:3).map(p=>`${_avCap(p.nome)} <span style="color:#94a3b8">a ${n(p.dist_m)} m</span>`).join(' · ');
+    const cont=n1000[k]?` <span style="color:#94a3b8">(${n500[k]||0} a 500 m, ${n1000[k]} a 1 km)</span>`:'';
+    return `<div style="margin-top:3px">${ic} <b>${lb}:</b> ${itens}${cont}</div>`;
+  });
+}
 function _avEntornoHTML(e){
   if(!e) return '';
-  const metro=(e.metro||[]).map(m=>`${m.nome}${m.linha?' ('+m.linha+')':''} a ${Number(m.dist_m).toLocaleString('pt-BR')} m`).join(' · ');
+  const metro=(e.metro||[]).map(m=>`${_avCap(m.nome)}${m.linha?' (linha '+_avCap(m.linha)+')':''} <span style="color:#94a3b8">a ${Number(m.dist_m).toLocaleString('pt-BR')} m</span>`).join(' · ');
   return `<div class="card" style="margin-bottom:12px"><div class="cb">
     <div style="color:#64748b;font-size:.85em;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Entorno</div>
-    <div style="font-size:.92em">${e.distrito?`<b>Distrito ${e.distrito}</b>`:''}${e.eixo?` · dentro de eixo de estruturação ativado (${e.eixo}${e.eixo_decreto?', decreto '+e.eixo_decreto:''})`:' · fora de eixo de estruturação'}</div>
-    <div style="font-size:.92em;margin-top:4px">🚇 ${metro||'sem estação de metrô/trem em 3 km'}</div>
+    <div style="font-size:.92em">${e.distrito?`<b>Distrito ${_avCap(e.distrito)}</b>`:''}${e.eixo?` · dentro de eixo de estruturação ativado (${e.eixo}${e.eixo_decreto?', decreto '+e.eixo_decreto:''})`:''}</div>
+    <div style="font-size:.92em;margin-top:4px">🚇 <b>Metrô/trem:</b> ${metro||'sem estação em 3 km'}</div>
+    <div style="font-size:.9em">${_avEntornoLinhas(e).join('')}</div>
+    <div style="color:#94a3b8;font-size:.78em;margin-top:6px">Distâncias em linha reta. Fontes: GeoSampa (equipamentos, parques, ônibus, ciclovias, metrô) e OpenStreetMap (hospitais particulares). Entorno é leitura qualitativa; não altera a conta.</div>
   </div></div>`;
 }
 function _avCompsTabela(comps){
