@@ -174,7 +174,22 @@ async function autenticarSupabase(usuario, senhaPlana, opts){
   return false;
 }
 // Renova o token (vale 1h) usando o refresh_token. Usado no auto-login
-// do "manter-me conectado", que dura 30 dias.
+// do "manter-me conectado", que dura 30 dias — e, desde 01/10/2026, também
+// em segundo plano: a cada minuto e ao voltar para a aba, se faltar menos de
+// 5 min para vencer. Antes, com o token vencido, hdr() caía na chave anônima
+// sem avisar e as RPCs só de usuário logado (aval_geo etc.) davam 401.
+async function _authRenovarSePerto(forcar){
+  const s = _authCarregarSessao();
+  if (!s?.refresh_token) return false;
+  const faltam = (s.expires_at||0) - Date.now();
+  if (!forcar && faltam > 5*60*1000) return true;
+  s.expires_at = 0;                                  // força a renovação em renovarSessaoSupabase()
+  return renovarSessaoSupabase();
+}
+if (typeof window !== 'undefined') {
+  setInterval(() => { _authRenovarSePerto().catch(()=>{}); }, 60*1000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) _authRenovarSePerto().catch(()=>{}); });
+}
 async function renovarSessaoSupabase(){
   const s = _authCarregarSessao();
   if (!s?.refresh_token) return false;
@@ -239,8 +254,13 @@ window.addEventListener('message', function(ev){
 });
 
 const db={
+  async _fetch(url,opts){
+    let r=await fetch(url,Object.assign({},opts,{headers:hdr(opts&&opts.headers)}));
+    if(r.status===401 && _authCarregarSessao()?.refresh_token && await _authRenovarSePerto(true)) r=await fetch(url,Object.assign({},opts,{headers:hdr(opts&&opts.headers)}));
+    return r;
+  },
   async get(t,q=''){
-    const r=await fetch(SBU+'/rest/v1/'+t+q,{headers:hdr()});
+    const r=await db._fetch(SBU+'/rest/v1/'+t+q,{});
     const body=await r.json();
     if(!r.ok){
       console.error('Supabase error:',r.status,JSON.stringify(body));
@@ -249,7 +269,7 @@ const db={
     console.log(`db.get(${t}): ${Array.isArray(body)?body.length+' registros':JSON.stringify(body).substring(0,100)}`);
     return body;
   },
-  async post(t,d){const r=await fetch(SBU+'/rest/v1/'+t,{method:'POST',headers:hdr(),body:JSON.stringify(d)});if(!r.ok){const b=await r.json();throw new Error(b.message||JSON.stringify(b));}return r.json();},
-  async patch(t,id,d){const r=await fetch(SBU+'/rest/v1/'+t+'?id=eq.'+id,{method:'PATCH',headers:hdr(),body:JSON.stringify(d)});if(!r.ok){const b=await r.json();throw new Error(b.message||JSON.stringify(b));}return r.json();},
-  async del(t,id){const r=await fetch(SBU+'/rest/v1/'+t+'?id=eq.'+id,{method:'DELETE',headers:hdr()});return r.ok;}
+  async post(t,d){const r=await db._fetch(SBU+'/rest/v1/'+t,{method:'POST',body:JSON.stringify(d)});if(!r.ok){const b=await r.json();throw new Error(b.message||JSON.stringify(b));}return r.json();},
+  async patch(t,id,d){const r=await db._fetch(SBU+'/rest/v1/'+t+'?id=eq.'+id,{method:'PATCH',body:JSON.stringify(d)});if(!r.ok){const b=await r.json();throw new Error(b.message||JSON.stringify(b));}return r.json();},
+  async del(t,id){const r=await db._fetch(SBU+'/rest/v1/'+t+'?id=eq.'+id,{method:'DELETE'});return r.ok;}
 };

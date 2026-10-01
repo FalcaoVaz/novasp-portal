@@ -283,10 +283,11 @@ const AV_STATUS = {
 
 // ── RPC helper (usa o JWT do corretor via hdr()) ─────────────────
 async function _avRpc(fn, args){
-  const r = await fetch(`${SBU}/rest/v1/rpc/${fn}`, {
-    method:'POST', headers:hdr(), body:JSON.stringify(args||{})
-  });
-  if(!r.ok){ throw new Error('RPC '+fn+' HTTP '+r.status); }
+  const call=()=>fetch(`${SBU}/rest/v1/rpc/${fn}`, { method:'POST', headers:hdr(), body:JSON.stringify(args||{}) });
+  let r=await call();
+  // token vencido (401): renova a sessão e tenta de novo uma vez
+  if(r.status===401 && typeof _authRenovarSePerto==='function' && await _authRenovarSePerto(true)) r=await call();
+  if(!r.ok){ let msg=''; try{ msg=(await r.json()).message||''; }catch(_){} throw new Error('RPC '+fn+' HTTP '+r.status+(msg?' — '+msg:'')); }
   return r.json();
 }
 
@@ -527,7 +528,7 @@ async function _avPinoInfo(){
     }else{
       el.innerHTML=`<span style="color:#b45309">Este ponto está fora da área com zoneamento carregado</span> <span style="color:#94a3b8">(${_avPino.lat.toFixed(5)}, ${_avPino.lng.toFixed(5)})</span>. Confira se o pino caiu no endereço certo (arraste-o se precisar). A avaliação de mercado funciona; só a conta de incorporação fica sem zona.`;
     }
-  }catch(e){ el.innerHTML='<span style="color:#b45309">Não consegui confirmar o zoneamento deste ponto.</span>'; }
+  }catch(e){ el.innerHTML='<span style="color:#b45309">Não consegui confirmar o zoneamento deste ponto.</span> <span style="color:#94a3b8;font-size:.85em">'+String(e&&e.message||e).replace(/</g,'&lt;')+(/401/.test(String(e&&e.message))?' — sessão vencida; saia e entre de novo.':'')+'</span>'; }
 }
 
 // ═══════════════ CÁLCULO (preço ao vivo + conta no navegador) ═══════════════
