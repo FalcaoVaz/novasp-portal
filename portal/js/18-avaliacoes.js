@@ -293,8 +293,9 @@ async function avalGeocodificar(){
   // 2) OSM na cauda
   if(!cands.length){
     try{
-      const url='https://nominatim.openstreetmap.org/search?format=json&limit=5&countrycodes=br'
-        +'&street='+encodeURIComponent(`${num} ${rua}`)+'&city=S%C3%A3o%20Paulo';
+      const q=[rua+(num?', '+num:''), bairro, 'São Paulo', 'SP'].filter(Boolean).join(', ');
+      const url='https://nominatim.openstreetmap.org/search?format=json&limit=5&countrycodes=br&bounded=1&viewbox=-46.90,-23.35,-46.35,-24.00'
+        +'&q='+encodeURIComponent(q);
       const r=await fetch(url,{headers:{'Accept-Language':'pt-BR'}});
       const arr=await r.json();
       cands=(arr||[]).map(o=>({label:o.display_name.split(',').slice(0,3).join(','),
@@ -351,7 +352,7 @@ async function _avPinoInfo(){
         +`${zi.incorporavel?' · <span style="color:#047857">eixo (incorporável)</span>':''}`
         +`${zi.distrito?' · '+zi.distrito:''} <span style="color:#94a3b8">(${_avPino.lat.toFixed(5)}, ${_avPino.lng.toFixed(5)})</span>`;
     }else{
-      el.innerHTML=`<span style="color:#b45309">Ponto fora das camadas de zoneamento carregadas.</span> <span style="color:#94a3b8">(${_avPino.lat.toFixed(5)}, ${_avPino.lng.toFixed(5)})</span>`;
+      el.innerHTML=`<span style="color:#b45309">Este ponto está fora da área com zoneamento carregado</span> <span style="color:#94a3b8">(${_avPino.lat.toFixed(5)}, ${_avPino.lng.toFixed(5)})</span>. Confira se o pino caiu no endereço certo (arraste-o se precisar). A avaliação de mercado funciona; só a conta de incorporação fica sem zona.`;
     }
   }catch(e){ el.innerHTML='<span style="color:#b45309">Não consegui confirmar o zoneamento deste ponto.</span>'; }
 }
