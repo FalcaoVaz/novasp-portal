@@ -164,18 +164,21 @@ function render(x){
       </div>
       <div style="margin-top:12px">
         <div class="linha"><span>VGV: ${N(inc.area_vendavel)} m² vendáveis × lançamento ${R$(x.incorp_lancamento_rs_m2)}/m²${inc.lancOrigem?` <span class="sub">(${inc.lancOrigem})</span>`:''}</span><b>${R$(inc.vgv)}</b></div>
-        <div class="linha"><span>Obra: ${N(inc.area_constr)} m² × CUB ${inc.cubRef||''} ${R$(inc.cub)} × ${P.fator_obra||'1,3'}</span><b class="neg">− ${R$(inc.obra)}</b></div>
-        <div class="linha"><span>Comissão ${pct(P.comissao)} + marketing ${pct(P.marketing)} + RET ${pct(P.ret)} + administração ${pct(P.adm)}</span><b class="neg">− ${R$(inc.indiretos)}</b></div>
-        <div class="linha"><span>Margem do incorporador ${pct(P.margem)}</span><b class="neg">− ${R$(inc.margem)}</b></div>
+        <div class="linha"><span>Obra: ${N(inc.area_constr)} m² construídos × ${R$(inc.custo_m2)}/m² <span class="sub">(CUB ${inc.cubRef||''} ${R$(inc.cub)} × ${P.obra_sobre_cub||'1,68'}, com BDI)</span></span><b class="neg">− ${R$(inc.obra)}</b></div>
+        ${inc.despesas!=null?`<div class="linha"><span>Despesas ${pct(P.despesas||0.135)} do VGV (incorporação, aprovações, gestão, marketing, entrega, adm.) + projetos ${pct(P.projetos_sobre_obra||0.025)} da obra</span><b class="neg">− ${R$((inc.despesas||0)+(inc.projetos||0))}</b></div>
+        <div class="linha"><span>Comissão ${pct(P.comissao||0.05)} + RET ${pct(P.ret||0.04)} + financiamento da obra ${pct(P.financiamento||0.03)}</span><b class="neg">− ${R$((inc.comissao||0)+(inc.ret||0)+(inc.financiamento||0))}</b></div>`
+        :`<div class="linha"><span>Despesas, comissão e impostos</span><b class="neg">− ${R$(inc.indiretos)}</b></div>`}
+        <div class="linha"><span>Margem do incorporador ${pct(P.margem||0.15)}</span><b class="neg">− ${R$(inc.margem)}</b></div>
         ${inc.fachada_ativa?`<div class="linha"><span class="sub">Fachada ativa: +${N(inc.area_fachada)} m² de térreo comercial não computável, incluídos no VGV e na obra</span><b></b></div>`:''}
         ${inc.categoria&&inc.categoria!=='mercado'?`<div class="linha"><span class="sub">Categoria ${String(inc.categoria).toUpperCase()}: fator social Fs = ${inc.fs} aplicado à outorga (PDE)</span><b></b></div>`:''}
         ${inc.outorga?`<div class="linha"><span>Outorga onerosa: ${N(inc.area_adicional)} m² acima do CA básico × ${R$(inc.v)}/m² <span class="sub">(${inc.v_origem||''})</span></span><b class="neg">− ${R$(inc.outorga)}</b></div>`:''}
-        <div class="linha tot"><span>Terreno máximo</span><b>${R$(inc.terreno_max)}</b></div>
+        ${inc.custos_aquisicao?`<div class="linha"><span>Custos de aquisição do terreno (ITBI, comissão, jurídico, demolição, IPTU) ≈ ${pct(P.custo_aquisicao||0.12)}</span><b class="neg">− ${R$(inc.custos_aquisicao)}</b></div>`:''}
+        <div class="linha tot"><span>Terreno máximo (o que chega ao proprietário)${inc.terreno_vgv?` <span class="sub">· ${(inc.terreno_vgv*100).toFixed(1)}% do VGV</span>`:''}</span><b>${R$(inc.terreno_max)}</b></div>
       </div>
       ${(inc.alertas||[]).length?`<ul style="margin:8px 0 0;padding-left:18px;font-size:.85em;color:#b45309">${inc.alertas.map(a=>`<li>${a}</li>`).join('')}</ul>`:''}
       ${(inc.refs||[]).length?`<div class="foot">Referência de outorga: ${inc.refs.length} concessões da Prefeitura num raio de 1,5 km (ex.: ${inc.refs.slice(0,3).map(r=>`${r.endereco} — ${R$(r.ct_m2)}/m²`).join('; ')}).</div>`:''}
       `:''}
-      <div class="foot">Método do valor residual (involutivo), com o zoneamento vigente (Lei 16.402/2016) e a outorga onerosa do PDE (Lei 16.050/2014). Sujeito à confirmação de recuos, gabarito e viabilidade de projeto.</div>
+      <div class="foot">Método do valor residual (involutivo), com o zoneamento vigente (Lei 16.402/2016) e a outorga onerosa do PDE (Lei 16.050/2014). ${P.calibracao?P.calibracao.charAt(0).toUpperCase()+P.calibracao.slice(1)+'. ':''}Sujeito à confirmação de recuos, gabarito e viabilidade de projeto.</div>
     </div>` : '';
 
   const usados = comps.filter(c=>!c.excluido), excluidos = comps.filter(c=>c.excluido);

@@ -30,25 +30,32 @@ const AV_PADROES = {
 // Parâmetros padrão da conta reversa (método involutivo). Editáveis aqui; o corretor não mexe.
 const AV_PARAM = {
   cub_ref:'Sinduscon-SP jul/2026',
-  fator_obra:1.30,      // custo total de obra sobre o CUB (fundação, projetos, elevadores, ligações, taxas)
-  eficiencia:0.80,      // área vendável / área computável
-  comissao:0.05,        // corretagem sobre o VGV            (Rodrigo, 01/10/2026)
-  marketing:0.05,       // publicidade e estande              (Rodrigo, 01/10/2026)
-  ret:0.04,             // RET (tributos da incorporação)     (Rodrigo, 01/10/2026)
-  adm:0.05,             // despesas administrativas           (Rodrigo, 01/10/2026: 10% → 5%)
-  margem:0.15,          // margem do incorporador             (Rodrigo, 01/10/2026)
+  calibracao:'calibrado em viabilidades reais da Nova SP Inc (Maquerobi HIS 1.154 m², Feel Saúde 1.159 m², DRE Free Concept — abr/jul 2026)',
+  // ── Áreas (o que de fato se vende e se constrói sobre o lote) ──
+  priv_sobre_comput_his:1.50,     // HIS/HMP em eixo: privativa ≈ 1,5 × (terreno × CA) — áreas não computáveis do PDE p/ HIS; real: 1,48 (Maquerobi) e 1,60 (Feel Saúde)
+  priv_sobre_comput_mercado:0.90, // mercado: privativa ≈ 90% da computável (estimativa; falta viabilidade de mercado p/ calibrar)
+  priv_sobre_construida:0.776,    // privativa / construída total (Maquerobi: 6.849 / 8.825)
+  // ── Obra ──
+  obra_sobre_cub:1.68,  // custo de obra por m² construído = CUB × 1,68 (Hoga/Maquerobi: R$ 3.726/m² ÷ CUB R8-N 2.231; inclui BDI 12,5% e decorados 3%)
+  // ── Despesas sobre o VGV (Maquerobi: incorporação 1% + aprovações 0,5% + gestão 5% + marketing 4,5% + entrega 0,5% + adm 2%) ──
+  despesas:0.135,
+  projetos_sobre_obra:0.025,  // projetos = 2,5% do custo de obra
+  comissao:0.05,        // corretagem sobre o VGV (Rodrigo 01/10/2026; Maquerobi usa 6%)
+  ret:0.04,             // RET (Maquerobi 4%)
+  financiamento:0.03,   // juros/seguro do financiamento à produção (Maquerobi 0,5–3,4%; Free Concept 5,6%)
+  margem:0.15,          // margem do incorporador sobre o VGV (Rodrigo; deck Nova SP Inc: mínimo 15%; Maquerobi EBITDA 17,6%)
+  custo_aquisicao:0.12, // ITBI 3% + comissão do terreno 4% + jurídico, estudos, demolição e IPTU ≈ 5% (Maquerobi: 1,33 MM sobre 10,05 MM) — sai do que vai ao proprietário
+  // ── Compatibilidade (telas antigas) ──
+  marketing:0.045, adm:0.02, fator_obra:1.68, eficiencia:0.90, constr_sobre_computavel:1.29,
   lanc_sobre_usado:1.25,// se não houver lançamento anunciado no bairro: lançamento ≈ usado × 1,25
   casa_sobre_apto:0.60, // se não houver casa anunciada no bairro: R$/m² casa ≈ apto × 0,60 (mediana observada 30/09/2026)
-  constr_sobre_computavel:1.40, // área construída real ≈ computável × 1,40 (subsolo/garagem, áreas técnicas e comuns não computam)
   // Outorga onerosa (PDE, Lei 16.050/2014, art. 117): Ct = (At/Ac) × V × Fs × Fp por m² adicional acima do CA básico.
-  // V = valor do m² do terreno no Cadastro de Valor de Terreno (QVT) da quadra; Fs = 1,0 (habitação de mercado);
-  // Fp = fator de planejamento da macroárea (Quadro do PDE, varia por região) — conferir para o endereço.
   outorga_fs:1.0,
   outorga_fp:1.0,
   qvt_sobre_mercado:0.50, // sem QVT informado: V ≈ 50% do valor de mercado do terreno (o cadastro fica bem abaixo do mercado)
-  // Incentivos do PDE/LPUOS na conta de incorporação (Rodrigo, 01/10/2026)
-  his_max_rs_m2:12000,    // lançamento até este R$/m² → tratado como HIS (outorga isenta, Fs = 0)
-  hmp_max_rs_m2:15000,    // até este R$/m² → HMP (Fs = 0,5); acima → mercado (Fs = 1)
+  // Incentivos do PDE/LPUOS (Rodrigo, 01/10/2026). Lançamentos reais: Maquerobi HIS 10.808/m², Feel Saúde HIS+HMP 10.500, UP Saúde studios 11–13 mil.
+  his_max_rs_m2:12000,    // lançamento até este R$/m² → HIS (outorga isenta, Fs = 0; áreas não computáveis extras)
+  hmp_max_rs_m2:15000,    // até este R$/m² → HMP (Fs = 0,5; mesmas áreas extras); acima → mercado (Fs = 1)
   fachada_ativa_bonus:0.50, // fachada ativa em eixo/centralidade: térreo comercial não computável até 50% do lote
   lote_min_m2:400,        // abaixo disso, alerta: CA máximo dificilmente é atingido
   frente_min_m:12,        // idem para frente estreita
@@ -77,49 +84,57 @@ function _avPadraoSugerido(bairro){ const b=_avNormBairro(bairro); return AV_BAI
 function _avContaIncorp({terreno, ca, ca_basico, rs_lanc, padrao, qvt, frente, gabarito, outorga_ref_m2, outorga_ref_n, fp, categoria, fachada_ativa}){
   const p=AV_PADROES[padrao]||AV_PADROES.medio, P=AV_PARAM;
   const cab = (ca_basico!=null && ca_basico>0) ? Number(ca_basico) : null;
-  // categoria do empreendimento pelo preço de lançamento (HIS/HMP têm outorga isenta/reduzida: Fs do PDE)
+  // categoria pelo preço de lançamento: HIS/HMP têm outorga isenta/reduzida (Fs) e áreas não computáveis a mais
   const cat = categoria && categoria!=='auto' ? categoria : (rs_lanc<=P.his_max_rs_m2 ? 'his' : rs_lanc<=P.hmp_max_rs_m2 ? 'hmp' : 'mercado');
   const fs = {his:0, hmp:0.5, mercado:1}[cat] ?? 1;
-  const area_comput=terreno*ca;                       // o que conta no CA
-  const area_fachada = fachada_ativa ? terreno*P.fachada_ativa_bonus : 0;   // térreo comercial NÃO computável (eixo/centralidade)
-  const area_constr=area_comput*P.constr_sobre_computavel + area_fachada;   // o que se constrói de fato (obra)
-  const area_vendavel=area_comput*P.eficiencia + area_fachada*P.eficiencia; // área privativa vendida (+ lojas da fachada ativa)
+  const social = cat!=='mercado';
+  const area_comput=terreno*ca;                                   // o que conta no CA
+  const priv_fator = social ? P.priv_sobre_comput_his : P.priv_sobre_comput_mercado;
+  const area_fachada = fachada_ativa ? terreno*P.fachada_ativa_bonus : 0;   // térreo comercial NÃO computável
+  const area_vendavel=area_comput*priv_fator + area_fachada;      // área privativa vendida (+ lojas da fachada ativa)
+  const area_constr=area_vendavel/P.priv_sobre_construida;         // construída total (subsolo, comuns, técnicas)
   const vgv=area_vendavel*rs_lanc;
-  const obra=area_constr*p.cub*P.fator_obra;
-  const indiretos=vgv*(P.comissao+P.marketing+P.ret+P.adm);
+  const custo_m2=p.cub*P.obra_sobre_cub;
+  const obra=area_constr*custo_m2;
+  const projetos=obra*P.projetos_sobre_obra;
+  const despesas=vgv*P.despesas;
+  const comissao=vgv*P.comissao, ret=vgv*P.ret, financiamento=vgv*P.financiamento;
+  const indiretos=despesas+projetos+comissao+ret+financiamento;
   const margem=vgv*P.margem;
-  const antes=vgv-obra-indiretos-margem;              // terreno máximo SEM outorga
+  const antes=vgv-obra-indiretos-margem;                          // sobra para terreno + outorga + custos de aquisição
   // outorga onerosa sobre a área computável acima do CA básico
   let outorga=0, area_adicional=0, v=null, v_origem='', outorga_modo='';
   const fpUsado = (fp!=null && fp>0) ? Number(fp) : P.outorga_fp;
-  if(cab!=null && ca>cab){
+  if(cab!=null && ca>cab && fs>0){
     area_adicional=terreno*(ca-cab);
     if(qvt && qvt>0){
-      // fórmula do PDE com o valor de terreno informado
       v=qvt; v_origem='QVT informado'; outorga_modo='formula';
       outorga=area_adicional*(terreno/area_comput)*v*fs*fpUsado;
     }else if(outorga_ref_m2 && outorga_ref_n>=5){
-      // referência EMPÍRICA: o que a prefeitura cobrou por m² excedente nos processos vizinhos (GeoSampa)
       v=outorga_ref_m2; v_origem=`mediana de ${outorga_ref_n} outorgas concedidas num raio de 1,5 km (GeoSampa)`; outorga_modo='referencia';
       outorga=area_adicional*outorga_ref_m2*fs;
     }else if(antes>0){
       v=(antes/terreno)*P.qvt_sobre_mercado; v_origem=`estimado: ${P.qvt_sobre_mercado*100}% do valor de mercado do terreno`; outorga_modo='formula';
       outorga=area_adicional*(terreno/area_comput)*v*fs*fpUsado;
     }
-  }
-  const terreno_max=antes-outorga;
+  }else if(cab!=null && ca>cab){ area_adicional=terreno*(ca-cab); v_origem='HIS: isenta'; outorga_modo='isenta'; }
+  const bruto=antes-outorga;                                      // terreno + custos de aquisição
+  const custos_aquisicao=Math.max(0,bruto)*(P.custo_aquisicao/(1+P.custo_aquisicao));
+  const terreno_max=bruto-custos_aquisicao;                       // o que chega ao proprietário
   const alertas=[];
   if(terreno<P.lote_min_m2) alertas.push(`Lote de ${terreno} m²: abaixo de ${P.lote_min_m2} m² o CA máximo raramente é atingido (recuos e taxa de ocupação).`);
   if(frente && frente<P.frente_min_m) alertas.push(`Frente de ${frente} m: abaixo de ${P.frente_min_m} m a implantação de torre fica comprometida.`);
   if(gabarito && String(gabarito).trim() && !/sem|n[aã]o/i.test(String(gabarito))) alertas.push(`Gabarito de altura na zona: ${gabarito} — pode limitar o número de pavimentos antes do CA.`);
   if(area_comput>P.cota_solidariedade_m2) alertas.push(`Área computável acima de ${P.cota_solidariedade_m2.toLocaleString('pt-BR')} m²: PDE exige cota de solidariedade (10% em HIS ou equivalente).`);
   if(cab==null) alertas.push('CA básico não identificado na zona: outorga onerosa não calculada.');
-  if(cat!=='mercado') alertas.push(`Enquadrado como ${cat.toUpperCase()} pelo preço de lançamento (${cat==='his'?'até':'entre '+P.his_max_rs_m2.toLocaleString('pt-BR')+' e'} ${(cat==='his'?P.his_max_rs_m2:P.hmp_max_rs_m2).toLocaleString('pt-BR')} R$/m²): outorga ${fs===0?'isenta':'com fator 0,5'} (Fs do PDE). Exige atender às regras de HIS/HMP (renda, área, número de vagas) no projeto.`);
+  if(social) alertas.push(`Enquadrado como ${cat.toUpperCase()} pelo preço de lançamento (${cat==='his'?'até':'entre '+P.his_max_rs_m2.toLocaleString('pt-BR')+' e'} ${(cat==='his'?P.his_max_rs_m2:P.hmp_max_rs_m2).toLocaleString('pt-BR')} R$/m²): outorga ${fs===0?'isenta':'com fator 0,5'} e área privativa ≈ ${P.priv_sobre_comput_his} × a computável (áreas não computáveis do PDE para HIS/HMP; medido nos projetos reais). Exige atender às regras de HIS/HMP (renda, área, vagas).`);
+  else alertas.push(`Mercado: área privativa ≈ ${P.priv_sobre_comput_mercado*100}% da computável e outorga integral. Esta faixa ainda não foi calibrada com viabilidade real — tratar como estimativa.`);
   if(fachada_ativa) alertas.push(`Fachada ativa: ${n0(area_fachada)} m² de térreo comercial não computável somados à área vendável (LPUOS, até ${P.fachada_ativa_bonus*100}% do lote). Depende de o projeto adotar fachada ativa e de a zona admitir.`);
   if(terreno_max<=0) alertas.push('Conta fechou negativa: neste padrão e preço de lançamento, a incorporação não paga o terreno.');
-  return {padrao, cub:p.cub, custo_m2:p.cub*P.fator_obra, ca, ca_basico:cab, terreno, frente:frente||null, gabarito:gabarito||null,
-          categoria:cat, fs, fachada_ativa:!!fachada_ativa, area_fachada,
-          area_comput, area_constr, area_vendavel, vgv, obra, indiretos, margem, antes, area_adicional, v, v_origem, outorga, outorga_modo, fp:fpUsado, terreno_max, alertas};
+  return {padrao, cub:p.cub, custo_m2, ca, ca_basico:cab, terreno, frente:frente||null, gabarito:gabarito||null,
+          categoria:cat, fs, fachada_ativa:!!fachada_ativa, area_fachada, priv_fator,
+          area_comput, area_constr, area_vendavel, vgv, obra, projetos, despesas, comissao, ret, financiamento, indiretos, margem, antes,
+          area_adicional, v, v_origem, outorga, outorga_modo, fp:fpUsado, bruto, custos_aquisicao, terreno_max, terreno_vgv: vgv?terreno_max/vgv:null, alertas};
 }
 
 let _avImoveis = [];
@@ -488,7 +503,7 @@ async function avalCalcular(opts){
     memoria: null,
     metodo_unico: null
   };
-  dossie.memoria={ metodo_unico: metodoUnico||null, indices:{fonte:AV_INDICES.fonte}, incorp:null, param:{cub_ref:AV_PARAM.cub_ref, fator_obra:AV_PARAM.fator_obra, eficiencia:AV_PARAM.eficiencia, comissao:AV_PARAM.comissao, marketing:AV_PARAM.marketing, ret:AV_PARAM.ret, adm:AV_PARAM.adm, margem:AV_PARAM.margem, constr:AV_PARAM.constr_sobre_computavel} };
+  dossie.memoria={ metodo_unico: metodoUnico||null, indices:{fonte:AV_INDICES.fonte}, incorp:null, param:{cub_ref:AV_PARAM.cub_ref, calibracao:AV_PARAM.calibracao, obra_sobre_cub:AV_PARAM.obra_sobre_cub, priv_sobre_construida:AV_PARAM.priv_sobre_construida, despesas:AV_PARAM.despesas, projetos_sobre_obra:AV_PARAM.projetos_sobre_obra, comissao:AV_PARAM.comissao, ret:AV_PARAM.ret, financiamento:AV_PARAM.financiamento, margem:AV_PARAM.margem, custo_aquisicao:AV_PARAM.custo_aquisicao} };
   if(/comercial|loja|galp|sala/i.test(tipo) && metodoUnico) metodoUnico.aviso='Imóvel comercial: o valor como imóvel pronto usa referências residenciais do bairro (o coletor ainda não busca anúncios comerciais); trate como ordem de grandeza.';
   if(metodoUnico && metodoUnico.valor_final){
     const mu=metodoUnico;
@@ -520,12 +535,12 @@ function avalAbrirIncorp(){
   el.style.display='';
   el.innerHTML=`<div class="card" style="margin-bottom:12px;border-left:3px solid #10b981"><div class="cb">
     <div style="font-weight:600;margin-bottom:4px">🏗️ Avaliação para incorporadora</div>
-    <div style="color:#64748b;font-size:.88em;margin-bottom:10px">Conta reversa: do VGV do prédio possível no lote, descontados obra, despesas, margem e outorga, sobra o valor máximo do terreno. Informe o que souber; o resto o sistema estima e explica.</div>
+    <div style="color:#64748b;font-size:.88em;margin-bottom:10px">Conta reversa: do VGV do prédio possível no lote, descontados obra, despesas, margem, outorga e custos de aquisição, sobra o que chega ao proprietário. Premissas calibradas em viabilidades reais da Nova SP Inc (HIS/HMP em eixo). Informe o que souber; o resto o sistema estima e explica.</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px">
       <input id="av-inc-terreno" type="number" value="${inc.terreno||''}" placeholder="Área do terreno (m²) *" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px">
       <input id="av-inc-frente" type="number" value="${inc.frente||''}" placeholder="Frente do terreno (m)" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px">
       <select id="av-inc-padrao" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px" title="Padrão do prédio que seria construído: define o custo de obra (CUB Sinduscon-SP)">
-        ${Object.entries(AV_PADROES).map(([k,v])=>`<option value="${k}" ${(inc.padrao||c.padraoSugerido)===k?'selected':''}>Padrão ${v.lb} — obra ≈ ${_avR$(Math.round(v.cub*P.fator_obra))}/m²</option>`).join('')}</select>
+        ${Object.entries(AV_PADROES).map(([k,v])=>`<option value="${k}" ${(inc.padrao||c.padraoSugerido)===k?'selected':''}>Padrão ${v.lb} — obra ≈ ${_avR$(Math.round(v.cub*P.obra_sobre_cub))}/m²</option>`).join('')}</select>
       <input id="av-inc-lanc" type="number" value="${inc.lanc||''}" placeholder="Lançamento R$/m² (auto: ${c.lancAuto?_avR$(c.lancAuto)+' · '+c.lancN+' lançamentos':_avR$(Math.round((c.rs_apto||0)*P.lanc_sobre_usado))+' = usado × '+P.lanc_sobre_usado})" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px" title="Preço por m² das unidades novas que o incorporador venderia. Se souber o lançamento da região, informe; senão o sistema usa os lançamentos anunciados ou o usado × ${P.lanc_sobre_usado}.">
       <select id="av-inc-categoria" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px" title="HIS e HMP têm outorga isenta/reduzida (Fs do PDE). Automático: pelo preço de lançamento (até ${P.his_max_rs_m2.toLocaleString('pt-BR')} HIS; até ${P.hmp_max_rs_m2.toLocaleString('pt-BR')} HMP).">
         <option value="auto" ${(inc.categoria||'auto')==='auto'?'selected':''}>Categoria: automática pelo preço</option>
@@ -650,8 +665,8 @@ function _avMemoriaHTML(m){
       <div><span style="color:#94a3b8">Terreno</span><br><b>${n(m.terreno)} m²</b>${m.frente?` · frente ${m.frente} m`:''}</div>
       <div><span style="color:#94a3b8">CA básico / máximo</span><br><b>${m.ca_basico!=null?m.ca_basico:'?'} / ${m.ca}</b></div>
       <div><span style="color:#94a3b8">Área computável</span><br><b>${n(m.area_comput)} m²</b> <small>(terreno × CA)</small></div>
-      <div><span style="color:#94a3b8">Área construída estimada</span><br><b>${n(m.area_constr)} m²</b> <small>(× ${P.constr_sobre_computavel}: subsolo, técnicas, comuns)</small></div>
-      <div><span style="color:#94a3b8">Área vendável (privativa)</span><br><b>${n(m.area_vendavel)} m²</b> <small>(${P.eficiencia*100}% da computável)</small></div>
+      <div><span style="color:#94a3b8">Área vendável (privativa)</span><br><b>${n(m.area_vendavel)} m²</b> <small>(${m.priv_fator||P.priv_sobre_comput_mercado} × computável${m.area_fachada?' + fachada ativa':''})</small></div>
+      <div><span style="color:#94a3b8">Área construída total</span><br><b>${n(m.area_constr)} m²</b> <small>(privativa ÷ ${P.priv_sobre_construida}: subsolo, comuns, técnicas)</small></div>
       <div><span style="color:#94a3b8">Acima do CA básico</span><br><b>${n(m.area_adicional)} m²</b> <small>(paga outorga)</small></div>
     </div>`;
   const alertas=(m.alertas||[]).length?`<ul style="margin:8px 0 0;padding-left:18px;font-size:.84em;color:#b45309">${m.alertas.map(a=>`<li>${a}</li>`).join('')}</ul>`:'';
@@ -659,8 +674,9 @@ function _avMemoriaHTML(m){
     ${areas}
     <table style="width:100%;border-collapse:collapse;font-size:.86em;margin-top:8px"><tbody>
       ${l(`VGV: ${n(m.area_vendavel)} m² vendáveis × lançamento ${_avR$(Math.round(m.vgv/m.area_vendavel))}/m²`, m.vgv)}
-      ${l(`Obra: ${n(m.area_constr)} m² construídos × CUB ${p.ref} ${_avR$(p.cub)} × ${P.fator_obra} (padrão ${p.lb})`, m.obra, true)}
-      ${l(`Comissão ${P.comissao*100}% + marketing ${P.marketing*100}% + RET ${P.ret*100}% + adm. ${P.adm*100}%`, m.indiretos, true)}
+      ${l(`Obra: ${n(m.area_constr)} m² construídos × ${_avR$(Math.round(m.custo_m2))}/m² (CUB ${p.ref} ${_avR$(p.cub)} × ${P.obra_sobre_cub}, com BDI — padrão ${p.lb})`, m.obra, true)}
+      ${l(`Despesas ${P.despesas*100}% do VGV (incorporação, aprovações, gestão, marketing, entrega, adm.) + projetos ${P.projetos_sobre_obra*100}% da obra`, (m.despesas||0)+(m.projetos||0), true)}
+      ${l(`Comissão ${P.comissao*100}% + RET ${P.ret*100}% + financiamento da obra ${P.financiamento*100}%`, (m.comissao||0)+(m.ret||0)+(m.financiamento||0), true)}
       ${l(`Margem do incorporador ${P.margem*100}%`, m.margem, true)}
       ${m.fachada_ativa?`<tr style="border-top:1px solid #f1f5f9"><td colspan="2" style="padding:3px 8px;color:#64748b">Fachada ativa: +${n(m.area_fachada)} m² de térreo comercial não computável (incluídos no VGV e na obra)</td></tr>`:''}
       ${m.categoria&&m.categoria!=='mercado'?`<tr style="border-top:1px solid #f1f5f9"><td colspan="2" style="padding:3px 8px;color:#64748b">Categoria ${m.categoria.toUpperCase()}: fator social Fs = ${m.fs} aplicado à outorga</td></tr>`:''}
@@ -668,14 +684,15 @@ function _avMemoriaHTML(m){
       ${m.outorga?l(m.outorga_modo==='referencia'
           ? `Outorga onerosa: ${n(m.area_adicional)} m² adicionais × ${_avR$(Math.round(m.v))}/m² (${m.v_origem})`
           : `Outorga onerosa (fórmula PDE): ${n(m.area_adicional)} m² adicionais × (terreno/computável) × V ${_avR$(Math.round(m.v))}/m² (${m.v_origem}) × Fs ${P.outorga_fs} × Fp ${m.fp}`, m.outorga, true):''}
-      <tr style="border-top:2px solid #10b981;font-weight:700"><td style="padding:4px 8px">Terreno máximo (o que sobra)</td><td style="padding:4px 8px;text-align:right;white-space:nowrap">${_avR$(Math.round(m.terreno_max))}</td></tr>
+      ${m.custos_aquisicao?l(`Custos de aquisição do terreno (ITBI, comissão, jurídico, demolição, IPTU) ≈ ${P.custo_aquisicao*100}%`, m.custos_aquisicao, true):''}
+      <tr style="border-top:2px solid #10b981;font-weight:700"><td style="padding:4px 8px">Terreno máximo (o que chega ao proprietário)${m.terreno_vgv?` <small style="font-weight:400;color:#64748b">· ${(m.terreno_vgv*100).toFixed(1)}% do VGV</small>`:''}</td><td style="padding:4px 8px;text-align:right;white-space:nowrap">${_avR$(Math.round(m.terreno_max))}</td></tr>
     </tbody></table>
     ${alertas}
     ${m.fpInfo?`<div style="font-size:.84em;color:#64748b;margin-top:8px">Fator de planejamento (Quadro 6 do PDE) no ponto: <b>${m.fpInfo.fp_texto||m.fpInfo.fp||'—'}</b> · ${m.fpInfo.macroarea||''}${m.fpInfo.setor?' · '+m.fpInfo.setor:''}</div>`:''}
     ${(m.refs||[]).length?`<div style="font-size:.84em;margin-top:8px"><div style="color:#64748b;margin-bottom:4px">Outorgas concedidas perto (GeoSampa) — contrapartida paga por m² excedente:</div>
       <table style="width:100%;border-collapse:collapse;font-size:.92em"><thead><tr style="text-align:left;color:#94a3b8"><th style="padding:2px 6px">Endereço</th><th style="padding:2px 6px;text-align:right">Dist.</th><th style="padding:2px 6px;text-align:right">Terreno</th><th style="padding:2px 6px;text-align:right">Excedente</th><th style="padding:2px 6px;text-align:right">R$/m²</th><th style="padding:2px 6px">Situação</th></tr></thead>
       <tbody>${m.refs.map(r=>`<tr style="border-top:1px solid #f1f5f9"><td style="padding:2px 6px">${r.endereco||''}</td><td style="padding:2px 6px;text-align:right">${r.dist_m} m</td><td style="padding:2px 6px;text-align:right">${n(r.area_terreno||0)} m²</td><td style="padding:2px 6px;text-align:right">${n(r.area_excedente||0)} m²</td><td style="padding:2px 6px;text-align:right">${_avR$(Math.round(r.ct_m2))}</td><td style="padding:2px 6px">${r.situacao||''}</td></tr>`).join('')}</tbody></table></div>`:''}
-    <div style="color:#94a3b8;font-size:.8em;margin-top:6px">CUB ${P.cub_ref}. Outorga: referência das concessões vizinhas (GeoSampa, 01/10/2026) ou fórmula do PDE (Lei 16.050/2014, art. 117) quando o QVT é informado. Parâmetros padrão da NSP em AV_PARAM.</div></details>`;
+    <div style="color:#94a3b8;font-size:.8em;margin-top:6px">CUB ${P.cub_ref}. Outorga: referência das concessões vizinhas (GeoSampa, 01/10/2026) ou fórmula do PDE (Lei 16.050/2014, art. 117) quando o QVT é informado. ${P.calibracao}. Parâmetros padrão da NSP em AV_PARAM.</div></details>`;
 }
 // Reconstrói a memória de uma avaliação salva (padrão vem do texto do método; sem ele, médio)
 function _avMemoriaSalva(x){
