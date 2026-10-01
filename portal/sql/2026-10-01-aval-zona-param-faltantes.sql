@@ -14,3 +14,13 @@ on conflict (zona) do nothing;
 select z.zona, count(*) from aval_zona z left join aval_zona_param p on p.zona=z.zona where p.zona is null group by 1;
 -- ZEIS-5 (habitação de interesse social com mercado popular): CA máx 4 nos eixos / 2 fora; usa 2 como padrão conservador
 insert into aval_zona_param (zona, ca_basico, ca_maximo, gabarito_m, incorporavel, familia) values ('ZEIS-5', 1.0, 2.0, 'livre', true, 'social') on conflict (zona) do nothing;
+-- Após a recarga com 38.358 perímetros (01/10): variantes "a" (ambiental, mesmos CA) e outras
+insert into aval_zona_param (zona, ca_basico, ca_maximo, gabarito_m, incorporavel, familia) values
+  ('ZEUa',    1.0, 4.0, 'livre', true,  'eixo'),
+  ('ZERa',    1.0, 1.0, '10',    false, 'residencial'),
+  ('ZCORa',   1.0, 2.0, '15',    true,  'corredor'),
+  ('ZC-ZEIS', 1.0, 2.0, '48',    true,  'centro'),
+  ('ZEIS-4',  1.0, 1.0, '10',    false, 'social'),
+  ('ZMIS',    1.0, 2.0, '28',    true,  'mista'),
+  ('ZMISa',   1.0, 2.0, '28',    true,  'mista')
+on conflict (zona) do nothing;
