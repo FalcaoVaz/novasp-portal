@@ -15,6 +15,8 @@ const AVAL_MOTOR = (typeof window!=='undefined' && window.AVAL_MOTOR_URL)
   || 'http://localhost:8902';
 
 const AV_CASA = ['CASA','CASA TÉRREA','CASA ASSOBRADADA','CASA DE VILA','SOBRADO','CONDOMÍNIO'];
+// Texto legal — aparece no preview, no detalhe e no dossiê (avaliacao.html tem cópia idêntica)
+const AV_TEXTO_LEGAL = 'Este documento é uma opinião de valor para fins de comercialização, elaborada pela Imobiliária Nova São Paulo a partir de dados públicos (ITBI, zoneamento, outorga) e de mercado (anúncios e negócios fechados), por meio automatizado revisado pelo corretor responsável. Não constitui laudo de avaliação nem parecer técnico de avaliação mercadológica (NBR 14.653 / Resolução COFECI 1.066/2007), não substitui vistoria e não vale como garantia de preço de venda. Os valores podem variar com as condições do imóvel, da documentação e do mercado.';
 const AV_TIPOS = ['Apartamento','Studio','Cobertura','Casa térrea','Sobrado','Casa de vila','Casa em condomínio','Terreno','Comercial'];
 
 // ── Padrão construtivo → custo de obra (CUB/m² Sinduscon-SP, jul/2026, com oneração) ──
@@ -137,16 +139,19 @@ async function _avRpc(fn, args){
 }
 
 // ═══════════════ ENTRADA DO MÓDULO ═══════════════
-async function carregarAvalImoveis(){
+async function carregarAvalImoveis(opts){
+  opts=opts||{};
   const root = document.getElementById('aval-imoveis-root');
   if(!root) return;
   root.innerHTML = `
     <div class="ph" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
       <div><h1 class="pt">Avaliação de Imóveis</h1>
         <div class="pst">Digite o endereço e gere a avaliação — antes mesmo de cadastrar o imóvel.</div></div>
-      <button class="btn btn-p" onclick="avalNova()">＋ Nova avaliação</button>
+      <div style="display:flex;gap:8px"><button class="btn btn-o" onclick="carregarAvalImoveis({lista:true})">🗂 Avaliações salvas</button><button class="btn btn-p" onclick="avalNova()">＋ Nova avaliação</button></div>
     </div>
-    <div id="aval-corpo"><div class="card"><div class="cb">Carregando avaliações salvas…</div></div></div>`;
+    <div id="aval-corpo"><div class="card"><div class="cb">Carregando…</div></div></div>`;
+  // tela inicial = formulário de nova avaliação (a lista fica no botão "Avaliações salvas")
+  if(!opts.lista){ try{ fetch(`${AVAL_MOTOR}/health`,{mode:'cors'}).catch(()=>{}); }catch(_){} avalNova(); return; }
   // acorda o motor (Render free hiberna) enquanto a lista carrega — sem esperar a resposta
   try{ fetch(`${AVAL_MOTOR}/health`,{mode:'cors'}).catch(()=>{}); }catch(_){}
   try{
@@ -257,7 +262,7 @@ function avalNova(){
       <div id="av-calc-status" style="margin-top:8px;color:#64748b;font-size:.9em"></div>
     </div></div>
 
-    <div style="margin-top:8px"><button class="btn btn-o bsm" onclick="carregarAvalImoveis()">← Voltar à lista</button></div>`;
+    <div style="margin-top:8px"><button class="btn btn-o bsm" onclick="carregarAvalImoveis({lista:true})">🗂 Ver avaliações salvas</button></div>`;
 }
 
 async function _avCarregarLeaflet(){
@@ -572,9 +577,10 @@ function renderAvalPreview(x, precos){
       ${_avCompsTabela(comps)}
     </div></div>`:''}
     <div class="card"><div class="cb" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      <button class="btn btn-p" onclick="avalSalvar()">💾 Salvar avaliação</button>
-      <span style="color:#94a3b8;font-size:.88em">Depois de salvar você revisa, aprova e gera o link pro proprietário.</span>
-    </div></div>`;
+      <button class="btn btn-p" onclick="avalSalvar()">💾 Salvar e gerar dossiê</button>
+      <span style="color:#94a3b8;font-size:.88em">Revise acima. Ao salvar, o dossiê fica pronto para imprimir, salvar em PDF ou enviar ao cliente.</span>
+    </div></div>
+    <div class="card" style="margin-top:12px;background:#f8fafc"><div class="cb" style="font-size:.8em;color:#64748b">${AV_TEXTO_LEGAL}</div></div>`;
   _avDesenharMapaComps(comps, _avPino?{lat:_avPino.lat,lng:_avPino.lng}:null);
 }
 // Memória da conta reversa. Recebe o objeto de _avContaIncorp ou reconstrói a partir da avaliação salva.
@@ -689,9 +695,10 @@ async function avalSalvar(){
   try{
     d.corretor_nome=(typeof CUR!=='undefined'&&CUR)?CUR.nome:null;
     try{ const u=await db.get('usuarios',`?select=creci&id=eq.${CUR.id}`); d.corretor_creci=(u&&u[0]&&u[0].creci)||null; }catch(_){ d.corretor_creci=null; }
+    d.status='aprovada'; d.aprovado_por=d.corretor_nome; d.aprovado_em=new Date().toISOString();   // revisão = o preview; salvar já libera o dossiê
     const rows=await db.post('aval_resultado', d);
     const novo=Array.isArray(rows)?rows[0]:rows;
-    await carregarAvalImoveis();
+    await carregarAvalImoveis({lista:true});
     if(novo?.id) abrirAvalDetalhe(novo.id);
   }catch(e){ alert('Não foi possível salvar: '+(e.message||e)); }
 }
@@ -714,12 +721,15 @@ function abrirAvalDetalhe(id){
     <div class="card" style="background:#f0fdf4"><div class="cb">
       <div style="color:#047857;font-weight:600;margin-bottom:6px">✅ Aprovada${x.aprovado_por?' por '+x.aprovado_por:''} — link pronto</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <input id="av-link" readonly value="${link}" onclick="this.select()" style="flex:1;min-width:220px;padding:8px 10px;border:1px solid #bbf7d0;border-radius:8px;background:#fff">
-        <button class="btn btn-p" onclick="_avCopiarLink()">📋 Copiar</button>
+        <a class="btn btn-p" href="${link}&pdf=1" target="_blank" title="Abre o dossiê e chama a impressão: escolha a impressora ou 'Salvar como PDF'">🖨️ Imprimir / salvar PDF</a>
+        <a class="btn btn-o" href="https://wa.me/?text=${encodeURIComponent('Olá! Segue a opinião de valor do imóvel '+(x.endereco||'')+' preparada pela Nova São Paulo: '+link)}" target="_blank">💬 Enviar por WhatsApp</a>
+        <a class="btn btn-o" href="mailto:?subject=${encodeURIComponent('Opinião de valor — '+(x.endereco||''))}&body=${encodeURIComponent('Olá!\n\nSegue a opinião de valor do imóvel '+(x.endereco||'')+' preparada pela Imobiliária Nova São Paulo:\n'+link+'\n\nFico à disposição.\n'+(x.corretor_nome||''))}">✉️ Enviar por e-mail</a>
+        <button class="btn btn-o" onclick="_avCopiarLink()">📋 Copiar link</button>
         <a class="btn btn-o" href="${link}" target="_blank">Abrir</a>
-        <a class="btn btn-o" href="${link}&pdf=1" target="_blank" title="Abre o dossiê completo pronto para salvar em PDF (Cmd+P → Salvar como PDF)">📄 Dossiê em PDF</a>
-        <button class="btn btn-o" onclick="_avAprovar(${x.id},'gerada')">↩︎ Reabrir</button>
-      </div></div></div>`:`
+        <button class="btn btn-o" onclick="_avAprovar(${x.id},'gerada')" title="Tira o dossiê do ar até revisar">↩︎ Reabrir</button>
+      </div>
+      <input id="av-link" readonly value="${link}" onclick="this.select()" style="width:100%;margin-top:8px;padding:8px 10px;border:1px solid #bbf7d0;border-radius:8px;background:#fff;font-size:.85em">
+      <div style="font-size:.78em;color:#64748b;margin-top:8px">${AV_TEXTO_LEGAL}</div></div></div>`:`
     <div class="card"><div class="cb" style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-p" onclick="_avAprovar(${x.id},'aprovada')">✅ Aprovar e gerar link</button>
       <button class="btn btn-o" onclick="_avAprovar(${x.id},'rejeitada')">Rejeitar</button>

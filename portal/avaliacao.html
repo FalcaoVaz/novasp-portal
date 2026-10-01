@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<title>Avaliação do seu imóvel — Nova São Paulo</title>
+<title>Opinião de valor do seu imóvel — Nova São Paulo</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
   :root{ --navy:#1E2D4A; --azul:#0088CC; --emerald:#047857; --bg:#f6f7f9; --line:#e6e8ec; --muted:#6b7280; }
@@ -63,7 +63,7 @@
   <header>
     <div style="display:flex;align-items:center;gap:12px">
       <img src="icons/logo-nsp.png" alt="Imobiliária Nova São Paulo" onerror="this.style.display='none'">
-      <div class="brand"><b>Imobiliária Nova São Paulo</b><span>Avaliação de imóvel · dossiê técnico</span></div>
+      <div class="brand"><b>Imobiliária Nova São Paulo</b><span>Opinião de valor de imóvel · dossiê</span></div>
     </div>
     <div class="firma" id="firma"></div>
   </header>
@@ -75,6 +75,7 @@
 const SBU = 'https://mqcduyvpuxdweqesgwrq.supabase.co';
 const SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1xY2R1eXZwdXhkd2VxZXNnd3JxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4MzE5OTcsImV4cCI6MjA5MzQwNzk5N30.QdpRZRxnYF6GTh13wdTNqZTQ-9ztY3veef62mfGRphE';
 // Dados da imobiliária que vão no cabeçalho e na assinatura do dossiê
+const TEXTO_LEGAL = 'Este documento é uma opinião de valor para fins de comercialização, elaborada pela Imobiliária Nova São Paulo a partir de dados públicos (ITBI, zoneamento, outorga) e de mercado (anúncios e negócios fechados), por meio automatizado revisado pelo corretor responsável. Não constitui laudo de avaliação nem parecer técnico de avaliação mercadológica (NBR 14.653 / Resolução COFECI 1.066/2007), não substitui vistoria e não vale como garantia de preço de venda. Os valores podem variar com as condições do imóvel, da documentação e do mercado.';
 const NSP = { nome:'Imobiliária Nova São Paulo', creci:'CRECI 02061-J', desde:'desde 1969',
               endereco:'Av. Jabaquara, 1947 — Saúde, São Paulo/SP', site:'www.novasaopaulo.com.br', telefone:'' };
 const R$ = v => (v==null||v===''||isNaN(Number(v))) ? '—' : 'R$ ' + Number(v).toLocaleString('pt-BR',{maximumFractionDigits:0});
@@ -201,7 +202,8 @@ function render(x){
         <div><div class="kicker">Corretor responsável</div><b>${x.corretor_nome||'—'}</b><br><span class="sub">${x.corretor_creci?('CRECI '+x.corretor_creci):'CRECI —'}</span></div>
         <div><div class="kicker">Imobiliária</div><b>${NSP.nome}</b><br><span class="sub">${NSP.creci} · ${NSP.desde}<br>${NSP.endereco}<br>${NSP.site}${NSP.telefone?' · '+NSP.telefone:''}</span></div>
       </div>
-      <div class="foot">Avaliação gerada em ${dt}${x.aprovado_em?` e revisada em ${dtAp}`:''}. Documento de referência para orientação comercial; não constitui laudo de avaliação nos termos da NBR 14653.</div>
+      <div class="foot" style="margin-top:10px"><b>Natureza deste documento.</b> ${TEXTO_LEGAL}</div>
+      <div class="foot">Opinião de valor gerada em ${dt}${x.aprovado_em?` e revisada em ${dtAp}`:''}.</div>
     </div>`;
 
   return cabecalho + mercado + incorp + entorno + metodo + mapa + comptab + assinatura + `
