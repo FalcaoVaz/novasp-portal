@@ -447,7 +447,7 @@ async function _avPinoInfo(){
     const zi=Array.isArray(z)?z[0]:z;
     _avForm.geo=zi||null;
     if(zi){
-      el.innerHTML=`✅ <b>${zi.zona}</b> · CA máx <b>${Number(zi.ca_maximo)}</b>`
+      el.innerHTML=`✅ <b>${zi.zona}</b> · CA máx <b>${Number(zi.ca_maximo)}</b>${zi.dist_m>0?` <span style="color:#94a3b8">(zona mais próxima, pino na rua a ${zi.dist_m} m)</span>`:''}`
         +`${zi.incorporavel?' · <span style="color:#047857">eixo (incorporável)</span>':''}`
         +`${zi.distrito?' · '+zi.distrito:''} <span style="color:#94a3b8">(${_avPino.lat.toFixed(5)}, ${_avPino.lng.toFixed(5)})</span>`;
       const cta=document.getElementById('av-incorp-cta');
