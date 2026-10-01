@@ -387,7 +387,14 @@ const LIDERES_GESTAO = [
 // que precisa enxergar todos os modulos pra dar suporte. Casar por email
 // evita colisao com homonimos — ex: 'Fabio' (TI) vs 'Fabio Ayres' (corretor).
 const ACESSO_TOTAL_EMAILS = [
-  'ti@novasaopaulo.com.br'      // Fabio — T.I.
+  'ti@novasaopaulo.com.br',              // Fabio — T.I.
+  // Piloto Claude Team (16/09 a 14/10/2026): acesso total a todos os módulos — decisão do Rodrigo em 01/10/2026
+  'anderson.lucchi@novasaopaulo.com.br', // Anderson — marketing
+  'cpd@novasaopaulo.com.br',             // Gabriela — marketing
+  'thais.barbosa@novasaopaulo.com.br',   // Thais — marketing/vendas
+  'financeiro@novasaopaulo.com.br',      // Dayani — RH
+  'fernanda.araujo@novasaopaulo.com.br', // Fernanda — jurídico
+  'renata@novasaopaulo.com.br'           // Renata — Moema
 ];
 function ehAcessoTotal(){
   if (!CUR) return false;
@@ -455,7 +462,7 @@ function usuariosCalendar(){
 }
 // Itens de menu do modulo Gestao conforme o papel
 function menuGestaoItens(){
-  if (ehLiderGestao()) return MENUS.gestao;
+  if (ehLiderGestao()) return MENUS.gestao.filter(i => !i.soAdmin || (CUR && CUR.admin));
   // colaborador: somente avaliacao/feedback do proprio lider
   return MENUS.gestao.filter(i => i.pg === 'av-lider');
 }
@@ -485,7 +492,8 @@ const MENUS={
     {ic:'clipboard', lb:'Avaliações',       pg:'avaliacoes'},
     {ic:'target',    lb:'Tarefas / Bônus',  pg:'metas'},
     {ic:'dollar',    lb:'Apurar Bônus',     pg:'bonus'},
-    {ic:'star',      lb:'Avaliar Líder',    pg:'av-lider'}
+    {ic:'star',      lb:'Avaliar Líder',    pg:'av-lider'},
+    {ic:'clipboard', lb:'Auditoria',        pg:'auditoria', soAdmin:true}
   ],
   // Avaliação de Imóveis — módulo próprio (card na home); o mais usado do portal (centenas/mês)
   avaliacao:[
@@ -686,6 +694,7 @@ function podeGerenciarCorretores(){
 function podeAcessarForumVendas(){
   if (!CUR) return false;
   if (CUR.admin) return true;
+  if (typeof ehAcessoTotal === 'function' && ehAcessoTotal()) return true;   // piloto: vê o fórum também
   return ehRepresentanteVendas() || ehGerenteVendas();
 }
 // Nome + equipe pra autoria de tópicos/comentários
@@ -802,6 +811,7 @@ const TITLES={
   'pauta-terca':'Pauta Mkt','pauta-quarta':'Pauta Adm','pauta-juridico':'Pauta Jurídico',
   'pauta-renata':'Pauta Vendas — Renata (Moema)','pauta-felippe':'Pauta Vendas — Felippe',
   'pauta-christiane':'Pauta Vendas — Christiane','pauta-emilia':'Pauta Vendas — Emilia',
+  auditoria:'Auditoria — quem mexeu em quê',
   'acervo-nido':'Acervo Nido — vendas e locação até 2026 (só leitura)',
   'acervo-guess':'Acervo Guess — locação (só leitura)',
   liderados:'Meus Liderados',organograma:'Organograma',avaliacoes:'Avaliações Trimestrais',
