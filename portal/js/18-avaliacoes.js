@@ -97,22 +97,22 @@ function _avComaerTexto(k){
 // Parâmetros padrão da conta reversa (método involutivo). Editáveis aqui; o corretor não mexe.
 const AV_PARAM = {
   cub_ref:'Sinduscon-SP jul/2026',
-  calibracao:'calibrado em viabilidades reais da Nova SP Inc (Maquerobi HIS 1.154 m², Feel Saúde 1.159 m², DRE Free Concept — abr/jul 2026)',
+  calibracao:'calibrado em viabilidades reais de incorporação na Zona Sul de São Paulo (2026)',
   // ── Áreas (o que de fato se vende e se constrói sobre o lote) ──
-  eficiencia_his:0.97,     // EHIS/EHMP: privativa ≈ computável (garagem, circulação, áreas comuns e terraços são não computáveis — Decreto 63.728/2024 art. 17); Maquerobi: 6.849 / 6.924 = 0,99
+  eficiencia_his:0.97,     // EHIS/EHMP: privativa ≈ computável (garagem, circulação, áreas comuns e terraços são não computáveis — Decreto 63.728/2024 art. 17); projeto A: 6.849 / 6.924 = 0,99
   eficiencia_mercado:0.85, // mercado em eixo: circulação comum CONTA no CA (LPUOS art. 62 V exclui ZEU/ZEM) → privativa ≈ 85% da computável (estimativa; falta viabilidade de mercado p/ calibrar)
-  his_unid_m2:28,          // unidade típica de EHIS (Maquerobi 27 m², Feel Saúde 24–41) — usada só p/ traduzir os tetos de preço por unidade em R$/m²
-  priv_sobre_construida:0.776,    // privativa / construída total (Maquerobi: 6.849 / 8.825)
+  his_unid_m2:28,          // unidade típica de EHIS (projeto A 27 m², projeto B 24–41) — usada só p/ traduzir os tetos de preço por unidade em R$/m²
+  priv_sobre_construida:0.776,    // privativa / construída total (projeto A: 6.849 / 8.825)
   // ── Obra ──
-  obra_sobre_cub:1.68,  // custo de obra por m² construído = CUB × 1,68 (Hoga/Maquerobi: R$ 3.726/m² ÷ CUB R8-N 2.231; inclui BDI 12,5% e decorados 3%)
-  // ── Despesas sobre o VGV (Maquerobi: incorporação 1% + aprovações 0,5% + gestão 5% + marketing 4,5% + entrega 0,5% + adm 2%) ──
+  obra_sobre_cub:1.68,  // custo de obra por m² construído = CUB × 1,68 (construtora/projeto A: R$ 3.726/m² ÷ CUB R8-N 2.231; inclui BDI 12,5% e decorados 3%)
+  // ── Despesas sobre o VGV (projeto A: incorporação 1% + aprovações 0,5% + gestão 5% + marketing 4,5% + entrega 0,5% + adm 2%) ──
   despesas:0.135,
   projetos_sobre_obra:0.025,  // projetos = 2,5% do custo de obra
-  comissao:0.05,        // corretagem sobre o VGV (Rodrigo 01/10/2026; Maquerobi usa 6%)
-  ret:0.04,             // RET (Maquerobi 4%)
-  financiamento:0.03,   // juros/seguro do financiamento à produção (Maquerobi 0,5–3,4%; Free Concept 5,6%)
-  margem:0.15,          // margem do incorporador sobre o VGV (Rodrigo; deck Nova SP Inc: mínimo 15%; Maquerobi EBITDA 17,6%)
-  custo_aquisicao:0.12, // ITBI 3% + comissão do terreno 4% + jurídico, estudos, demolição e IPTU ≈ 5% (Maquerobi: 1,33 MM sobre 10,05 MM) — sai do que vai ao proprietário
+  comissao:0.05,        // corretagem sobre o VGV (Rodrigo 01/10/2026; projeto A usa 6%)
+  ret:0.04,             // RET (projeto A 4%)
+  financiamento:0.03,   // juros/seguro do financiamento à produção (projeto A 0,5–3,4%; projeto C 5,6%)
+  margem:0.15,          // margem do incorporador sobre o VGV (Rodrigo; material da incorporadora parceira: mínimo 15%; projeto A EBITDA 17,6%)
+  custo_aquisicao:0.12, // ITBI 3% + comissão do terreno 4% + jurídico, estudos, demolição e IPTU ≈ 5% (projeto A: 1,33 MM sobre 10,05 MM) — sai do que vai ao proprietário
   // ── Compatibilidade (telas antigas) ──
   marketing:0.045, adm:0.02, fator_obra:1.68, eficiencia:0.90, constr_sobre_computavel:1.29,
   lanc_sobre_usado:1.25,// se não houver lançamento anunciado no bairro: lançamento ≈ usado × 1,25
@@ -121,7 +121,7 @@ const AV_PARAM = {
   outorga_fs:1.0,
   outorga_fp:1.0,
   qvt_sobre_mercado:0.50, // sem QVT informado: V ≈ 50% do valor de mercado do terreno (o cadastro fica bem abaixo do mercado)
-  // Incentivos do PDE/LPUOS (Rodrigo, 01/10/2026). Lançamentos reais: Maquerobi HIS 10.808/m², Feel Saúde HIS+HMP 10.500, UP Saúde studios 11–13 mil.
+  // Incentivos do PDE/LPUOS (Rodrigo, 01/10/2026). Lançamentos reais: projeto A HIS 10.808/m², projeto B HIS+HMP 10.500, UP Saúde studios 11–13 mil.
   his_max_rs_m2:12000,    // lançamento até este R$/m² → HIS (outorga isenta, Fs = 0; áreas não computáveis extras)
   hmp_max_rs_m2:15000,    // até este R$/m² → HMP (Fs = 0,5; mesmas áreas extras); acima → mercado (Fs = 1)
   fachada_ativa_bonus:0.50, // fachada ativa em eixo/centralidade: térreo comercial não computável até 50% do lote
@@ -175,10 +175,10 @@ function _avContaIncorp({terreno, ca, ca_basico, rs_lanc, padrao, qvt, frente, g
   if(social){
     if(cs && cs.ca>ca_zona) base_legal.push(`CA ${cs.ca} para ${cat.toUpperCase()} em ${cs.lb}, contra ${ca_zona} da zona para produto de mercado — Decreto 63.728/2024, Quadro 2 (regra já existente no Decreto 59.885/2020).`);
     else base_legal.push(`Zona ${zona||'?'} fora das zonas com CA próprio para HIS/HMP: usado o CA máximo da zona (${ca_zona}).`);
-    base_legal.push(`Em EHIS/EHMP são não computáveis (não consomem CA): garagens, circulação e áreas comuns, terraços até 5% do lote por pavimento, áreas técnicas, e usos não residenciais até 20% da computável — Decreto 63.728/2024, art. 17 e 18; LPUOS art. 62, X. Por isso a área privativa vendida fica ≈ ${Math.round(P.eficiencia_his*100)}% da computável (Maquerobi: 6.849 m² privativos sobre 6.924 computáveis).`);
+    base_legal.push(`Em EHIS/EHMP são não computáveis (não consomem CA): garagens, circulação e áreas comuns, terraços até 5% do lote por pavimento, áreas técnicas, e usos não residenciais até 20% da computável — Decreto 63.728/2024, art. 17 e 18; LPUOS art. 62, X. Por isso a área privativa vendida fica ≈ ${Math.round(P.eficiencia_his*100)}% da computável (em projeto real: 6.849 m² privativos sobre 6.924 computáveis).`);
     base_legal.push(cat==='his' ? 'Direito de construir até o CA máximo é gratuito para EHIS: sem outorga onerosa — Decreto 63.728/2024, art. 19.' : 'EHMP paga outorga com Fator de Interesse Social reduzido (Fs 0,5) — Decreto 63.728/2024, art. 20 e Quadro 5 do PDE.');
     base_legal.push(`Para valer, pelo menos 80% da área computável tem de ser ${cat.toUpperCase()} (art. 1º e 9º do decreto) e as unidades precisam caber nos tetos do ${AV_HIS_TETO.ref}: HIS-1 ${_avR$(AV_HIS_TETO.his1)}, HIS-2 ${_avR$(AV_HIS_TETO.his2)}, HMP ${_avR$(AV_HIS_TETO.hmp)} por unidade (renda familiar até ${_avR$(AV_HIS_TETO.renda_his1)}, ${_avR$(AV_HIS_TETO.renda_his2)} e ${_avR$(AV_HIS_TETO.renda_hmp)}). Numa unidade de ${P.his_unid_m2} m² isso equivale a ${_avR$(Math.round(AV_HIS_TETO.his2/P.his_unid_m2))}/m² (HIS-2) e ${_avR$(Math.round(AV_HIS_TETO.hmp/P.his_unid_m2))}/m² (HMP).`);
-    base_legal.push('Conferido em projetos reais da Nova SP Inc: Maquerobi (1.154 m², ZEU, HIS) vende 6.849 m² privativos = 5,9 × o lote; Feel Saúde (1.159 m², ZEU, HIS+HMP, 225 un.) ≈ 6,4 × o lote.');
+    base_legal.push('Conferido em projetos reais de HIS/HMP em ZEU na Zona Sul: a área privativa vendida ficou entre 5,9 e 6,4 vezes a área do lote.');
   }else{
     base_legal.push(`Produto de mercado: CA máximo da zona (${ca_zona}). Em ZEU/ZEM a circulação comum conta no CA (LPUOS art. 62, V), só garagem (1 vaga/unidade), áreas técnicas e fachada ativa ficam fora — privativa estimada em ${Math.round(P.eficiencia_mercado*100)}% da computável.`);
     if(_avCaSocial(zona,'his')) base_legal.push(`Alternativa: como EHIS/EHMP este lote teria CA ${_avCaSocial(zona,'his').ca} (HIS) ou ${_avCaSocial(zona,'hmp').ca} (HMP) — Decreto 63.728/2024, Quadro 2. Selecione a categoria no painel para comparar.`);
@@ -394,7 +394,7 @@ function avalNova(){
       <div id="av-incorp-solo"></div>
     </div></div>
 
-    <div class="card" id="av-passo2" style="opacity:.5;pointer-events:none"><div class="cb">
+    <div class="card" id="av-passo2" style="display:none"><div class="cb">
       <div style="font-weight:600;margin-bottom:10px">2 · O imóvel</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">
         <select id="av-tipo" onchange="_avCamposTipo()" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px;width:100%">
@@ -492,8 +492,23 @@ async function _avMostrarMapa(lat,lng){
   }
   _avPino={lat,lng}; _avPinoInfo(); _avLiberaPasso2();
 }
-function _avLiberaPasso2(){
-  const p=document.getElementById('av-passo2'); if(p){p.style.opacity='1';p.style.pointerEvents='auto';}
+function _avLiberaPasso2(){ _avRenderCta(); }
+// Depois do pino: o corretor escolhe o caminho — venda a mercado (passo 2) OU terreno para incorporadora (painel próprio)
+function _avRenderCta(){
+  const cta=document.getElementById('av-incorp-cta'); if(!cta||!_avPino) return;
+  const zi=_avForm.geo, pode=!!(zi && zi.incorporavel && Number(zi.ca_maximo)>=2), modo=_avForm.modo||null;
+  cta.innerHTML=`<div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span style="color:#64748b;font-size:.88em">O que avaliar?</span>
+      <button class="btn ${modo==='mercado'?'btn-p':'btn-o'} bsm" onclick="_avModo('mercado')">🏠 Venda a mercado</button>
+      ${pode?`<button class="btn ${modo==='incorp'?'btn-p':'btn-o'} bsm" onclick="_avModo('incorp')">🏗️ Terreno para incorporadora</button>`:''}
+      ${zi?`<span style="color:#94a3b8;font-size:.82em">${pode?`zona ${zi.zona} permite adensar (CA ${Number(zi.ca_maximo)})`:`zona ${zi.zona} (CA ${Number(zi.ca_maximo)}): sem potencial para incorporadora`}</span>`:''}
+    </div>`;
+}
+function _avModo(m){
+  _avForm.modo=m; _avRenderCta();
+  const p2=document.getElementById('av-passo2'), pan=document.getElementById('av-incorp-painel'), solo=document.getElementById('av-incorp-solo');
+  if(m==='mercado'){ if(p2) p2.style.display=''; if(pan) pan.style.display='none'; if(solo) solo.innerHTML=''; p2&&p2.scrollIntoView({behavior:'smooth',block:'start'}); }
+  else { if(p2) p2.style.display='none'; avalAbrirIncorp(); }
 }
 
 async function _avPinoInfo(){
@@ -508,10 +523,7 @@ async function _avPinoInfo(){
       el.innerHTML=`✅ <b>${zi.zona}</b> · CA máx <b>${Number(zi.ca_maximo)}</b>${zi.dist_m>0?` <span style="color:#94a3b8">(zona mais próxima, pino na rua a ${zi.dist_m} m)</span>`:''}`
         +`${zi.incorporavel?' · <span style="color:#047857">eixo (incorporável)</span>':''}`
         +`${zi.distrito?' · '+zi.distrito:''} <span style="color:#94a3b8">(${_avPino.lat.toFixed(5)}, ${_avPino.lng.toFixed(5)})</span>`;
-      const cta=document.getElementById('av-incorp-cta');
-      if(cta) cta.innerHTML = (zi.incorporavel && Number(zi.ca_maximo)>=2)
-        ? `<div style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn btn-o bsm" onclick="avalAbrirIncorp()">🏗️ Avaliar para incorporadora</button><span style="color:#64748b;font-size:.85em">Zona ${zi.zona} permite adensar (CA ${Number(zi.ca_maximo)}). Dá para rodar já, só com a área do terreno.</span></div>`
-        : `<div style="margin-top:6px;color:#94a3b8;font-size:.85em">🏗️ Zona ${zi.zona} (CA ${Number(zi.ca_maximo)}): sem potencial para incorporadora.</div>`;
+      _avRenderCta();
     }else{
       el.innerHTML=`<span style="color:#b45309">Este ponto está fora da área com zoneamento carregado</span> <span style="color:#94a3b8">(${_avPino.lat.toFixed(5)}, ${_avPino.lng.toFixed(5)})</span>. Confira se o pino caiu no endereço certo (arraste-o se precisar). A avaliação de mercado funciona; só a conta de incorporação fica sem zona.`;
     }
@@ -525,6 +537,7 @@ async function avalCalcular(opts){
   // no recálculo (exclusão de comparável) o formulário já saiu da tela: lê o que foi digitado antes
   const g=id=>{ const el=document.getElementById(id); return el?el.value:((_avForm.entrada||{})[id]||''); };
   if(!recalc) _avForm.entrada=Object.fromEntries(['av-tipo','av-area','av-terreno','av-frente','av-dorm','av-suite','av-vaga','av-padrao-casa','av-idade','av-estado','av-rs-terreno'].map(id=>[id,g(id)]));
+  _avForm.modo='mercado';
   const tipo=g('av-tipo'), grupo=_avTipoGrupo(tipo), area=grupo==='terreno'?null:(+g('av-area')||null);
   const terreno=+g('av-terreno')||(_avForm.incorp&&_avForm.incorp.terreno)||null, frente=+g('av-frente')||null;
   const dorm=+g('av-dorm')||null, suite=+g('av-suite')||null, vaga=+g('av-vaga')||null, preco=null;   // valor pretendido saiu do formulário (Rodrigo, 01/10/2026)
@@ -726,7 +739,16 @@ async function _avCtxRapido(){
   _avForm.cache=_avForm.cache||{}; _avForm.cache.precos=precos;
   _avForm.ctx={ehlote:true, rs_apto, rs_lanc, lancOrigem: precos.rs_lanc?`${precos.n_lanc} lançamentos anunciados`:`usado × ${AV_PARAM.lanc_sobre_usado}`, preco:null, bairro, padraoSugerido:_avPadraoSugerido(bairro), lancAuto:precos.rs_lanc||null, lancN:precos.n_lanc||0};
   _avForm.podeIncorp=!!(geo.incorporavel && Number(geo.ca_maximo)>=2);
-  _avForm.dossie={_solo:true, zona:geo.zona||null, ca:geo.ca_maximo?Number(geo.ca_maximo):null, terreno:null, valor_mercado:null, metodo:'', memoria:{}};
+  let entorno=null; try{ entorno=await _avRpc('aval_entorno',{p_lat:_avPino.lat,p_lng:_avPino.lng}); if(Array.isArray(entorno)) entorno=entorno[0]; }catch(_){}
+  _avForm.entorno=entorno; _avForm.cache.entorno=entorno;
+  _avForm.dossie={_solo:true, fonte:'ondemand', codigo:'OD'+Date.now(), tipo:'Terreno', bairro,
+    endereco:`${(g('av-rua')||_avForm.rua||'').trim()}${(g('av-num')||_avForm.num)?', '+(g('av-num')||_avForm.num):''}`.trim(),
+    area_util:null, terreno:null, dorm:null, suite:null, vaga:null, preco_pedido:null,
+    zona:geo.zona||null, ca:geo.ca_maximo?Number(geo.ca_maximo):null, mercado_rs_m2:null, anuncios_usados:0,
+    valor_mercado:null, faixa_min:null, faixa_max:null, metodo:'avaliação como terreno para incorporação (sem valor de venda a mercado)',
+    incorp_aplicavel:false, incorp_area_constr:null, incorp_lancamento_rs_m2:null, incorp_vgv:null, incorp_valor_terreno:null, incorp_ganho_pct:null,
+    comparaveis:'[]', lat:_avPino.lat, lng:_avPino.lng, entorno:entorno||null,
+    memoria:{ metodo_unico:null, incorp:null, param:{cub_ref:AV_PARAM.cub_ref, calibracao:AV_PARAM.calibracao, obra_sobre_cub:AV_PARAM.obra_sobre_cub, priv_sobre_construida:AV_PARAM.priv_sobre_construida, despesas:AV_PARAM.despesas, projetos_sobre_obra:AV_PARAM.projetos_sobre_obra, comissao:AV_PARAM.comissao, ret:AV_PARAM.ret, financiamento:AV_PARAM.financiamento, margem:AV_PARAM.margem, custo_aquisicao:AV_PARAM.custo_aquisicao} } };
   return true;
 }
 async function avalAbrirIncorp(){
@@ -740,7 +762,7 @@ async function avalAbrirIncorp(){
   el.style.display='';
   el.innerHTML=`<div class="card" style="margin-bottom:12px;border-left:3px solid #10b981"><div class="cb">
     <div style="font-weight:600;margin-bottom:4px">🏗️ Avaliação para incorporadora</div>
-    <div style="color:#64748b;font-size:.88em;margin-bottom:10px">Conta reversa: do VGV do prédio possível no lote, descontados obra, despesas, margem, outorga e custos de aquisição, sobra o que chega ao proprietário. Premissas calibradas em viabilidades reais da Nova SP Inc (HIS/HMP em eixo). Informe o que souber; o resto o sistema estima e explica.</div>
+    <div style="color:#64748b;font-size:.88em;margin-bottom:10px">Conta reversa: do VGV do prédio possível no lote, descontados obra, despesas, margem, outorga e custos de aquisição, sobra o que chega ao proprietário. Premissas calibradas em viabilidades reais de incorporação (HIS/HMP em eixo). Informe o que souber; o resto o sistema estima e explica.</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px">
       <input id="av-inc-terreno" type="number" value="${inc.terreno||''}" placeholder="Área do terreno (m²) *" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px">
       <input id="av-inc-frente" type="number" value="${inc.frente||''}" placeholder="Frente do terreno (m)" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px">
@@ -768,7 +790,9 @@ async function avalCalcIncorp(){
   _avForm.incorp={terreno, frente:+g('av-inc-frente')||null, padrao:g('av-inc-padrao')||_avForm.ctx.padraoSugerido, lanc:+g('av-inc-lanc')||null, categoria:g('av-inc-categoria')||'auto', fachada_ativa:!!g('av-inc-fachada')};
   await _avCalcIncorp();
   if(_avForm.dossie&&_avForm.dossie._solo){
-    const solo=document.getElementById('av-incorp-solo'); if(solo) solo.innerHTML=_avIncorpCardHTML(_avForm.dossie)||`<div class="card" style="margin-top:10px"><div class="cb" style="color:#b45309">${_avForm.incorpMotivo||'Incorporação inviável com estas premissas.'}</div></div>`;
+    _avForm.dossie.terreno=_avForm.incorp.terreno; _avForm.dossie.frente=_avForm.incorp.frente||null;
+    const solo=document.getElementById('av-incorp-solo'); if(solo) solo.innerHTML=(_avIncorpCardHTML(_avForm.dossie)||`<div class="card" style="margin-top:10px"><div class="cb" style="color:#b45309">${_avForm.incorpMotivo||'Incorporação inviável com estas premissas.'}</div></div>`)
+      +(_avForm.dossie.incorp_aplicavel?`${_avEntornoHTML(_avForm.entorno)}<div class="card" style="margin-top:10px"><div class="cb" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn btn-p" onclick="avalSalvar()">💾 Salvar e gerar dossiê</button><span style="color:#94a3b8;font-size:.88em">Dossiê só com a avaliação como terreno. Para incluir o valor de venda a mercado, escolha "Venda a mercado" acima.</span></div></div><div class="card" style="margin-top:12px;background:#f8fafc"><div class="cb" style="font-size:.8em;color:#64748b">${AV_TEXTO_LEGAL}</div></div>`:'');
     const t=document.getElementById('av-terreno'); if(t && !t.value && _avForm.incorp.terreno) t.value=_avForm.incorp.terreno;   // leva o terreno para o formulário
     const f=document.getElementById('av-frente'); if(f && !f.value && _avForm.incorp.frente) f.value=_avForm.incorp.frente;
   } else renderAvalPreview(_avForm.dossie, _avForm.cache.precos);
@@ -1027,7 +1051,8 @@ async function avalSalvar(){
     d.corretor_nome=(typeof CUR!=='undefined'&&CUR)?CUR.nome:null;
     try{ const u=await db.get('usuarios',`?select=creci&id=eq.${CUR.id}`); d.corretor_creci=(u&&u[0]&&u[0].creci)||null; }catch(_){ d.corretor_creci=null; }
     d.status='aprovada'; d.aprovado_por=d.corretor_nome; d.aprovado_em=new Date().toISOString();   // revisão = o preview; salvar já libera o dossiê
-    const rows=await db.post('aval_resultado', d);
+    const payload=Object.fromEntries(Object.entries(d).filter(([k])=>!k.startsWith('_')));
+    const rows=await db.post('aval_resultado', payload);
     const novo=Array.isArray(rows)?rows[0]:rows;
     await carregarAvalImoveis({lista:true});
     if(novo?.id) abrirAvalDetalhe(novo.id);
