@@ -15,8 +15,9 @@ language sql stable security definer set search_path = public as $$
        and i.natureza like '1.%' and coalesce(i.proporcao,100) >= 99
        and i.valor > 0 and i.area_constr > 0 and (i.valor/i.area_constr) between 1500 and 40000
        and i.data >= current_date - interval '18 months'
+       and i.uso !~* 'GARAGEM|VAGA|DEP[OÓ]SITO'      -- vaga avulsa e depósito não são imóvel comparável
        and case when p_tipo='casa' then i.uso ~* '(RESID|CASA|SOBRADO)' and i.uso !~* 'APART|CONDOM'
-                else i.uso ~* '(APART|CONDOM)' end),
+                else i.uso ~* 'APART' end),
   v5 as (select * from (select v.*, row_number() over (partition by logradouro, numero order by data desc) k from v) x where k <= 5),  -- até 5 vendas por prédio
   r as (select min(raio) raio from (values (600),(1000),(1500),(2000)) x(raio)
          where (select count(*) from v5 where d <= x.raio) >= least(p_lim, 12))
