@@ -12,7 +12,7 @@ import json, os
 
 import anthropic
 
-MODELO = os.environ.get('TEXTO_MODELO', 'claude-opus-5-5')
+MODELO = os.environ.get('TEXTO_MODELO', 'claude-sonnet-5-5')
 EFFORT = os.environ.get('TEXTO_EFFORT', 'medium')
 
 SISTEMA = """Você escreve pareceres de valor de imóveis para a Imobiliária Nova São Paulo, que atua na Zona Sul de São Paulo desde 1969. O parecer é entregue ao cliente (proprietário ou comprador) pelo corretor.

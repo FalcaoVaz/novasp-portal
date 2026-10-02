@@ -8,7 +8,7 @@
 // Chamada HTTP direta (sem SDK) porque este site é publicado por zip arrastado no Netlify, sem
 // "npm install" — mesmo motivo das outras funções daqui.
 
-const MODELO = process.env.PARECER_MODELO || 'claude-opus-5-5';
+const MODELO = process.env.PARECER_MODELO || 'claude-sonnet-5-5';   // Sonnet 5.5: metade do custo do Opus 5.5 (decisão Rodrigo 02/10/2026)
 const EFFORT = process.env.PARECER_EFFORT || 'medium';
 
 const SISTEMA = `Você escreve pareceres de valor de imóveis para a Imobiliária Nova São Paulo, que atua na Zona Sul de São Paulo desde 1969. O parecer é entregue ao cliente (proprietário ou comprador) pelo corretor.
