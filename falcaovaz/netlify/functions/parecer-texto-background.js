@@ -24,7 +24,8 @@ Escreva em português do Brasil, frases curtas, para um leitor leigo e inteligen
 
 Regras inegociáveis:
 - Use somente o que veio nos dados e na pesquisa. Não invente fatos. Fato da pesquisa só entra se tiver fonte; quando a pesquisa não confirmou algo, não afirme.
-- Nunca mencione "JSON", "dados fornecidos", "sistema", "modelo", "IA", "pesquisa" ou "busca"; escreva como o corretor escreveria. Se algo não foi encontrado (construtora, comércios, obras), simplesmente não fale do assunto: não escreva que não encontrou.
+- Nunca mencione "JSON", "dados fornecidos", "sistema", "modelo", "IA", "pesquisa" ou "busca"; escreva como o corretor escreveria. Se algo não foi encontrado (construtora, comércios, obras, preço de uma planta, nota de um lugar), simplesmente não fale do assunto: nunca escreva "não achamos", "não encontramos", "sem nota consultada" ou equivalente.
+- Notas de comércio só com 30 avaliações ou mais; abaixo disso, cite o lugar sem nota.
 - Não repita o que já está na tela (quantidade de vendas e anúncios comparáveis, suas medianas, distâncias a metrô, escolas e feira, zoneamento). Use esses números só quando forem a base de um achado novo.
 - Valores arredondados: "R$ 760 mil", "R$ 1,05 milhão", "cerca de R$ 11,6 mil por m² útil". Nada de centavos ou valores como R$ 763.165.
 - Preço por metro quadrado sempre em área útil. Fale em mediana, não em média.
@@ -126,16 +127,16 @@ Tarefas:
 1. Identifique o edifício deste endereço. Se for um dos prédios da lista, escolha pelo tamanho das unidades e pela proximidade e CONFIRME buscando o nome com o endereço (ou abra o link da lista). Se não estiver na lista, busque pelo endereço ("<rua>, <número>" + "edifício" ou "condomínio") e use o cadastro (ano, andares, unidades) para conferir. Diga o nome e o grau de certeza.
 2. Do edifício identificado: incorporadora e construtora, ano de lançamento e de entrega, padrão, lazer e diferenciais, preços divulgados.
 3. Da incorporadora/construtora: há quanto tempo atua, porte, outros empreendimentos na região, reputação pública com fonte (ex.: nota no Reclame Aqui). Só fatos.
-4. Vizinhança: procure guias e listas de melhores restaurantes, cafés, padarias, bares e lojas do bairro e do entorno (Veja Comer & Beber, TripAdvisor, Guia Michelin, listas de jornais e blogs locais). Traga até 6 nomes que fiquem a uma caminhada do endereço, com a nota ou o destaque que a fonte der.
+4. Vizinhança: procure guias e listas de melhores restaurantes, cafés, padarias, bares e lojas do bairro e do entorno (Veja Comer & Beber, TripAdvisor, Guia Michelin, listas de jornais e blogs locais). Traga até 6 nomes que fiquem a uma caminhada do endereço. Nota só quando a fonte mostrar ao menos 30 avaliações; caso contrário, o destaque que a fonte der (prêmio, lista, especialidade).
 5. Entorno: mudanças recentes ou previstas (obras, metrô, parques, grandes empreendimentos).
 Seja breve: no máximo 20 tópicos, cada um com a URL da fonte.`;
   const messages = [{ role: 'user', content: pedido }];
   const corpo = {
     model: MODELO, max_tokens: 6000, system: PESQUISA_SISTEMA, messages,
     output_config: { effort: 'medium' },
-    tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 8,
+    tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 6,
               user_location: { type: 'approximate', city: 'São Paulo', region: 'São Paulo', country: 'BR', timezone: 'America/Sao_Paulo' } },
-            { type: 'web_fetch_20260209', name: 'web_fetch', max_uses: 3 }]
+            { type: 'web_fetch_20260209', name: 'web_fetch', max_uses: 2, max_content_tokens: 5000 }]
   };
   let resp = null, buscas = 0, tokens = 0, acumulado = [];
   for (let i = 0; i < 3; i++) {                        // pause_turn: reenvia a pergunta + o que já veio, e o servidor continua
