@@ -254,8 +254,12 @@ const _avTipoGrupo = t => /terreno/i.test(t) ? 'terreno' : (_ehCasa(t) ? 'casa' 
 function _avCamposTipo(){
   const sel=document.getElementById('av-tipo'); if(!sel) return;
   const gr=_avTipoGrupo(sel.value);
-  document.querySelectorAll('#av-passo2 [data-t]').forEach(el=>{ el.style.display = el.dataset.t.split(' ').includes(gr) ? '' : 'none'; });
-  const a=document.getElementById('av-area'); if(a) a.placeholder = gr==='apto' ? 'Área útil (m²)' : 'Área construída (m²)';
+  document.querySelectorAll('#av-passo2 [data-t]').forEach(el=>{ el.style.display = el.dataset.t.split(' ').includes(gr) ? 'flex' : 'none'; });
+  // trocou para casa/comercial depois do cadastro carregado: traz a área construída do cadastro se o campo estiver vazio
+  const ar=document.getElementById('av-area'), ip=_avForm&&_avForm.iptuSel;
+  if(ar && !ar.value && ip && /^(casa|com)$/.test(gr) && Number(ip.area_construida)>0) ar.value=Math.round(Number(ip.area_construida));
+  const a=document.getElementById('av-area'); if(a) a.placeholder = '';
+  const al=document.getElementById('av-area-lb'); if(al) al.textContent = gr==='apto' ? 'Área útil (m²)' : 'Área construída (m²)';
   const h=document.getElementById('av-tipo-hint'); if(h) h.textContent = {apto:'Apartamento: a conta usa a área útil (anúncios e ITBI do bairro).',
     casa:'Casa: duas contas — comparativo pela área construída e evolutivo (terreno + construção depreciada). O valor adotado é a média.',
     terreno:'Terreno: valor como lote (R$/m² de terreno) e, se a zona permitir, a conta para incorporadora.',
@@ -336,6 +340,7 @@ function _avUsarIptu(sql, silencioso){
   _avForm.iptuSel=r;
   const set=(id,v)=>{ const e=document.getElementById(id); if(e && v && Number(v)>0 && (!e.value||!silencioso)) e.value=Math.round(Number(v)); };
   set('av-terreno', r.area_terreno); set('av-frente', r.testada);
+  const tp=document.getElementById('av-tipo'); if(tp && /^(casa|com)$/.test(_avTipoGrupo(tp.value))) set('av-area', r.area_construida);   // casa: construída do cadastro ≈ útil
   if(r.ano_construcao>1800){ const id=document.getElementById('av-idade'); if(id && (!id.value||!silencioso)) id.value=new Date().getFullYear()-r.ano_construcao; }
   const t=document.getElementById('av-inc-terreno'); if(t && !t.value) t.value=Math.round(Number(r.area_terreno)||0)||'';
   if(!silencioso){ const el=document.getElementById('av-iptu-info'); el && el.querySelectorAll('tr[onclick]').forEach(tr=>tr.style.background= tr.getAttribute('onclick').includes(sql)?'#eff6ff':''); }
@@ -458,6 +463,7 @@ function _avSet(k,v){ _avFiltro[k]=v; renderAvalLista(); }
 // ═══════════════ NOVA AVALIAÇÃO — formulário ═══════════════
 function avalNova(){
   _avPino=null; _avForm={};
+  if(_avMapa){ try{ _avMapa.remove(); }catch(_){} } _avMapa=null; _avMarker=null;   // o div do mapa é recriado: o mapa antigo ficaria preso ao elemento que saiu da tela
   const corpo=document.getElementById('aval-corpo');
   corpo.innerHTML = `
     <div class="card"><div class="cb">
@@ -480,21 +486,21 @@ function avalNova(){
 
     <div class="card" id="av-passo2" style="display:none"><div class="cb">
       <div style="font-weight:600;margin-bottom:10px">2 · O imóvel</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">
-        <select id="av-tipo" onchange="_avCamposTipo()" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px;width:100%">
-          ${AV_TIPOS.map(t=>`<option>${t}</option>`).join('')}</select>
-        <span data-t="apto casa com"><input id="av-area" type="number" placeholder="Área útil (m²)" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px;width:100%"></span>
-        <span data-t="casa terreno com"><input id="av-terreno" type="number" placeholder="Terreno (m²)" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px;width:100%"></span>
-        <span data-t="casa terreno com"><input id="av-frente" type="number" placeholder="Frente (m)" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px;width:100%"></span>
-        <span data-t="apto casa"><input id="av-dorm" type="number" placeholder="Dorm." style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px;width:100%"></span>
-        <span data-t="apto casa"><input id="av-suite" type="number" placeholder="Suítes" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px;width:100%"></span>
-        <span data-t="apto casa com"><input id="av-vaga" type="number" placeholder="Vagas" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px;width:100%"></span>
-        <span data-t="casa com"><select id="av-padrao-casa" title="Padrão da construção (custo de reposição pelo CUB Sinduscon-SP)" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px;width:100%">
-          ${Object.entries(AV_PADROES).map(([k,v])=>`<option value="${k}" ${k==='medio'?'selected':''}>Construção padrão ${v.lb}</option>`).join('')}</select></span>
-        <span data-t="casa com"><input id="av-idade" type="number" placeholder="Idade da construção (anos)" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px;width:100%"></span>
-        <span data-t="casa com"><select id="av-estado" title="Estado de conservação (Heidecke)" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px;width:100%">
-          ${Object.entries(AV_PARAM.estados).map(([k,v])=>`<option value="${k}" ${k==='bom'?'selected':''}>Estado: ${v[1]}</option>`).join('')}</select></span>
-        <span data-t="casa terreno com"><input id="av-rs-terreno" type="number" placeholder="R$/m² de terreno na região (opcional)" title="Se souber o preço de terreno na região (anúncios de lotes, negócios recentes), informe. Senão o sistema estima pelo R$/m² de casa do bairro." style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px;width:100%"></span>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:8px">
+        <label style="display:flex;flex-direction:column;gap:3px;font-size:.78em;color:#64748b;font-weight:500"><span>Tipo de imóvel</span><select id="av-tipo" onchange="_avCamposTipo()" style="font-size:1.28em;color:#0f172a;font-weight:400;padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px;width:100%">
+          ${AV_TIPOS.map(t=>`<option>${t}</option>`).join('')}</select></label>
+        <label data-t="apto casa com" style="display:flex;flex-direction:column;gap:3px;font-size:.78em;color:#64748b;font-weight:500"><span id="av-area-lb">Área útil (m²)</span><input id="av-area" type="number" placeholder="Área útil (m²)" style="font-size:1.28em;color:#0f172a;font-weight:400;padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px;width:100%"></label>
+        <label data-t="casa terreno com" style="display:flex;flex-direction:column;gap:3px;font-size:.78em;color:#64748b;font-weight:500"><span>Terreno (m²)</span><input id="av-terreno" type="number" placeholder="" style="font-size:1.28em;color:#0f172a;font-weight:400;padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px;width:100%"></label>
+        <label data-t="casa terreno com" style="display:flex;flex-direction:column;gap:3px;font-size:.78em;color:#64748b;font-weight:500"><span>Frente (m)</span><input id="av-frente" type="number" placeholder="" style="font-size:1.28em;color:#0f172a;font-weight:400;padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px;width:100%"></label>
+        <label data-t="apto casa" style="display:flex;flex-direction:column;gap:3px;font-size:.78em;color:#64748b;font-weight:500"><span>Dormitórios</span><input id="av-dorm" type="number" placeholder="" style="font-size:1.28em;color:#0f172a;font-weight:400;padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px;width:100%"></label>
+        <label data-t="apto casa" style="display:flex;flex-direction:column;gap:3px;font-size:.78em;color:#64748b;font-weight:500"><span>Suítes</span><input id="av-suite" type="number" placeholder="" style="font-size:1.28em;color:#0f172a;font-weight:400;padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px;width:100%"></label>
+        <label data-t="apto casa com" style="display:flex;flex-direction:column;gap:3px;font-size:.78em;color:#64748b;font-weight:500"><span>Vagas</span><input id="av-vaga" type="number" placeholder="" style="font-size:1.28em;color:#0f172a;font-weight:400;padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px;width:100%"></label>
+        <label data-t="casa com" style="display:flex;flex-direction:column;gap:3px;font-size:.78em;color:#64748b;font-weight:500"><span>Padrão da construção</span><select id="av-padrao-casa" title="Padrão da construção (custo de reposição pelo CUB Sinduscon-SP)" style="font-size:1.28em;color:#0f172a;font-weight:400;padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px;width:100%">
+          ${Object.entries(AV_PADROES).map(([k,v])=>`<option value="${k}" ${k==='medio'?'selected':''}>${v.lb}</option>`).join('')}</select></label>
+        <label data-t="casa com" style="display:flex;flex-direction:column;gap:3px;font-size:.78em;color:#64748b;font-weight:500"><span>Idade da construção (anos)</span><input id="av-idade" type="number" placeholder="" style="font-size:1.28em;color:#0f172a;font-weight:400;padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px;width:100%"></label>
+        <label data-t="casa com" style="display:flex;flex-direction:column;gap:3px;font-size:.78em;color:#64748b;font-weight:500"><span>Estado de conservação</span><select id="av-estado" title="Estado de conservação (Heidecke)" style="font-size:1.28em;color:#0f172a;font-weight:400;padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px;width:100%">
+          ${Object.entries(AV_PARAM.estados).map(([k,v])=>`<option value="${k}" ${k==='bom'?'selected':''}>${v[1].charAt(0).toUpperCase()+v[1].slice(1)}</option>`).join('')}</select></label>
+        <label data-t="casa terreno com" style="display:flex;flex-direction:column;gap:3px;font-size:.78em;color:#64748b;font-weight:500"><span>R$/m² de terreno na região (opcional)</span><input id="av-rs-terreno" type="number" placeholder="se souber" title="Se souber o preço de terreno na região (anúncios de lotes, negócios recentes), informe. Senão o sistema estima pelo R$/m² de casa do bairro." style="font-size:1.28em;color:#0f172a;font-weight:400;padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px;width:100%"></label>
       </div>
       <div id="av-tipo-hint" style="color:#94a3b8;font-size:.82em;margin-top:4px"></div>
       <button class="btn btn-p" style="margin-top:12px" onclick="avalCalcular()">⚙️ Gerar avaliação</button>
