@@ -15,7 +15,7 @@ const SISTEMA = `Você escreve pareceres de valor de imóveis para a Imobiliári
 
 O QUE TORNA ESTE TEXTO ÚTIL: o cliente já vê na tela o valor, a faixa, o R$/m², a lista de vendas e anúncios comparáveis, as distâncias até metrô, escolas e comércio, e o zoneamento. NÃO repita isso nem descreva a metodologia passo a passo. O texto existe para trazer o que não é óbvio:
 - os achados do mercado local ("mercado_local"): como o preço varia com a idade do prédio, o tamanho da unidade e o andar; se os preços estão subindo, parados ou caindo; o que já foi vendido no mesmo prédio e na mesma rua;
-- o que a pesquisa na internet apurou ("pesquisa"): o edifício (lançamento, incorporadora, padrão, diferenciais) e o entorno (novidades, obras, transformações);
+- o que a pesquisa na internet apurou ("pesquisa"): o edifício (lançamento, padrão, diferenciais), quem o construiu (tempo de mercado, outros empreendimentos, reputação pública com fonte), os comércios mais bem avaliados por perto (nome, tipo e nota, quando houver) e o que está mudando no entorno;
 - onde ESTE imóvel se encaixa nessas evidências e o que isso significa para o preço. Se o imóvel é de um prédio novo ou de padrão acima da média e a mediana geral mistura prédios antigos, diga que o valor calculado tende a ser conservador e quantifique pela faixa de idade correspondente. Se é o contrário, diga também.
 
 Escreva em português do Brasil, frases curtas, para um leitor leigo e inteligente. Tom sóbrio, sem adjetivos de venda e sem jargão sem explicação.
@@ -32,7 +32,7 @@ Regras inegociáveis:
 Estrutura:
 - "titulo": pergunta curta com o endereço.
 - "resposta": 2 a 3 frases: o valor arredondado e o principal achado que o sustenta ou o ajusta.
-- "secoes": 2 a 4 seções curtas (1 a 2 parágrafos cada; parágrafos separados por linha em branco), cada uma com um achado não óbvio. Exemplos de títulos: "O prédio", "Idade e padrão pesam", "O que já foi vendido aqui", "O mercado está parado", "O que muda no entorno", "Como anunciar".
+- "secoes": 3 a 5 seções curtas (1 a 2 parágrafos cada; parágrafos separados por linha em branco), cada uma com um achado não óbvio. Exemplos de títulos: "O prédio e quem construiu", "Idade e padrão pesam", "O que já foi vendido aqui", "A vizinhança", "O mercado está parado", "O que muda no entorno", "Como anunciar". Na seção sobre a vizinhança, cite de 3 a 5 comércios bem avaliados pelo nome, com a nota quando houver, e diga o que isso revela sobre o perfil do lugar. Sobre a construtora, só fatos com fonte, sem elogio nem crítica por conta própria.
 - "atencao": até 3 pontos que o cliente deve confirmar (andar, vagas, estado, documentação). Lista vazia se não houver.
 - "fontes": as páginas da pesquisa efetivamente usadas no texto (título curto e URL). Lista vazia se nenhuma.`;
 
@@ -114,14 +114,16 @@ async function pesquisar(apiKey, dados) {
   const alvo = [im.endereco, im.bairro, 'São Paulo - SP'].filter(Boolean).join(', ');
   const pedido = `Endereço: ${alvo}${im.tipo ? ' (' + im.tipo + ')' : ''}.
 Pesquise:
-1. O edifício neste endereço: nome, incorporadora ou construtora, ano de lançamento e de entrega, padrão, tamanho das unidades, lazer e diferenciais, preços de lançamento divulgados.
-2. O entorno a até uns 800 m: mudanças recentes ou previstas (obras viárias, metrô, parques, grandes empreendimentos, comércio relevante) e o que caracteriza o quarteirão.
-Seja breve: no máximo 12 tópicos.`;
+1. O edifício neste endereço: nome, incorporadora e construtora, ano de lançamento e de entrega, padrão, tamanho das unidades, lazer e diferenciais, preços de lançamento divulgados.
+2. A construtora/incorporadora: há quanto tempo atua, porte, outros empreendimentos conhecidos na região, prêmios ou certificações, e a reputação pública com fonte (por exemplo, nota no Reclame Aqui). Só fatos com fonte; não faça juízo de valor.
+3. Os comércios e serviços mais bem avaliados a até uns 800 m: restaurantes, padarias, cafés, mercados, lojas, academias. Para cada um: nome, tipo, nota e número de avaliações quando a fonte mostrar (Google, TripAdvisor e similares). No máximo 6, os de nota mais alta com boa quantidade de avaliações.
+4. O entorno: mudanças recentes ou previstas (obras viárias, metrô, parques, grandes empreendimentos) e o que caracteriza o quarteirão.
+Seja breve: no máximo 18 tópicos.`;
   const messages = [{ role: 'user', content: pedido }];
   const corpo = {
     model: MODELO, max_tokens: 6000, system: PESQUISA_SISTEMA, messages,
     output_config: { effort: 'low' },
-    tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 5,
+    tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 8,
               user_location: { type: 'approximate', city: 'São Paulo', region: 'São Paulo', country: 'BR', timezone: 'America/Sao_Paulo' } }]
   };
   let resp = null, buscas = 0, tokens = 0, acumulado = [];
