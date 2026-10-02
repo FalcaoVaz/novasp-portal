@@ -1214,22 +1214,38 @@ function _avTextoColetar(){
     gerado:t.gerado||null};
   _avForm.texto=out; return out;
 }
+// Geração no site do JURÍDICO (falcaovaz.netlify.app), que já tem a chave da Anthropic: o portal dispara a função
+// em segundo plano com o login do corretor e acompanha o resultado na fila ia_jobs (mesmo banco).
 async function avalGerarTexto(){
   const box=document.getElementById('av-texto'); if(!box) return;
-  box.innerHTML='<div class="card" style="margin-bottom:12px"><div class="cb" style="color:#64748b">✍️ Escrevendo o parecer… (até um minuto)</div></div>';
-  const ctrl=(typeof AbortController!=='undefined')?new AbortController():null; const timer=ctrl?setTimeout(()=>ctrl.abort(),150000):null;
+  const msg=t=>{ box.innerHTML=`<div class="card" style="margin-bottom:12px"><div class="cb" style="color:#64748b">${t}</div></div>`; };
+  const falhou=t=>{ box.innerHTML=_avTextoHTML(); const st=document.getElementById('av-texto-st'); if(st) st.innerHTML=`<span style="color:#b45309">Não foi possível escrever o texto: ${String(t).replace(/</g,'&lt;')}</span>`; };
+  msg('✍️ Escrevendo o parecer… (até um minuto)');
+  try{ if(typeof _authRenovarSePerto==='function') await _authRenovarSePerto(); }catch(_){}
+  const sess=(typeof _authCarregarSessao==='function')?_authCarregarSessao():null;
+  if(!sess||!sess.access_token){ falhou('sessão do portal não encontrada — saia e entre de novo.'); return; }
+  const job='par-'+(crypto&&crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2));
+  const origem=(typeof JURIDICO_ORIGIN!=='undefined'&&JURIDICO_ORIGIN)||'https://falcaovaz.netlify.app';
   try{
-    const r=await fetch(`${AVAL_MOTOR}/texto`,Object.assign({method:'POST',headers:hdr(),body:JSON.stringify(_avResumoParaTexto())},ctrl?{signal:ctrl.signal}:{}));
-    if(timer) clearTimeout(timer);
-    const j=await r.json().catch(()=>({}));
-    if(!r.ok) throw new Error(j.detail||('HTTP '+r.status));
-    _avForm.texto={titulo:j.titulo,resposta:j.resposta,secoes:j.secoes||[],atencao:j.atencao||[],gerado:{modelo:(j.uso||{}).modelo,em:new Date().toISOString()}};
-    box.innerHTML=_avTextoHTML();
-  }catch(e){
-    if(timer) clearTimeout(timer);
-    box.innerHTML=_avTextoHTML();
-    const st=document.getElementById('av-texto-st'); if(st) st.innerHTML=`<span style="color:#b45309">Não foi possível escrever o texto: ${String(e.name==='AbortError'?'o servidor demorou demais':e.message).replace(/</g,'&lt;')}</span>`;
+    // POST "simples" (text/plain, sem cabeçalhos extras): o navegador não faz preflight; a resposta é opaca e não importa
+    await fetch(`${origem}/.netlify/functions/parecer-texto-background`,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify({job_id:job,token:sess.access_token,dados:_avResumoParaTexto()})});
+  }catch(e){ falhou('não consegui acionar o serviço de texto.'); return; }
+  const t0=Date.now();
+  while(Date.now()-t0<180000){
+    await new Promise(r=>setTimeout(r,3000));
+    let row=null; try{ const r=await db.get('ia_jobs',`?job_id=eq.${job}&select=status,resultado,erro,modelo`); row=r&&r[0]; }catch(_){}
+    if(!row) continue;
+    if(row.status==='erro'){ falhou(row.erro||'erro no serviço de texto.'); return; }
+    if(row.status==='pronto'){
+      let j=null; try{ j=JSON.parse(row.resultado||'null'); }catch(_){}
+      if(!j||!j.titulo){ falhou('resposta inválida do serviço de texto.'); return; }
+      _avForm.texto={titulo:j.titulo,resposta:j.resposta,secoes:j.secoes||[],atencao:j.atencao||[],gerado:{modelo:row.modelo,em:new Date().toISOString()}};
+      box.innerHTML=_avTextoHTML(); return;
+    }
+    const seg=Math.round((Date.now()-t0)/1000); msg(`✍️ Escrevendo o parecer… ${seg} s`);
   }
+  falhou('o serviço de texto demorou mais de 3 minutos. Tente de novo.');
 }
 async function avalSalvar(){
   const d=_avForm.dossie; if(!d){ alert('Gere a avaliação antes.'); return; }
