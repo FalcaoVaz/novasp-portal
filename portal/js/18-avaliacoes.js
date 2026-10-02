@@ -1194,7 +1194,7 @@ function _avTextoHTML(){
   const esc=v=>String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
   if(!t) return `<div class="card" style="margin-bottom:12px"><div class="cb" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <button class="btn btn-o" onclick="avalGerarTexto()">✍️ Escrever o parecer em texto</button>
-      <span id="av-texto-st" style="color:#64748b;font-size:.88em">Texto analítico sobre o imóvel, o bairro e as evidências de preço, escrito a partir destes dados. Leva cerca de meio minuto; você pode editar antes de salvar.</span></div></div>`;
+      <span id="av-texto-st" style="color:#64748b;font-size:.88em">O que não aparece na tela: como idade do prédio, tamanho e andar mexem no preço por aqui, o que já foi vendido no prédio e na rua, e o que se sabe do edifício e do entorno. Leva um a dois minutos; você pode editar antes de salvar.</span></div></div>`;
   const ed='contenteditable="true" spellcheck="true" style="outline:none;border-radius:6px;padding:2px 4px;margin:-2px -4px"';
   return `<div class="card" style="margin-bottom:12px;border-left:3px solid #1E2D4A"><div class="cb">
     <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><div style="color:#64748b;font-size:.85em;text-transform:uppercase;letter-spacing:.04em">Parecer em texto <span style="text-transform:none;color:#94a3b8">· clique no texto para editar</span></div>
@@ -1202,6 +1202,7 @@ function _avTextoHTML(){
     <h3 data-t="titulo" ${ed} style="margin:8px 0 6px;font-size:1.15em">${esc(t.titulo)}</h3>
     <p data-t="resposta" ${ed} style="font-weight:600;margin:0 0 10px">${esc(t.resposta)}</p>
     ${(t.secoes||[]).map((sec,i)=>`<div style="margin-top:10px"><div data-t="st${i}" ${ed} style="font-weight:600;color:#1E2D4A">${esc(sec.titulo)}</div><div data-t="sx${i}" ${ed} style="white-space:pre-wrap;color:#334155;margin-top:2px">${esc(sec.texto)}</div></div>`).join('')}
+    ${(t.fontes||[]).length?`<div style="margin-top:10px;font-size:.82em;color:#64748b"><b>Fontes consultadas:</b> ${t.fontes.map(f=>`<a href="${esc(f.url)}" target="_blank" rel="noopener" style="color:#2563eb">${esc(f.titulo||f.url)}</a>`).join(' · ')}</div>`:''}
     ${(t.atencao||[]).length?`<div style="margin-top:10px;font-size:.92em"><b>Pontos de atenção</b><ul data-t="atencao" ${ed} style="margin:4px 0 0;padding-left:18px">${t.atencao.map(a=>`<li>${esc(a)}</li>`).join('')}</ul></div>`:''}
   </div></div>`;
 }
@@ -1211,7 +1212,7 @@ function _avTextoColetar(){
   const out={titulo:get('titulo')||t.titulo, resposta:get('resposta')||t.resposta,
     secoes:(t.secoes||[]).map((s,i)=>({titulo:get('st'+i)||s.titulo, texto:get('sx'+i)||s.texto})),
     atencao:(()=>{ const ul=box.querySelector('[data-t="atencao"]'); return ul?[...ul.querySelectorAll('li')].map(li=>li.innerText.trim()).filter(Boolean):(t.atencao||[]); })(),
-    gerado:t.gerado||null};
+    fontes:t.fontes||[], gerado:t.gerado||null};
   _avForm.texto=out; return out;
 }
 // Geração no site do JURÍDICO (falcaovaz.netlify.app), que já tem a chave da Anthropic: o portal dispara a função
@@ -1220,16 +1221,19 @@ async function avalGerarTexto(){
   const box=document.getElementById('av-texto'); if(!box) return;
   const msg=t=>{ box.innerHTML=`<div class="card" style="margin-bottom:12px"><div class="cb" style="color:#64748b">${t}</div></div>`; };
   const falhou=t=>{ box.innerHTML=_avTextoHTML(); const st=document.getElementById('av-texto-st'); if(st) st.innerHTML=`<span style="color:#b45309">Não foi possível escrever o texto: ${String(t).replace(/</g,'&lt;')}</span>`; };
-  msg('✍️ Escrevendo o parecer… (até um minuto)');
+  msg('✍️ Pesquisando o prédio e o entorno e escrevendo o parecer… (um a dois minutos)');
   try{ if(typeof _authRenovarSePerto==='function') await _authRenovarSePerto(); }catch(_){}
   const sess=(typeof _authCarregarSessao==='function')?_authCarregarSessao():null;
   if(!sess||!sess.access_token){ falhou('sessão do portal não encontrada — saia e entre de novo.'); return; }
   const job='par-'+(crypto&&crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2));
   const origem=(typeof JURIDICO_ORIGIN!=='undefined'&&JURIDICO_ORIGIN)||'https://falcaovaz.netlify.app';
+  // achados do mercado local (idade do prédio, tamanho, andar, tendência, mesmo prédio e mesma rua) — o que a tela não mostra
+  const dados=_avResumoParaTexto();
+  try{ const f=await _avRpc('aval_fatos',{p_lat:_avPino.lat,p_lng:_avPino.lng,p_logradouro:_avForm.rua||null,p_numero:_avForm.num||null,p_raio_m:800}); dados.mercado_local=Array.isArray(f)?f[0]:f; }catch(_){}
   try{
     // POST "simples" (text/plain, sem cabeçalhos extras): o navegador não faz preflight; a resposta é opaca e não importa
     await fetch(`${origem}/.netlify/functions/parecer-texto-background`,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},
-      body:JSON.stringify({job_id:job,token:sess.access_token,dados:_avResumoParaTexto()})});
+      body:JSON.stringify({job_id:job,token:sess.access_token,dados}) });
   }catch(e){ falhou('não consegui acionar o serviço de texto.'); return; }
   const t0=Date.now();
   while(Date.now()-t0<180000){
@@ -1240,7 +1244,7 @@ async function avalGerarTexto(){
     if(row.status==='pronto'){
       let j=null; try{ j=JSON.parse(row.resultado||'null'); }catch(_){}
       if(!j||!j.titulo){ falhou('resposta inválida do serviço de texto.'); return; }
-      _avForm.texto={titulo:j.titulo,resposta:j.resposta,secoes:j.secoes||[],atencao:j.atencao||[],gerado:{modelo:row.modelo,em:new Date().toISOString()}};
+      _avForm.texto={titulo:j.titulo,resposta:j.resposta,secoes:j.secoes||[],atencao:j.atencao||[],fontes:j.fontes||[],gerado:{modelo:row.modelo,em:new Date().toISOString()}};
       box.innerHTML=_avTextoHTML(); return;
     }
     const seg=Math.round((Date.now()-t0)/1000); msg(`✍️ Escrevendo o parecer… ${seg} s`);

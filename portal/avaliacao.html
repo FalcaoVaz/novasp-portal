@@ -150,6 +150,7 @@ function render(x){
       <h2 style="margin:6px 0 8px;font-size:1.25em">${escT(tx.titulo)}</h2>
       <p style="font-weight:600">${escT(tx.resposta)}</p>
       ${(tx.secoes||[]).map(s=>`<h3 style="margin:14px 0 4px;font-size:1.02em">${escT(s.titulo)}</h3>${String(s.texto||'').split(/\n\s*\n/).map(p=>`<p style="margin:0 0 8px">${escT(p)}</p>`).join('')}`).join('')}
+      ${(tx.fontes||[]).length?`<div class="foot">Fontes consultadas: ${tx.fontes.map(f=>`<a href="${escT(f.url)}" target="_blank" rel="noopener">${escT(f.titulo||f.url)}</a>`).join(' · ')}</div>`:''}
       ${(tx.atencao||[]).length?`<h3 style="margin:14px 0 4px;font-size:1.02em">Pontos de atenção</h3><ul style="margin:0;padding-left:18px">${tx.atencao.map(a=>`<li>${escT(a)}</li>`).join('')}</ul>`:''}
     </div>` : '';
 
