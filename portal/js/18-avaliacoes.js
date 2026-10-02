@@ -1167,7 +1167,7 @@ function _avCompara(pedido,mercado){
 
 // ═══════════════ TEXTO DO PARECER (Claude) — DESLIGADO em 02/10/2026 (Rodrigo: não compensou o custo) ═══════════════
 // O código fica para uma eventual retomada; com AV_TEXTO_ATIVO=false o botão não aparece e nada é cobrado.
-const AV_TEXTO_ATIVO = false;
+const AV_TEXTO_ATIVO = true;   // religado em 02/10/2026 para nova tentativa (prédio identificado + vizinhança)
 // O portal resume a avaliação em JSON (sem dado pessoal) e o motor devolve o texto analítico.
 // O corretor pode editar antes de salvar; o texto vai para o dossiê em memoria.texto.
 function _avResumoParaTexto(){
@@ -1232,6 +1232,11 @@ async function avalGerarTexto(){
   // achados do mercado local (idade do prédio, tamanho, andar, tendência, mesmo prédio e mesma rua) — o que a tela não mostra
   const dados=_avResumoParaTexto();
   try{ const f=await _avRpc('aval_fatos',{p_lat:_avPino.lat,p_lng:_avPino.lng,p_logradouro:_avForm.rua||null,p_numero:_avForm.num||null,p_raio_m:800}); dados.mercado_local=Array.isArray(f)?f[0]:f; }catch(_){}
+  // prédios novos anunciados perto (apto.vc), inclusive os prontos: a pesquisa usa para identificar o prédio do imóvel
+  try{ const l=await _avRpc('aval_lanc_anuncio',{p_lat:_avPino.lat,p_lng:_avPino.lng,p_raio_m:300,p_incluir_prontos:true}); const r=Array.isArray(l)?l[0]:l;
+       dados.predios_novos_perto=((r&&r.lista)||[]).map(x=>({nome:x.nome,status:x.status,d:x.d,area_min:x.area_min,area_max:x.area_max,andares:x.andares,lote_m2:x.lote_m2,rs_m2_anunciado:x.rs,url:x.url})); }catch(_){}
+  // cadastro que não bate com o tipo (ex.: apartamento num lote que o IPTU ainda registra como casa) = prédio provavelmente novo
+  if(dados.cadastro_prefeitura && /apart|studio|cobertura|duplex/i.test(dados.imovel.tipo||'') && !/apart|condom/i.test(dados.cadastro_prefeitura.uso||'')) dados.cadastro_prefeitura.pode_estar_desatualizado=true;
   try{
     // POST "simples" (text/plain, sem cabeçalhos extras): o navegador não faz preflight; a resposta é opaca e não importa
     await fetch(`${origem}/.netlify/functions/parecer-texto-background`,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},

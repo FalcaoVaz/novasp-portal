@@ -16,13 +16,16 @@ const SISTEMA = `Você escreve pareceres de valor de imóveis para a Imobiliári
 O QUE TORNA ESTE TEXTO ÚTIL: o cliente já vê na tela o valor, a faixa, o R$/m², a lista de vendas e anúncios comparáveis, as distâncias até metrô, escolas e comércio, e o zoneamento. NÃO repita isso nem descreva a metodologia passo a passo. O texto existe para trazer o que não é óbvio:
 - os achados do mercado local ("mercado_local"): como o preço varia com a idade do prédio, o tamanho da unidade e o andar; se os preços estão subindo, parados ou caindo; o que já foi vendido no mesmo prédio e na mesma rua;
 - o que a pesquisa na internet apurou ("pesquisa"): o edifício (lançamento, padrão, diferenciais), quem o construiu (tempo de mercado, outros empreendimentos, reputação pública com fonte), os comércios mais bem avaliados por perto (nome, tipo e nota, quando houver) e o que está mudando no entorno;
+- os prédios novos anunciados perto ("predios_novos_perto"): se a pesquisa identificou que o imóvel fica num deles, compare o R$/m² anunciado no próprio prédio com o valor calculado e explique a diferença (preço pedido x fechado, tamanho e andar das unidades). Se não, use os vizinhos novos como referência do que o mercado de prédio novo pede ali;
+- se o cadastro da Prefeitura parece desatualizado para o lote, explique ao cliente que é comum em prédio recente e o que isso implica (área e ano a confirmar na matrícula e no IPTU individual);
 - onde ESTE imóvel se encaixa nessas evidências e o que isso significa para o preço. Se o imóvel é de um prédio novo ou de padrão acima da média e a mediana geral mistura prédios antigos, diga que o valor calculado tende a ser conservador e quantifique pela faixa de idade correspondente. Se é o contrário, diga também.
 
 Escreva em português do Brasil, frases curtas, para um leitor leigo e inteligente. Tom sóbrio, sem adjetivos de venda e sem jargão sem explicação.
 
 Regras inegociáveis:
 - Use somente o que veio nos dados e na pesquisa. Não invente fatos. Fato da pesquisa só entra se tiver fonte; quando a pesquisa não confirmou algo, não afirme.
-- Nunca mencione "JSON", "dados fornecidos", "sistema", "modelo", "IA" ou "pesquisa na internet"; escreva como o corretor escreveria.
+- Nunca mencione "JSON", "dados fornecidos", "sistema", "modelo", "IA", "pesquisa" ou "busca"; escreva como o corretor escreveria. Se algo não foi encontrado (construtora, comércios, obras), simplesmente não fale do assunto: não escreva que não encontrou.
+- Não repita o que já está na tela (quantidade de vendas e anúncios comparáveis, suas medianas, distâncias a metrô, escolas e feira, zoneamento). Use esses números só quando forem a base de um achado novo.
 - Valores arredondados: "R$ 760 mil", "R$ 1,05 milhão", "cerca de R$ 11,6 mil por m² útil". Nada de centavos ou valores como R$ 763.165.
 - Preço por metro quadrado sempre em área útil. Fale em mediana, não em média.
 - Quando as fontes divergem, diga quanto e a explicação mais provável.
@@ -112,19 +115,27 @@ async function anthropic(apiKey, corpo, betas) {
 async function pesquisar(apiKey, dados) {
   const im = (dados && dados.imovel) || {};
   const alvo = [im.endereco, im.bairro, 'São Paulo - SP'].filter(Boolean).join(', ');
-  const pedido = `Endereço: ${alvo}${im.tipo ? ' (' + im.tipo + ')' : ''}.
-Pesquise:
-1. O edifício neste endereço: nome, incorporadora e construtora, ano de lançamento e de entrega, padrão, tamanho das unidades, lazer e diferenciais, preços de lançamento divulgados.
-2. A construtora/incorporadora: há quanto tempo atua, porte, outros empreendimentos conhecidos na região, prêmios ou certificações, e a reputação pública com fonte (por exemplo, nota no Reclame Aqui). Só fatos com fonte; não faça juízo de valor.
-3. Os comércios e serviços mais bem avaliados a até uns 800 m: restaurantes, padarias, cafés, mercados, lojas, academias. Para cada um: nome, tipo, nota e número de avaliações quando a fonte mostrar (Google, TripAdvisor e similares). No máximo 6, os de nota mais alta com boa quantidade de avaliações.
-4. O entorno: mudanças recentes ou previstas (obras viárias, metrô, parques, grandes empreendimentos) e o que caracteriza o quarteirão.
-Seja breve: no máximo 18 tópicos.`;
+  const cad = dados.cadastro_prefeitura || null;
+  const cand = (dados.predios_novos_perto || []).slice(0, 8)
+    .map(p => `- ${p.nome} (${p.status}; a ${p.d} m do ponto; unidades de ${p.area_min} a ${p.area_max} m²${p.andares ? '; ' + p.andares + ' andares' : ''}) ${p.url}`).join('\n');
+  const pedido = `Endereço avaliado: ${alvo}. Tipo: ${im.tipo || '—'}${im.area_util ? ', ' + im.area_util + ' m² úteis' : ''}${im.dorm ? ', ' + im.dorm + ' dorm.' : ''}.
+${cad ? `Cadastro da Prefeitura do lote: uso "${cad.uso || '—'}", ano ${cad.ano_construcao || '—'}, ${cad.pavimentos || '—'} pavimentos, ${cad.unidades_no_lote || '—'} unidades.${cad.pode_estar_desatualizado ? ' ATENÇÃO: o cadastro parece desatualizado (descreve outra coisa que não um apartamento), então o prédio provavelmente é novo.' : ''}` : 'Sem dado do cadastro.'}
+${cand ? `Prédios novos anunciados perto (o ponto no mapa pode estar até ~200 m deslocado):\n${cand}` : 'Nenhum prédio novo anunciado perto.'}
+
+Tarefas:
+1. Identifique o edifício deste endereço. Se for um dos prédios da lista, escolha pelo tamanho das unidades e pela proximidade e CONFIRME buscando o nome com o endereço (ou abra o link da lista). Se não estiver na lista, busque pelo endereço ("<rua>, <número>" + "edifício" ou "condomínio") e use o cadastro (ano, andares, unidades) para conferir. Diga o nome e o grau de certeza.
+2. Do edifício identificado: incorporadora e construtora, ano de lançamento e de entrega, padrão, lazer e diferenciais, preços divulgados.
+3. Da incorporadora/construtora: há quanto tempo atua, porte, outros empreendimentos na região, reputação pública com fonte (ex.: nota no Reclame Aqui). Só fatos.
+4. Vizinhança: procure guias e listas de melhores restaurantes, cafés, padarias, bares e lojas do bairro e do entorno (Veja Comer & Beber, TripAdvisor, Guia Michelin, listas de jornais e blogs locais). Traga até 6 nomes que fiquem a uma caminhada do endereço, com a nota ou o destaque que a fonte der.
+5. Entorno: mudanças recentes ou previstas (obras, metrô, parques, grandes empreendimentos).
+Seja breve: no máximo 20 tópicos, cada um com a URL da fonte.`;
   const messages = [{ role: 'user', content: pedido }];
   const corpo = {
     model: MODELO, max_tokens: 6000, system: PESQUISA_SISTEMA, messages,
-    output_config: { effort: 'low' },
+    output_config: { effort: 'medium' },
     tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 8,
-              user_location: { type: 'approximate', city: 'São Paulo', region: 'São Paulo', country: 'BR', timezone: 'America/Sao_Paulo' } }]
+              user_location: { type: 'approximate', city: 'São Paulo', region: 'São Paulo', country: 'BR', timezone: 'America/Sao_Paulo' } },
+            { type: 'web_fetch_20260209', name: 'web_fetch', max_uses: 3 }]
   };
   let resp = null, buscas = 0, tokens = 0, acumulado = [];
   for (let i = 0; i < 3; i++) {                        // pause_turn: reenvia a pergunta + o que já veio, e o servidor continua
