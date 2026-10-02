@@ -688,13 +688,8 @@ async function avalCalcular(opts){
   amostraTodos.forEach(a=>{ a._k=kAn(a); a.excluido=_avForm.excl.has(a._k); });
   const amostra=amostraTodos.filter(a=>!a.excluido);
   const compsItbiAtivos=compsItbi.filter(c=>!c.excluido);
-  // anúncios só trazem a rua: centro da rua pelas vendas registradas (com leve dispersão para não empilhar); vendas reais: número exato ou próximo
-  const _jit=(i)=>((i*7919)%13-6)*0.00006;
-  if(!recalc){ try{
-      const ruas=[...new Set(amostraTodos.map(a=>a.rua).filter(Boolean))];
-      const geo=ruas.length?(await _avRpc('aval_geocode_ruas',{p_ruas:ruas})||[]):[]; const m=Object.fromEntries(geo.map(g=>[g.rua,g]));
-      amostraTodos.forEach((a,i)=>{ const g=m[a.rua]; if(g){ a.lat=g.lat+_jit(i); a.lng=g.lng+_jit(i+5); a.aprox=true; } });
-    }catch(_){} }
+  // anúncios só trazem a rua (sem número): ficam fora do mapa — só na tabela de comparáveis (Rodrigo, 02/10/2026)
+  amostraTodos.forEach(a=>{ delete a.lat; delete a.lng; });
   if(!recalc) await Promise.all([
     ...compsItbi.slice(0,12).map(async c=>{ try{ const r=await _avRpc('aval_geocode_endereco',{p_rua:c.logradouro||'',p_numero:c.numero||''}); const h=Array.isArray(r)?r[0]:null; if(h&&h.lat){ c.lat=h.lat; c.lng=h.lng; return; } }catch(_){} const g=await geocodar(`${c.logradouro||''} ${c.numero||''}`); if(g) Object.assign(c,g); }),
   ]);
@@ -1017,7 +1012,7 @@ function renderAvalPreview(x, precos){
             <span style="color:#64748b;font-size:.88em">Zona ${x.zona||''} permite adensar (CA ${x.ca}). Calcula quanto um incorporador pagaria pelo terreno.</span></div></div>`
         :`<div class="card" style="margin-bottom:12px;border-left:3px solid #cbd5e1"><div class="cb" style="color:#64748b;font-size:.9em">🏗️ Terreno para incorporação: ${_avForm.incorpMotivo||'não se aplica'}</div></div>`):''}
     <div id="av-incorp-painel" style="display:none"></div>
-    ${comps.some(c=>c.lat)?`<div class="card" style="margin-bottom:12px"><div class="cb"><div style="color:#64748b;font-size:.85em;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Mapa: imóvel avaliado, anúncios e vendas reais</div><div id="av-mapa-comps" style="height:320px;border-radius:10px;border:1px solid #e2e8f0"></div><div style="font-size:.82em;color:#64748b;margin-top:6px"><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#dc2626;border:2px solid #fff;box-shadow:0 0 0 2px #dc2626;vertical-align:middle"></span> imóvel avaliado &nbsp; <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#60a5fa;border:2px solid #2563eb;vertical-align:middle"></span> anúncios à venda &nbsp; <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#34d399;border:2px solid #047857;vertical-align:middle"></span> vendas reais (ITBI). Anúncio sem número fica na rua.</div></div></div>`:''}
+    ${(comps.some(c=>c.lat)||x.lat||_avPino)?`<div class="card" style="margin-bottom:12px"><div class="cb"><div style="color:#64748b;font-size:.85em;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Mapa: imóvel avaliado e vendas reais</div><div id="av-mapa-comps" style="height:320px;border-radius:10px;border:1px solid #e2e8f0"></div><div style="font-size:.82em;color:#64748b;margin-top:6px"><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#dc2626;border:2px solid #fff;box-shadow:0 0 0 2px #dc2626;vertical-align:middle"></span> imóvel avaliado &nbsp; <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#34d399;border:2px solid #047857;vertical-align:middle"></span> vendas reais (ITBI). Os anúncios não trazem o número do imóvel e por isso aparecem só na tabela abaixo.</div></div></div>`:''}
     ${inc}
     ${comps.length?`<div class="card" style="margin-bottom:12px"><div class="cb">
       <div style="color:#64748b;font-size:.85em;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Comparáveis</div>
@@ -1144,7 +1139,7 @@ function _avMetodoHTML(mu, x){
 async function _avDesenharMapaComps(comps, centro){
   const el=document.getElementById('av-mapa-comps'); if(!el) return;
   try{ await _avCarregarLeaflet(); }catch(_){ el.textContent='(mapa indisponível)'; return; }
-  const pts=comps.filter(c=>c.lat&&c.lng);
+  const pts=comps.filter(c=>c.lat&&c.lng&&/ITBI|Fechamento|Venda real/i.test(c.origem||c.tipo||''));   // só vendas reais (anúncios não têm número)
   const c0=centro||(pts.length?{lat:pts[0].lat,lng:pts[0].lng}:null); if(!c0) return;
   const map=L.map(el).setView([c0.lat,c0.lng],14);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
@@ -1226,7 +1221,7 @@ function abrirAvalDetalhe(id){
       ${x.preco_pedido?`<div style="margin-top:8px;font-size:.9em">Pretendido: <b>${_avR$(x.preco_pedido)}</b> ${_avCompara(x.preco_pedido,x.valor_mercado)}</div>`:''}
     </div></div>`:''}
     ${inc}
-    ${comps.some(c=>c.lat)?`<div class="card" style="margin-bottom:12px"><div class="cb"><div style="color:#64748b;font-size:.85em;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Mapa: imóvel, anúncios e fechamentos</div><div id="av-mapa-comps" style="height:320px;border-radius:10px;border:1px solid #e2e8f0"></div><div style="font-size:.82em;color:#64748b;margin-top:6px"><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#dc2626;border:2px solid #fff;box-shadow:0 0 0 2px #dc2626;vertical-align:middle"></span> imóvel avaliado &nbsp; <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#60a5fa;border:2px solid #2563eb;vertical-align:middle"></span> anúncios à venda &nbsp; <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#34d399;border:2px solid #047857;vertical-align:middle"></span> vendas reais (ITBI). Anúncio sem número fica na rua.</div></div></div>`:''}
+    ${(comps.some(c=>c.lat)||x.lat||_avPino)?`<div class="card" style="margin-bottom:12px"><div class="cb"><div style="color:#64748b;font-size:.85em;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Mapa: imóvel, anúncios e fechamentos</div><div id="av-mapa-comps" style="height:320px;border-radius:10px;border:1px solid #e2e8f0"></div><div style="font-size:.82em;color:#64748b;margin-top:6px"><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#dc2626;border:2px solid #fff;box-shadow:0 0 0 2px #dc2626;vertical-align:middle"></span> imóvel avaliado &nbsp; <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#34d399;border:2px solid #047857;vertical-align:middle"></span> vendas reais (ITBI). Os anúncios não trazem o número do imóvel e por isso aparecem só na tabela abaixo.</div></div></div>`:''}
     ${comps.length?`<div class="card" style="margin-bottom:12px"><div class="cb">
       <div style="color:#64748b;font-size:.85em;text-transform:uppercase;margin-bottom:6px">Comparáveis</div>
       ${_avCompsTabela(comps)}

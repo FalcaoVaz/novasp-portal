@@ -211,7 +211,7 @@ function render(x){
 
   const mapa = comps.some(c=>c.lat) || x.lat ? `
     <div class="card"><div class="kicker">Mapa das referências</div><div id="mapa" style="margin-top:8px"></div>
-      <div class="foot"><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#dc2626;border:2px solid #fff;box-shadow:0 0 0 2px #dc2626;vertical-align:middle"></span> imóvel avaliado &nbsp; <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#60a5fa;border:2px solid #2563eb;vertical-align:middle"></span> anúncios à venda &nbsp; <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#34d399;border:2px solid #047857;vertical-align:middle"></span> vendas reais (ITBI)</div></div>` : '';
+      <div class="foot"><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#dc2626;border:2px solid #fff;box-shadow:0 0 0 2px #dc2626;vertical-align:middle"></span> imóvel avaliado &nbsp; <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#34d399;border:2px solid #047857;vertical-align:middle"></span> vendas reais (ITBI). Os anúncios não informam o número do imóvel e aparecem só na lista de referências.</div></div>` : '';
 
   const assinatura = `
     <div class="card">
@@ -244,7 +244,7 @@ async function desenharMapa(x){
   let comps=[]; try{ comps = typeof x.comparaveis==='string'?JSON.parse(x.comparaveis):(x.comparaveis||[]); }catch(_){}
   await new Promise((ok,err)=>{ if(window.L) return ok(); const s=document.createElement('script'); s.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'; s.onload=ok; s.onerror=err; document.head.appendChild(s); }).catch(()=>null);
   if(!window.L){ el.textContent='(mapa indisponível)'; return; }
-  const pts=comps.filter(c=>c.lat&&c.lng&&!c.excluido); const c0 = x.lat?{lat:x.lat,lng:x.lng}:(pts[0]||null); if(!c0) return;
+  const pts=comps.filter(c=>c.lat&&c.lng&&!c.excluido&&/ITBI|Fechamento|Venda real/i.test(c.origem||c.tipo||'')); const c0 = x.lat?{lat:x.lat,lng:x.lng}:(pts[0]||null); if(!c0) return;
   const map=L.map(el,{zoomControl:!modoPdf,attributionControl:true}).setView([c0.lat,c0.lng],14);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
   const b=[];
