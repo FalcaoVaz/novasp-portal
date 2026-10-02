@@ -202,9 +202,9 @@ function render(x){
       <tbody>${usados.map(c=>{ const itbi=/ITBI|Fechamento|Venda real/i.test(c.origem||c.tipo||''); return `<tr>
         <td>${itbi?'<b style="color:#047857">Venda real</b> (ITBI)':'Anúncio'}${c.data?' '+String(c.data).slice(0,7):''}</td>
         <td>${c.endereco||'—'}${c.dorm?` <span class="sub">${c.dorm} dorm${c.vaga?' · '+c.vaga+' vg':''}</span>`:''}</td>
-        <td class="r">${c.area?Math.round(c.area)+' m²':'—'}${itbi&&c.area_util_est?`<br><span class="sub">≈ ${c.area_util_est} m² útil</span>`:''}</td>
+        <td class="r">${itbi&&c.area_util_est?`≈ ${c.area_util_est} m² útil${c.area?`<br><span class="sub">${Math.round(c.area)} m² no cadastro</span>`:''}`:(c.area?Math.round(c.area)+' m²':'—')}</td>
         <td class="r">${R$(c.preco)}</td>
-        <td class="r">${R$(c.rs_m2)}${itbi&&c.rs_util?`<br><span class="sub">${R$(c.rs_util)} útil</span>`:''}</td></tr>`; }).join('')}</tbody></table>
+        <td class="r">${itbi&&c.rs_util?`${R$(c.rs_util)} útil${c.rs_m2?`<br><span class="sub">${R$(c.rs_m2)} no cadastro</span>`:''}`:R$(c.rs_m2)}</td></tr>`; }).join('')}</tbody></table>
       ${excluidos.length?`<div class="foot">Excluídas pelo corretor por destoarem do conjunto: ${excluidos.map(c=>c.endereco||c.tipo).join('; ')}.</div>`:''}
       <div class="foot"><b>Venda real</b> = transação registrada na Prefeitura de São Paulo (guia de ITBI), com o preço efetivamente declarado na venda. <b>Anúncio</b> = preço pedido em portal imobiliário, ajustado pelo índice pedido→fechado. ITBI: área do cadastro da Prefeitura; área útil estimada pela relação medida entre cadastro e área útil na base da Nova São Paulo.</div>
     </div>` : '';
