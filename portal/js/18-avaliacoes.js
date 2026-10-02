@@ -300,7 +300,7 @@ const _avN = v => (v==null||v===''||isNaN(Number(v)))?'—':Number(v).toLocaleSt
 async function _avBuscarIptu(){
   const el=document.getElementById('av-iptu-info'); if(!el) return;
   const rua=(_avForm.rua||'').trim(), num=(_avForm.num||'').trim();
-  _avForm.iptu=null; const seq=(window._avIptuSeq=(window._avIptuSeq||0)+1); const velho=()=>seq!==window._avIptuSeq;
+  _avForm.iptu=null; _avForm.iptuVizinho=null; const seq=(window._avIptuSeq=(window._avIptuSeq||0)+1); const velho=()=>seq!==window._avIptuSeq;
   if(!rua||!num){ el.innerHTML=''; return; }
   el.innerHTML='<span style="color:#94a3b8;font-size:.88em">Consultando o cadastro do IPTU…</span>';
   let rows=[], ruas=[];
@@ -316,8 +316,13 @@ async function _avBuscarIptu(){
   if(velho()) return;
   if(!rows.length){
     let prox=[]; try{ prox=await _avIptu('iptu_proximos',{p_logradouro:(ruas[0]&&ruas[0].logradouro_norm)||rua,p_numero:num,p_lim:6})||[]; }catch(_){}
+    if(velho()) return;
+    // prédio a poucos números: quase sempre é o do imóvel (portaria num número, cadastro em outro)
+    const pr=prox.find(p=>p.unidades>=4 && p.dif<=16);
+    _avForm.iptuVizinho = pr ? {numero:pr.numero, unidades:Number(pr.unidades), distancia_em_numeros:pr.dif} : null;
+    const dest = pr ? `<div style="margin:4px 0;color:#b45309">Prédio de ${pr.unidades} unidades no nº ${pr.numero}: se o imóvel é apartamento, provavelmente é este. <a href="javascript:void(0)" onclick="_avForm.num='${pr.numero}';_avBuscarIptu()" style="color:#2563eb;font-weight:600">Usar o cadastro do nº ${pr.numero}</a></div>` : '';
     el.innerHTML = prox.length
-      ? `<div style="font-size:.86em;color:#334155;padding:6px 8px;background:#f8fafc;border-radius:8px">🏛️ <b>Cadastro do IPTU:</b> o nº ${num} não está no cadastro de ${prox[0].logradouro.replace(/\s+/g,' ')}. Números mais próximos: ${prox.map(p=>`<a href="javascript:void(0)" onclick="_avForm.num='${p.numero}';_avBuscarIptu()" style="color:#2563eb">${p.numero}</a> <span style="color:#94a3b8">(${p.unidades>1?p.unidades+' unid.':(p.uso||'')})</span>`).join(' · ')}</div>`
+      ? `<div style="font-size:.86em;color:#334155;padding:6px 8px;background:#f8fafc;border-radius:8px">🏛️ <b>Cadastro do IPTU:</b> o nº ${num} não está no cadastro de ${prox[0].logradouro.replace(/\s+/g,' ')}.${dest} Números mais próximos: ${prox.map(p=>`<a href="javascript:void(0)" onclick="_avForm.num='${p.numero}';_avBuscarIptu()" style="color:#2563eb">${p.numero}</a> <span style="color:#94a3b8">(${p.unidades>1?p.unidades+' unid.':(p.uso||'')})</span>`).join(' · ')}</div>`
       : `<span style="color:#94a3b8;font-size:.85em">🏛️ Cadastro do IPTU: rua não encontrada no recorte carregado (CEPs 04…).</span>`;
     return;
   }
@@ -331,8 +336,20 @@ async function _avBuscarIptu(){
       <div style="max-height:220px;overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:.82em"><thead><tr style="color:#94a3b8;text-align:left"><th style="padding:2px 6px">Contribuinte</th><th style="padding:2px 6px">Complemento</th><th style="padding:2px 6px;text-align:right">Construída (cadastro)</th><th style="padding:2px 6px;text-align:right">Fração</th><th style="padding:2px 6px">Uso</th></tr></thead>
       <tbody>${rows.map(r=>`<tr style="border-top:1px solid #f1f5f9;cursor:pointer" onclick="_avUsarIptu('${r.sql}')"><td style="padding:2px 6px">${r.sql}</td><td style="padding:2px 6px">${r.complemento||''}</td><td style="padding:2px 6px;text-align:right">${_avN(r.area_construida)} m²</td><td style="padding:2px 6px;text-align:right">${_avN(r.fracao_ideal)}</td><td style="padding:2px 6px">${r.uso||''}</td></tr>`).join('')}</tbody></table></div>
       <div style="color:#94a3b8;font-size:.78em">Clique numa unidade para usá-la. Área construída do cadastro inclui a fração das áreas comuns e garagem — não é a área útil.</div></details>` : '';
-  el.innerHTML=`<div style="font-size:.88em;color:#334155;padding:6px 8px;background:#f8fafc;border-radius:8px">🏛️ <b>Cadastro do IPTU</b> (Prefeitura, 2026): ${resumo}${!vertical?` · contribuinte ${lote.sql}`:''}${tabela}</div>`;
+  el.innerHTML=`<div style="font-size:.88em;color:#334155;padding:6px 8px;background:#f8fafc;border-radius:8px">🏛️ <b>Cadastro do IPTU</b> (Prefeitura, 2026): ${resumo}${!vertical?` · contribuinte ${lote.sql}`:''}${tabela}<div id="av-iptu-viz"></div></div>`;
   if(!vertical) _avUsarIptu(lote.sql, true);
+  // o nº digitado é casa/lote, mas o prédio pode estar registrado num número vizinho (ex.: portaria no 156, cadastro no 160)
+  _avForm.iptuVizinho=null;
+  if(!vertical){
+    let prox=[]; try{ prox=await _avIptu('iptu_proximos',{p_logradouro:comNum.logradouro_norm,p_numero:num,p_lim:12})||[]; }catch(_){}
+    if(velho()) return;
+    const pr=prox.find(p=>p.unidades>=4 && p.dif>0 && p.dif<=16);
+    const vz=document.getElementById('av-iptu-viz');
+    if(pr && vz){
+      _avForm.iptuVizinho={numero:pr.numero, unidades:Number(pr.unidades), distancia_em_numeros:pr.dif};
+      vz.innerHTML=`<div style="margin-top:6px;color:#b45309">Se o imóvel é apartamento: o nº ${num} é ${String(lote.uso||'casa/lote').toLowerCase()} no cadastro, e há um prédio de ${pr.unidades} unidades no nº ${pr.numero}. <a href="javascript:void(0)" onclick="_avForm.num='${pr.numero}';_avBuscarIptu()" style="color:#2563eb">Usar o cadastro do nº ${pr.numero}</a></div>`;
+    }
+  }
 }
 // Preenche o formulário com os dados do cadastro (casa/terreno: terreno e testada; apto: só referência)
 // Resumo do cadastro para a caixa "Cadastro da Prefeitura" (tela e dossiê): a unidade escolhida, ou o lote quando nenhuma foi escolhida
@@ -345,14 +362,22 @@ function _avIptuResumo(tipo){
            sql: sel?sel.sql:(lote.length===1?base.sql:null), uso:base.uso, padrao:base.padrao, ano_construcao:base.ano_construcao>1800?base.ano_construcao:null,
            pavimentos:base.pavimentos||null, area_terreno:base.area_terreno, testada:base.testada, area_construida:sel||lote.length===1?base.area_construida:null,
            unidades_no_lote:unid, vagas_avulsas:vagas,
-           desatualizado: ehApto && !/apart|condom/i.test(base.uso||'') };
+           desatualizado: ehApto && !/apart|condom/i.test(base.uso||''), oculto: !!_avForm.iptuOculto };
 }
-function _avIptuCaixaHTML(ip){
+// Caixa do cadastro. Vem aberta; o tique "Ocultar" tira a caixa do dossiê e do parecer em texto (ex.: o número digitado é
+// uma casa e o prédio está registrado em outro número). idSalvo = id da avaliação salva (grava na hora) ou null (prévia).
+function _avIptuCaixaHTML(ip, idSalvo){
   if(!ip) return '';
   const N=v=>(v==null||v===''||isNaN(Number(v)))?null:Number(v).toLocaleString('pt-BR',{maximumFractionDigits:2});
   const it=(lb,v)=>v==null||v===''?'':`<div><span style="color:#94a3b8;font-size:.85em">${lb}</span><br><b>${v}</b></div>`;
-  return `<div class="card" style="margin-bottom:12px"><div class="cb">
-    <div style="color:#64748b;font-size:.85em;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">🏛️ Cadastro da Prefeitura (IPTU 2026)</div>
+  const ref=idSalvo?String(idSalvo):'p';
+  const topo=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px">
+      <div style="color:#64748b;font-size:.85em;text-transform:uppercase;letter-spacing:.04em">🏛️ Cadastro da Prefeitura (IPTU 2026)</div>
+      <label style="font-size:.85em;color:#475569;display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap"><input type="checkbox" ${ip.oculto?'checked':''} onchange="_avIptuOcultar(this.checked, ${idSalvo?idSalvo:'null'})"> Ocultar do dossiê</label></div>`;
+  if(ip.oculto) return `<div class="card" id="av-iptu-caixa-${ref}" style="margin-bottom:12px"><div class="cb">${topo}
+    <div style="font-size:.85em;color:#94a3b8">Oculto: não aparece no dossiê do cliente nem no parecer em texto.</div></div></div>`;
+  return `<div class="card" id="av-iptu-caixa-${ref}" style="margin-bottom:12px"><div class="cb">
+    ${topo}
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;font-size:.92em">
       ${it('Contribuinte (SQL)', ip.unidade?ip.unidade.sql:ip.sql)}${it('Unidade', ip.unidade&&ip.unidade.complemento)}
       ${it('Uso', ip.unidade?ip.unidade.uso:ip.uso)}${it('Padrão', ip.padrao)}${it('Ano de construção', ip.ano_construcao)}
@@ -363,6 +388,21 @@ function _avIptuCaixaHTML(ip){
     ${ip.desatualizado?`<div style="margin-top:8px;font-size:.85em;color:#b45309">O cadastro de 2026 ainda descreve o lote de outra forma (${ip.uso||'—'}). É comum em prédio recente, antes de a Prefeitura desmembrar as unidades: confirme área e ano na matrícula e no carnê de IPTU da unidade.</div>`:''}
     <div style="margin-top:6px;font-size:.78em;color:#94a3b8">A área construída do cadastro inclui áreas comuns e garagem; não é a área útil. Dado de referência, não entra na conta de valor.</div>
   </div></div>`;
+}
+async function _avIptuOcultar(v, idSalvo){
+  let ip=null;
+  if(idSalvo){
+    const x=(_avImoveis||[]).find(y=>y.id===idSalvo); if(!x||!x.entorno||!x.entorno.iptu) return;
+    const entorno=Object.assign({}, x.entorno, {iptu:Object.assign({}, x.entorno.iptu, {oculto:!!v})});
+    try{ await db.patch('aval_resultado', idSalvo, {entorno}); x.entorno=entorno; ip=entorno.iptu; }
+    catch(e){ alert('Não foi possível gravar: '+(e.message||e)); return; }
+  } else {
+    _avForm.iptuOculto=!!v;
+    const ent=_avForm.dossie&&_avForm.dossie.entorno; if(ent&&ent.iptu) ent.iptu=Object.assign({}, ent.iptu, {oculto:!!v});
+    ip=(ent&&ent.iptu)||Object.assign({}, _avIptuResumo((document.getElementById('av-tipo')||{}).value)||{}, {oculto:!!v});
+  }
+  const box=document.getElementById('av-iptu-caixa-'+(idSalvo?String(idSalvo):'p'));
+  if(box&&ip){ const tmp=document.createElement('div'); tmp.innerHTML=_avIptuCaixaHTML(ip, idSalvo); box.replaceWith(tmp.firstElementChild); }
 }
 function _avUsarIptu(sql, silencioso){
   const r=(_avForm.iptu||[]).find(x=>x.sql===sql); if(!r) return;
@@ -615,7 +655,7 @@ async function _avDetectarBairro(){
 
 // Ponto mudou: descarta tudo o que foi calculado para o ponto anterior (incorporação, cache de buscas, dossiê)
 function _avNovoPonto(){
-  ['ctx','dossie','cache','incorp','memoria','lancItbi','lancAnuncio','evolutivo','comaer','entorno','geo','iptu','iptuSel','podeIncorp','incorpMotivo','metodoUnico'].forEach(k=>{ delete _avForm[k]; });
+  ['ctx','dossie','cache','incorp','memoria','lancItbi','lancAnuncio','evolutivo','comaer','entorno','geo','iptu','iptuSel','iptuOculto','iptuVizinho','podeIncorp','incorpMotivo','metodoUnico'].forEach(k=>{ delete _avForm[k]; });
   const pan=document.getElementById('av-incorp-painel'); if(pan){ pan.style.display='none'; pan.innerHTML=''; }
   const solo=document.getElementById('av-incorp-solo'); if(solo) solo.innerHTML='';
 }
@@ -1246,7 +1286,7 @@ function _avResumoParaTexto(){
     metodo:mu?{anuncios_rs_m2:mu.rs_anuncio,anuncios_n:mu.n_anuncio,indice_pedido_fechado:mu.idx_pedido_fechado,vendas_reais_rs_m2_util:mu.rs_itbi_util,vendas_reais_n:mu.n_itbi,ajuste_subdeclaracao_itbi:mu.sub_itbi,rs_m2_adotado:mu.rs_final,divergencia_entre_fontes_pct:mu.divergencia,comparaveis_excluidos_pelo_corretor:mu.excluidos||0}:null,
     terreno_mais_construcao:ev&&!ev.so_terreno?{terreno_m2:ev.terreno,rs_m2_terreno:ev.rs_terreno,origem_rs_terreno:ev.rs_terreno_origem,valor_terreno:ev.v_terreno,construcao_m2:ev.constr,idade:ev.idade,estado:ev.estadoLb,depreciacao_pct:Math.round((ev.dep||0)*100),valor_construcao:ev.v_benf,total:ev.total,valor_comparativo:ev.comparativo||null,valor_como_lote:ev.v_lote||null}:(ev&&ev.so_terreno?{terreno_m2:ev.terreno,rs_m2_lote:ev.rs_terreno,origem:ev.rs_terreno_origem,valor:ev.total}:null),
     vendas_reais_proximas:vendas, anuncios_do_bairro:anuncios,
-    cadastro_prefeitura: lote.length?{uso:(ip||lote[0]).uso,padrao:(ip||lote[0]).padrao,ano_construcao:(ip||lote[0]).ano_construcao,pavimentos:(ip||lote[0]).pavimentos,terreno_do_lote_m2:(ip||lote[0]).area_terreno,unidades_no_lote:lote.filter(r=>!/garagem|dep[oó]sito/i.test(r.uso||'')).length}:null,
+    cadastro_prefeitura: lote.length&&!_avForm.iptuOculto?{uso:(ip||lote[0]).uso,padrao:(ip||lote[0]).padrao,ano_construcao:(ip||lote[0]).ano_construcao,pavimentos:(ip||lote[0]).pavimentos,terreno_do_lote_m2:(ip||lote[0]).area_terreno,unidades_no_lote:lote.filter(r=>!/garagem|dep[oó]sito/i.test(r.uso||'')).length}:null,
     entorno:{distrito:ent.distrito||null,eixo:ent.eixo||null,metro:(ent.metro||[]).slice(0,3),proximos:ent.pois||null,contagem_500m:ent.n500||null,contagem_1km:ent.n1000||null},
     zoneamento:{zona:geo.zona||null,ca_basico:geo.ca_basico||null,ca_maximo:geo.ca_maximo||null,observacao:'aproximado, a confirmar na Prefeitura'},
     altura_maxima_aeroporto:_avForm.comaer&&_avForm.comaer.altura!=null?{metros:_avForm.comaer.altura,pavimentos:_avForm.comaer.pav,observacao:'estimativa pela norma do DECEA; confirmar em consulta'}:null,
@@ -1299,6 +1339,7 @@ async function avalGerarTexto(){
        dados.predios_novos_perto=((r&&r.lista)||[]).map(x=>({nome:x.nome,status:x.status,d:x.d,area_min:x.area_min,area_max:x.area_max,andares:x.andares,lote_m2:x.lote_m2,rs_m2_anunciado:x.rs,url:x.url})); }catch(_){}
   // cadastro que não bate com o tipo (ex.: apartamento num lote que o IPTU ainda registra como casa) = prédio provavelmente novo
   if(dados.cadastro_prefeitura && /apart|studio|cobertura|duplex/i.test(dados.imovel.tipo||'') && !/apart|condom/i.test(dados.cadastro_prefeitura.uso||'')) dados.cadastro_prefeitura.pode_estar_desatualizado=true;
+  if(_avForm.iptuVizinho && /apart|studio|cobertura|duplex/i.test(dados.imovel.tipo||'')) dados.predio_no_cadastro_em_numero_vizinho=_avForm.iptuVizinho;
   try{
     // POST "simples" (text/plain, sem cabeçalhos extras): o navegador não faz preflight; a resposta é opaca e não importa
     await fetch(`${origem}/.netlify/functions/parecer-texto-background`,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},
@@ -1380,7 +1421,7 @@ function abrirAvalDetalhe(id){
       <div style="font-size:1.8em;font-weight:800;margin:4px 0">${_avR$(x.valor_mercado)}</div>
       <div style="color:#64748b">Faixa: ${_avR$(x.faixa_min)} — ${_avR$(x.faixa_max)}</div>
       <div style="color:#94a3b8;font-size:.88em;margin-top:6px">${String(x.metodo||'').replace(/\s*\[incorp:.*?\]/g,'')}</div>
-      ${_avIptuCaixaHTML(x.entorno&&x.entorno.iptu)}
+      ${_avIptuCaixaHTML(x.entorno&&x.entorno.iptu, x.id)}
       ${x.preco_pedido?`<div style="margin-top:8px;font-size:.9em">Pretendido: <b>${_avR$(x.preco_pedido)}</b> ${_avCompara(x.preco_pedido,x.valor_mercado)}</div>`:''}
     </div></div>`:''}
     ${inc}

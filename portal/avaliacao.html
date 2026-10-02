@@ -133,7 +133,7 @@ function render(x){
 
   const ip = ent && ent.iptu || null; const ipU = ip && ip.unidade || null;
   const ipIt = (lb,v)=> v==null||v===''?'':`<div><div class="kicker">${lb}</div><b>${v}</b></div>`;
-  const cadastro = ip ? `
+  const cadastro = ip && !ip.oculto ? `
     <div class="card">
       <div class="kicker">Cadastro da Prefeitura (IPTU 2026)</div>
       <div class="grid3" style="margin-top:8px">
