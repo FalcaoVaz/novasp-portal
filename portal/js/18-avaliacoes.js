@@ -115,6 +115,8 @@ const AV_PARAM = {
   custo_aquisicao:0.12, // ITBI 3% + comissão do terreno 4% + jurídico, estudos, demolição e IPTU ≈ 5% (projeto A: 1,33 MM sobre 10,05 MM) — sai do que vai ao proprietário
   // ── Compatibilidade (telas antigas) ──
   marketing:0.045, adm:0.02, fator_obra:1.68, eficiencia:0.90, constr_sobre_computavel:1.29,
+  lanc_cadastro_util:1.69, // ITBI de prédio novo: área do cadastro ÷ área útil ≈ 1,69 (prédios 2019+, medido no Foca 13/09/2026)
+  lanc_itbi_min_n:30,      // mínimo de vendas de unidades novas no raio para usar o ITBI como preço de lançamento
   lanc_sobre_usado:1.25,// se não houver lançamento anunciado no bairro: lançamento ≈ usado × 1,25
   casa_sobre_apto:0.60, // se não houver casa anunciada no bairro: R$/m² casa ≈ apto × 0,60 (mediana observada 30/09/2026)
   // Outorga onerosa (PDE, Lei 16.050/2014, art. 117): Ct = (At/Ac) × V × Fs × Fp por m² adicional acima do CA básico.
@@ -327,6 +329,20 @@ function _avUsarIptu(sql, silencioso){
   if(r.ano_construcao>1800){ const id=document.getElementById('av-idade'); if(id && (!id.value||!silencioso)) id.value=new Date().getFullYear()-r.ano_construcao; }
   const t=document.getElementById('av-inc-terreno'); if(t && !t.value) t.value=Math.round(Number(r.area_terreno)||0)||'';
   if(!silencioso){ const el=document.getElementById('av-iptu-info'); el && el.querySelectorAll('tr[onclick]').forEach(tr=>tr.style.background= tr.getAttribute('onclick').includes(sql)?'#eff6ff':''); }
+}
+// Preço de lançamento automático: 1º vendas REAIS de apartamentos novos no ITBI (raio 1,5 km), 2º lançamentos anunciados, 3º usado × 1,25
+async function _avLancItbi(){
+  if(_avForm.lancItbi!==undefined || !_avPino) return _avForm.lancItbi;
+  try{ const r=await _avRpc('aval_lanc_itbi',{p_lat:_avPino.lat,p_lng:_avPino.lng,p_raio_m:1500}); _avForm.lancItbi=(r&&r.n>=AV_PARAM.lanc_itbi_min_n&&r.predios>=3)?r:null; }
+  catch(_){ _avForm.lancItbi=null; }
+  return _avForm.lancItbi;
+}
+function _avLancAuto(precos, rs_apto){
+  const it=_avForm.lancItbi;
+  if(it&&it.rs_m2_cadastro) return {rs:Math.round(it.rs_m2_cadastro*AV_PARAM.lanc_cadastro_util), n:it.n,
+    origem:`vendas reais (ITBI) de ${it.n} unidades novas em ${it.predios} prédios a até ${(it.raio_m/1000).toLocaleString('pt-BR')} km, ${it.periodo} (R$ ${it.rs_m2_cadastro.toLocaleString('pt-BR')}/m² do cadastro × ${AV_PARAM.lanc_cadastro_util} → área útil)`};
+  if(precos&&precos.rs_lanc) return {rs:precos.rs_lanc, n:precos.n_lanc||0, origem:`${precos.n_lanc} lançamentos anunciados`};
+  return {rs: rs_apto?Math.round(rs_apto*AV_PARAM.lanc_sobre_usado):null, n:0, origem:`usado × ${AV_PARAM.lanc_sobre_usado} (sem lançamento no ITBI nem anunciado)`};
 }
 async function _avRpc(fn, args){
   const call=()=>fetch(`${SBU}/rest/v1/rpc/${fn}`, { method:'POST', headers:hdr(), body:JSON.stringify(args||{}) });
@@ -566,6 +582,7 @@ async function _avPinoInfo(){
     const z=await _avRpc('aval_geo',{p_lat:_avPino.lat,p_lng:_avPino.lng});
     const zi=Array.isArray(z)?z[0]:z;
     _avForm.geo=zi||null;
+    _avForm.lancItbi=undefined;
     if(!_avForm.iptu) _avBuscarIptu();
     _avForm.comaer=null; _avComaer(_avPino.lat,_avPino.lng).then(k=>{ _avForm.comaer=k; const e=document.getElementById('av-comaer-info'); if(e) e.innerHTML=_avComaerTexto(k); }).catch(()=>{});
     if(zi){
@@ -675,8 +692,9 @@ async function avalCalcular(opts){
   const loteOrigem = rsTerrenoInf ? 'informado pelo corretor' : (tb&&tb.lote ? `mediana de ${tb.lote_n} lotes anunciados pela NSP em ${bairro}, ${tb.lote_per||'2018–2026'} (R$ ${tb.lote.toLocaleString('pt-BR')}/m² pedido × ${idxPF0.idx} pedido→fechado)` : (rs_casa ? `estimado: ${Math.round(AV_PARAM.lote_sobre_casa*100)}% do R$/m² de casa do bairro` : null));
   const padrao=(_avForm.incorp&&_avForm.incorp.padrao)||_avPadraoSugerido(bairro);
   const lancInformado=(_avForm.incorp&&_avForm.incorp.lanc)||null;
-  const rs_lanc = lancInformado || precos.rs_lanc || (rs_apto ? Math.round(rs_apto*AV_PARAM.lanc_sobre_usado) : null);
-  const lancOrigem = lancInformado ? 'informado' : (precos.rs_lanc ? `${precos.n_lanc} lançamentos anunciados` : `usado × ${AV_PARAM.lanc_sobre_usado} (sem lançamento anunciado)`);
+  await _avLancItbi(); const la=_avLancAuto(precos, rs_apto);
+  const rs_lanc = lancInformado || la.rs;
+  const lancOrigem = lancInformado ? 'informado' : la.origem;
 
   // ── ENTORNO (metrô, eixo, distrito) pelo ponto — vai para o dossiê ──
   let entorno=null;
@@ -758,7 +776,7 @@ async function avalCalcular(opts){
   const ca=dossie.ca;
   _avForm.podeIncorp = ehlote && !!geo.incorporavel && !!ca && ca>=2;
   _avForm.incorpMotivo = !ehlote ? null : (_avForm.podeIncorp ? null : `Zoneamento ${geo.zona||'?'} (CA máximo ${ca||'?'}) não permite adensar o suficiente: a avaliação como terreno de incorporação não se aplica aqui.`);
-  _avForm.ctx={ehlote, rs_apto, rs_lanc, lancOrigem, preco, bairro, padraoSugerido:_avPadraoSugerido(bairro), lancAuto: precos.rs_lanc||null, lancN: precos.n_lanc||0};
+  _avForm.ctx={ehlote, rs_apto, rs_lanc, lancOrigem, preco, bairro, padraoSugerido:_avPadraoSugerido(bairro), lancAuto: la.rs||null, lancN: la.n||0, lancAutoOrigem: la.origem};
   _avForm.dossie=dossie;
   if(_avForm.incorp && _avForm.podeIncorp) await _avCalcIncorp();   // recálculo (exclusão de comparável) mantém a incorporação já pedida
   renderAvalPreview(_avForm.dossie, precos);
@@ -784,9 +802,9 @@ async function _avCtxRapido(){
   const el=document.getElementById('av-incorp-painel'); if(el){ el.style.display=''; el.innerHTML='<div class="card"><div class="cb" style="color:#64748b">Buscando preços de lançamento em '+bairro+'…</div></div>'; }
   const precos=(await _avBuscarPrecos(bairro))||{};
   const rs_apto=precos.rs_apto||null;
-  const rs_lanc=precos.rs_lanc||(rs_apto?Math.round(rs_apto*AV_PARAM.lanc_sobre_usado):null);
+  await _avLancItbi(); const la=_avLancAuto(precos, rs_apto); const rs_lanc=la.rs;
   _avForm.cache=_avForm.cache||{}; _avForm.cache.precos=precos;
-  _avForm.ctx={ehlote:true, rs_apto, rs_lanc, lancOrigem: precos.rs_lanc?`${precos.n_lanc} lançamentos anunciados`:`usado × ${AV_PARAM.lanc_sobre_usado}`, preco:null, bairro, padraoSugerido:_avPadraoSugerido(bairro), lancAuto:precos.rs_lanc||null, lancN:precos.n_lanc||0};
+  _avForm.ctx={ehlote:true, rs_apto, rs_lanc, lancOrigem: la.origem, preco:null, bairro, padraoSugerido:_avPadraoSugerido(bairro), lancAuto:la.rs||null, lancN:la.n||0, lancAutoOrigem:la.origem};
   _avForm.podeIncorp=!!(geo.incorporavel && Number(geo.ca_maximo)>=2);
   let entorno=null; try{ entorno=await _avRpc('aval_entorno',{p_lat:_avPino.lat,p_lng:_avPino.lng}); if(Array.isArray(entorno)) entorno=entorno[0]; }catch(_){}
   _avForm.entorno=entorno; _avForm.cache.entorno=entorno;
@@ -817,7 +835,7 @@ async function avalAbrirIncorp(){
       <input id="av-inc-frente" type="number" value="${inc.frente||''}" placeholder="Frente do terreno (m)" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px">
       <select id="av-inc-padrao" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px" title="Padrão do prédio que seria construído: define o custo de obra (CUB Sinduscon-SP)">
         ${Object.entries(AV_PADROES).map(([k,v])=>`<option value="${k}" ${(inc.padrao||c.padraoSugerido)===k?'selected':''}>Padrão ${v.lb} — obra ≈ ${_avR$(Math.round(v.cub*P.obra_sobre_cub))}/m²</option>`).join('')}</select>
-      <input id="av-inc-lanc" type="number" value="${inc.lanc||''}" placeholder="Lançamento R$/m² (auto: ${c.lancAuto?_avR$(c.lancAuto)+' · '+c.lancN+' lançamentos':_avR$(Math.round((c.rs_apto||0)*P.lanc_sobre_usado))+' = usado × '+P.lanc_sobre_usado})" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px" title="Preço por m² das unidades novas que o incorporador venderia. Se souber o lançamento da região, informe; senão o sistema usa os lançamentos anunciados ou o usado × ${P.lanc_sobre_usado}.">
+      <input id="av-inc-lanc" type="number" value="${inc.lanc||''}" placeholder="Lançamento R$/m² (auto: ${c.lancAuto?_avR$(c.lancAuto):'—'}${c.lancAutoOrigem&&/ITBI/.test(c.lancAutoOrigem)?' · vendas reais de novos':(c.lancN?' · '+c.lancN+' anunciados':' · usado × '+P.lanc_sobre_usado)})" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px" title="Preço por m² das unidades novas que o incorporador venderia. Se souber o lançamento da região, informe; senão o sistema usa os lançamentos anunciados ou o usado × ${P.lanc_sobre_usado}.">
       <select id="av-inc-categoria" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px" title="HIS e HMP têm outorga isenta/reduzida (Fs do PDE). Automático: pelo preço de lançamento (até ${P.his_max_rs_m2.toLocaleString('pt-BR')} HIS; até ${P.hmp_max_rs_m2.toLocaleString('pt-BR')} HMP).">
         <option value="auto" ${(inc.categoria||'auto')==='auto'?'selected':''}>Categoria: automática pelo preço</option>
         <option value="mercado" ${inc.categoria==='mercado'?'selected':''}>Mercado (outorga integral)</option>
@@ -853,7 +871,7 @@ async function _avCalcIncorp(){
   if(!dossie||!inc||!c) return;
   const ca=Number(geo.ca_maximo)||dossie.ca;
   const rs_lanc = inc.lanc || c.lancAuto || (c.rs_apto ? Math.round(c.rs_apto*P.lanc_sobre_usado) : null);
-  const lancOrigem = inc.lanc ? 'informado pelo corretor' : (c.lancAuto ? `${c.lancN} lançamentos anunciados` : `usado × ${P.lanc_sobre_usado} (sem lançamento anunciado)`);
+  const lancOrigem = inc.lanc ? 'informado pelo corretor' : (c.lancAutoOrigem || (c.lancAuto ? `${c.lancN} lançamentos anunciados` : `usado × ${P.lanc_sobre_usado} (sem lançamento anunciado)`));
   dossie.terreno=terrenoOk(inc.terreno);
   function terrenoOk(v){ return v; }
   if(!rs_lanc){ _avForm.incorpMotivo='Sem preço de lançamento no bairro: informe um valor de lançamento R$/m².'; return; }
