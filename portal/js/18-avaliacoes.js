@@ -321,7 +321,7 @@ async function _avBuscarIptu(){
   const lote=rows[0], vertical=rows.length>1 || /condom|apart/i.test(lote.uso||'');
   const anos=rows.map(r=>+r.ano_construcao).filter(x=>x>1800);
   const resumo = vertical
-    ? `<b>${rows.length} unidades</b> no lote · terreno ${_avN(lote.area_terreno)} m² · ${lote.pavimentos||'?'} pavimentos · construído em ${anos.length?Math.min(...anos):'?'} · ${lote.padrao||''}`
+    ? `<b>${rows.filter(r=>!/garagem|dep[oó]sito/i.test(r.uso||'')).length} unidades</b>${rows.some(r=>/garagem|dep[oó]sito/i.test(r.uso||''))?` + ${rows.filter(r=>/garagem|dep[oó]sito/i.test(r.uso||'')).length} vagas/depósitos avulsos`:''} no lote · terreno ${_avN(lote.area_terreno)} m² · ${lote.pavimentos||'?'} pavimentos · construído em ${anos.length?Math.min(...anos):'?'} · ${lote.padrao||''}`
     : `<b>${lote.uso||'Imóvel'}</b> · terreno <b>${_avN(lote.area_terreno)} m²</b> · construída ${_avN(lote.area_construida)} m² no cadastro · testada ${_avN(lote.testada)} m · ${lote.ano_construcao>1800?'construído em '+lote.ano_construcao:''} · ${lote.padrao||''}`;
   const tabela = vertical ? `<details style="margin-top:4px"><summary style="cursor:pointer;color:#2563eb;font-size:.85em">ver unidades</summary>
       <div style="max-height:220px;overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:.82em"><thead><tr style="color:#94a3b8;text-align:left"><th style="padding:2px 6px">Contribuinte</th><th style="padding:2px 6px">Complemento</th><th style="padding:2px 6px;text-align:right">Construída (cadastro)</th><th style="padding:2px 6px;text-align:right">Fração</th><th style="padding:2px 6px">Uso</th></tr></thead>
@@ -679,7 +679,7 @@ async function avalCalcular(opts){
     try{ compsItbi=await _avRpc('aval_comps_itbi_raio',{p_lat:_avPino.lat,p_lng:_avPino.lng,p_tipo:_ehCasa(tipo)?'casa':'apto',p_lim:20})||[]; compsItbi.forEach(c=>{ c.porRaio=true; }); }catch(_){ compsItbi=[]; }
     if(!compsItbi.length){ try{ compsItbi=await _avRpc('aval_comps_itbi',{p_bairro:bairro,p_lim:20}); }catch(_){} }
   }
-  compsItbi=(compsItbi||[]).filter(c=>_ehCasa(tipo) ? /RESID|CASA|SOBRADO/i.test(c.uso||'') : /APART|CONDOM/i.test(c.uso||''));
+  compsItbi=(compsItbi||[]).filter(c=>!/GARAGEM|VAGA|DEP[OÓ]SITO/i.test(c.uso||'') && (_ehCasa(tipo) ? /RESID|CASA|SOBRADO/i.test(c.uso||'') : /APART/i.test(c.uso||'')));
   // exclusões feitas pelo corretor (comparável destoante) — chave estável por origem
   _avForm.excl=_avForm.excl||new Set();
   const kAn=a=>'a:'+(a.url||a.rua+'|'+a.preco); const kIt=c=>'i:'+(c.logradouro||'')+'|'+(c.numero||'')+'|'+(c.data||'')+'|'+c.valor;
