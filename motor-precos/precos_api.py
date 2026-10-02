@@ -13,11 +13,15 @@ Rodar local:  cd motor-precos && EXIGE_LOGIN=0 python3 -m uvicorn precos_api:app
 Deploy:       Render (free) a partir deste repo, root dir motor-precos — ver README.md.
 """
 import os, sys, statistics, unicodedata, re, json, urllib.request, time
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header, Body
 from fastapi.middleware.cors import CORSMiddleware
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from coletor_anuncios import busca_quintoandar, busca_chavesnamao_lancamentos
+try:
+    import texto_parecer
+except Exception as _e:          # sem a biblioteca anthropic o resto do motor continua funcionando
+    texto_parecer = None
 
 SB = os.environ.get('SB_URL', 'https://mqcduyvpuxdweqesgwrq.supabase.co')
 # anon key é PÚBLICA (já vai no navegador) — só serve p/ validar que quem
@@ -125,3 +129,23 @@ def precos(bairro: str, authorization: str = Header(None), apikey: str = Header(
                'fonte': 'quintoandar', 'cache': False}
     _cache[bairro.upper()] = (time.time(), payload)
     return payload
+
+
+@app.post('/texto')
+def texto(dados: dict = Body(...), authorization: str = Header(None), apikey: str = Header(None)):
+    """Texto do parecer escrito pelo Claude a partir do resumo da avaliação (ver texto_parecer.py)."""
+    _valida(authorization, apikey)
+    if texto_parecer is None:
+        raise HTTPException(503, 'Texto automático indisponível: biblioteca anthropic não instalada no servidor.')
+    if len(json.dumps(dados)) > 60000:
+        raise HTTPException(413, 'Resumo da avaliação grande demais.')
+    try:
+        return texto_parecer.gerar(dados)
+    except texto_parecer.TextoIndisponivel as e:
+        raise HTTPException(503, str(e))
+    except texto_parecer.anthropic.RateLimitError:
+        raise HTTPException(429, 'Muitos pedidos de texto agora. Tente em um minuto.')
+    except texto_parecer.anthropic.APIConnectionError:
+        raise HTTPException(503, 'Sem conexão com o serviço de texto. Tente de novo.')
+    except texto_parecer.anthropic.APIStatusError as e:
+        raise HTTPException(502, f'Serviço de texto respondeu {e.status_code}.')

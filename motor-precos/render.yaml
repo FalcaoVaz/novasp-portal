@@ -16,3 +16,7 @@ services:
         sync: false          # colar a anon key (pública) no painel do Render
       - key: EXIGE_LOGIN
         value: "1"
+      - key: ANTHROPIC_API_KEY
+        sync: false          # chave da API da Anthropic (console.anthropic.com) — texto do parecer
+      - key: PYTHON_VERSION
+        value: "3.12"

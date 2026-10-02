@@ -1007,6 +1007,7 @@ function renderAvalPreview(x, precos){
       <div style="color:#94a3b8;font-size:.88em;margin-top:6px">${x.metodo||''}${x.anuncios_usados?` · ${x.anuncios_usados} anúncios ao vivo`:''}</div>
       ${x.preco_pedido?`<div style="margin-top:8px;font-size:.9em">Pretendido: <b>${_avR$(x.preco_pedido)}</b> ${_avCompara(x.preco_pedido,x.valor_mercado)}</div>`:''}
     </div></div>`:`<div class="card" style="margin-bottom:12px"><div class="cb" style="color:#b45309">Sem preço de mercado (faltou área útil ou anúncios do bairro).</div></div>`}
+    <div id="av-texto">${_avTextoHTML()}</div>
     ${_avMetodoHTML(_avForm.metodoUnico, x)}
     ${_avEvolutivoHTML((x.memoria&&x.memoria.evolutivo)||_avForm.evolutivo)}
     ${_avEntornoHTML(x.entorno||_avForm.entorno)}
@@ -1164,11 +1165,78 @@ function _avCompara(pedido,mercado){
   return d>0?`<span style="color:#dc2626">(${d}% acima do mercado)</span>`:`<span style="color:#059669">(${-d}% abaixo do mercado)</span>`;
 }
 
+// ═══════════════ TEXTO DO PARECER (Claude, via motor no Render) ═══════════════
+// O portal resume a avaliação em JSON (sem dado pessoal) e o motor devolve o texto analítico.
+// O corretor pode editar antes de salvar; o texto vai para o dossiê em memoria.texto.
+function _avResumoParaTexto(){
+  const d=_avForm.dossie||{}, mu=_avForm.metodoUnico||null, ev=_avForm.evolutivo||(d.memoria&&d.memoria.evolutivo)||null, geo=_avForm.geo||{}, ent=_avForm.entorno||{};
+  let comps=[]; try{ comps=JSON.parse(d.comparaveis||'[]'); }catch(_){}
+  const vendas=comps.filter(c=>/Venda/.test(c.tipo||'')&&!c.excluido).slice(0,15).map(c=>({endereco:c.endereco,data:c.data,area_util_estimada:c.area_util_est||null,area_cadastro:c.area,preco:c.preco,rs_m2_util:c.rs_util||null}));
+  const anuncios=comps.filter(c=>!/Venda/.test(c.tipo||'')&&!c.excluido).slice(0,12).map(c=>({rua:c.endereco,area_util:c.area,preco_pedido:c.preco,rs_m2:c.rs_m2,dorm:c.dorm||null}));
+  const ip=_avForm.iptuSel||null, lote=(_avForm.iptu||[]);
+  const m=_avForm.memoria||null;
+  return {
+    data_base: new Date().toLocaleDateString('pt-BR',{month:'long',year:'numeric'}),
+    imovel:{endereco:d.endereco,bairro:d.bairro,tipo:d.tipo,area_util:d.area_util,terreno:d.terreno,frente:d.frente||null,dorm:d.dorm,suites:d.suite,vagas:d.vaga},
+    valor:{mercado:d.valor_mercado,faixa_min:d.faixa_min,faixa_max:d.faixa_max,rs_m2_util:d.mercado_rs_m2},
+    metodo:mu?{anuncios_rs_m2:mu.rs_anuncio,anuncios_n:mu.n_anuncio,indice_pedido_fechado:mu.idx_pedido_fechado,vendas_reais_rs_m2_util:mu.rs_itbi_util,vendas_reais_n:mu.n_itbi,ajuste_subdeclaracao_itbi:mu.sub_itbi,rs_m2_adotado:mu.rs_final,divergencia_entre_fontes_pct:mu.divergencia,comparaveis_excluidos_pelo_corretor:mu.excluidos||0}:null,
+    terreno_mais_construcao:ev&&!ev.so_terreno?{terreno_m2:ev.terreno,rs_m2_terreno:ev.rs_terreno,origem_rs_terreno:ev.rs_terreno_origem,valor_terreno:ev.v_terreno,construcao_m2:ev.constr,idade:ev.idade,estado:ev.estadoLb,depreciacao_pct:Math.round((ev.dep||0)*100),valor_construcao:ev.v_benf,total:ev.total,valor_comparativo:ev.comparativo||null,valor_como_lote:ev.v_lote||null}:(ev&&ev.so_terreno?{terreno_m2:ev.terreno,rs_m2_lote:ev.rs_terreno,origem:ev.rs_terreno_origem,valor:ev.total}:null),
+    vendas_reais_proximas:vendas, anuncios_do_bairro:anuncios,
+    cadastro_prefeitura: lote.length?{uso:(ip||lote[0]).uso,padrao:(ip||lote[0]).padrao,ano_construcao:(ip||lote[0]).ano_construcao,pavimentos:(ip||lote[0]).pavimentos,terreno_do_lote_m2:(ip||lote[0]).area_terreno,unidades_no_lote:lote.filter(r=>!/garagem|dep[oó]sito/i.test(r.uso||'')).length}:null,
+    entorno:{distrito:ent.distrito||null,eixo:ent.eixo||null,metro:(ent.metro||[]).slice(0,3),proximos:ent.pois||null,contagem_500m:ent.n500||null,contagem_1km:ent.n1000||null},
+    zoneamento:{zona:geo.zona||null,ca_basico:geo.ca_basico||null,ca_maximo:geo.ca_maximo||null,observacao:'aproximado, a confirmar na Prefeitura'},
+    altura_maxima_aeroporto:_avForm.comaer&&_avForm.comaer.altura!=null?{metros:_avForm.comaer.altura,pavimentos:_avForm.comaer.pav,observacao:'estimativa pela norma do DECEA; confirmar em consulta'}:null,
+    incorporacao:d.incorp_aplicavel&&m?{valor_terreno:d.incorp_valor_terreno,categoria:m.categoria,ca_usado:m.ca,area_vendavel_m2:Math.round(m.area_vendavel),lancamento_rs_m2:d.incorp_lancamento_rs_m2,origem_lancamento:_avForm.lancOrigem||null,vgv:d.incorp_vgv,terreno_pct_vgv:m.terreno_vgv?Math.round(m.terreno_vgv*1000)/10:null}:null
+  };
+}
+function _avTextoHTML(){
+  const t=_avForm&&_avForm.texto;
+  const esc=v=>String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  if(!t) return `<div class="card" style="margin-bottom:12px"><div class="cb" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-o" onclick="avalGerarTexto()">✍️ Escrever o parecer em texto</button>
+      <span id="av-texto-st" style="color:#64748b;font-size:.88em">Texto analítico sobre o imóvel, o bairro e as evidências de preço, escrito a partir destes dados. Leva cerca de meio minuto; você pode editar antes de salvar.</span></div></div>`;
+  const ed='contenteditable="true" spellcheck="true" style="outline:none;border-radius:6px;padding:2px 4px;margin:-2px -4px"';
+  return `<div class="card" style="margin-bottom:12px;border-left:3px solid #1E2D4A"><div class="cb">
+    <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><div style="color:#64748b;font-size:.85em;text-transform:uppercase;letter-spacing:.04em">Parecer em texto <span style="text-transform:none;color:#94a3b8">· clique no texto para editar</span></div>
+      <button class="btn btn-o bsm" onclick="if(confirm('Escrever o texto de novo? As edições serão perdidas.')){_avForm.texto=null;avalGerarTexto();}">↻ Reescrever</button></div>
+    <h3 data-t="titulo" ${ed} style="margin:8px 0 6px;font-size:1.15em">${esc(t.titulo)}</h3>
+    <p data-t="resposta" ${ed} style="font-weight:600;margin:0 0 10px">${esc(t.resposta)}</p>
+    ${(t.secoes||[]).map((sec,i)=>`<div style="margin-top:10px"><div data-t="st${i}" ${ed} style="font-weight:600;color:#1E2D4A">${esc(sec.titulo)}</div><div data-t="sx${i}" ${ed} style="white-space:pre-wrap;color:#334155;margin-top:2px">${esc(sec.texto)}</div></div>`).join('')}
+    ${(t.atencao||[]).length?`<div style="margin-top:10px;font-size:.92em"><b>Pontos de atenção</b><ul data-t="atencao" ${ed} style="margin:4px 0 0;padding-left:18px">${t.atencao.map(a=>`<li>${esc(a)}</li>`).join('')}</ul></div>`:''}
+  </div></div>`;
+}
+function _avTextoColetar(){
+  const t=_avForm.texto, box=document.getElementById('av-texto'); if(!t||!box) return t||null;
+  const get=k=>{ const e=box.querySelector(`[data-t="${k}"]`); return e?e.innerText.trim():null; };
+  const out={titulo:get('titulo')||t.titulo, resposta:get('resposta')||t.resposta,
+    secoes:(t.secoes||[]).map((s,i)=>({titulo:get('st'+i)||s.titulo, texto:get('sx'+i)||s.texto})),
+    atencao:(()=>{ const ul=box.querySelector('[data-t="atencao"]'); return ul?[...ul.querySelectorAll('li')].map(li=>li.innerText.trim()).filter(Boolean):(t.atencao||[]); })(),
+    gerado:t.gerado||null};
+  _avForm.texto=out; return out;
+}
+async function avalGerarTexto(){
+  const box=document.getElementById('av-texto'); if(!box) return;
+  box.innerHTML='<div class="card" style="margin-bottom:12px"><div class="cb" style="color:#64748b">✍️ Escrevendo o parecer… (até um minuto)</div></div>';
+  const ctrl=(typeof AbortController!=='undefined')?new AbortController():null; const timer=ctrl?setTimeout(()=>ctrl.abort(),150000):null;
+  try{
+    const r=await fetch(`${AVAL_MOTOR}/texto`,Object.assign({method:'POST',headers:hdr(),body:JSON.stringify(_avResumoParaTexto())},ctrl?{signal:ctrl.signal}:{}));
+    if(timer) clearTimeout(timer);
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(j.detail||('HTTP '+r.status));
+    _avForm.texto={titulo:j.titulo,resposta:j.resposta,secoes:j.secoes||[],atencao:j.atencao||[],gerado:{modelo:(j.uso||{}).modelo,em:new Date().toISOString()}};
+    box.innerHTML=_avTextoHTML();
+  }catch(e){
+    if(timer) clearTimeout(timer);
+    box.innerHTML=_avTextoHTML();
+    const st=document.getElementById('av-texto-st'); if(st) st.innerHTML=`<span style="color:#b45309">Não foi possível escrever o texto: ${String(e.name==='AbortError'?'o servidor demorou demais':e.message).replace(/</g,'&lt;')}</span>`;
+  }
+}
 async function avalSalvar(){
   const d=_avForm.dossie; if(!d){ alert('Gere a avaliação antes.'); return; }
   try{
     d.corretor_nome=(typeof CUR!=='undefined'&&CUR)?CUR.nome:null;
     try{ const u=await db.get('usuarios',`?select=creci&id=eq.${CUR.id}`); d.corretor_creci=(u&&u[0]&&u[0].creci)||null; }catch(_){ d.corretor_creci=null; }
+    const tx=_avTextoColetar(); if(tx){ d.memoria=d.memoria||{}; d.memoria.texto=tx; }
     d.status='aprovada'; d.aprovado_por=d.corretor_nome; d.aprovado_em=new Date().toISOString();   // revisão = o preview; salvar já libera o dossiê
     const payload=Object.fromEntries(Object.entries(d).filter(([k])=>!k.startsWith('_')));
     const rows=await db.post('aval_resultado', payload);

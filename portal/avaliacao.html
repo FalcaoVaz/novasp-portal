@@ -143,6 +143,16 @@ function render(x){
       <div class="foot">Distâncias em linha reta. Fontes: GeoSampa (Prefeitura de São Paulo: equipamentos, parques, ônibus, ciclovias, metrô) e OpenStreetMap (hospitais particulares).</div>
     </div>` : '';
 
+  const tx = mem.texto || null; const escT = v => String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const parecer = tx ? `
+    <div class="card">
+      <div class="kicker">Parecer</div>
+      <h2 style="margin:6px 0 8px;font-size:1.25em">${escT(tx.titulo)}</h2>
+      <p style="font-weight:600">${escT(tx.resposta)}</p>
+      ${(tx.secoes||[]).map(s=>`<h3 style="margin:14px 0 4px;font-size:1.02em">${escT(s.titulo)}</h3>${String(s.texto||'').split(/\n\s*\n/).map(p=>`<p style="margin:0 0 8px">${escT(p)}</p>`).join('')}`).join('')}
+      ${(tx.atencao||[]).length?`<h3 style="margin:14px 0 4px;font-size:1.02em">Pontos de atenção</h3><ul style="margin:0;padding-left:18px">${tx.atencao.map(a=>`<li>${escT(a)}</li>`).join('')}</ul>`:''}
+    </div>` : '';
+
   const metodo = `
     <div class="card metodo">
       <div class="kicker">Como chegamos ao valor · método</div>
@@ -224,7 +234,7 @@ function render(x){
       <div class="foot">Opinião de valor gerada em ${dt}${x.aprovado_em?` e revisada em ${dtAp}`:''}.</div>
     </div>`;
 
-  return cabecalho + mercado + incorp + entorno + metodo + mapa + comptab + assinatura + `
+  return cabecalho + mercado + parecer + incorp + entorno + metodo + mapa + comptab + assinatura + `
     <div class="cta">
       <div style="font-size:1.05em;font-weight:700">Quer vender pelo melhor valor possível?</div>
       <div style="opacity:.85;font-size:.92em;margin-top:4px">Nossa equipe apresenta a estratégia completa para o seu imóvel.</div>
