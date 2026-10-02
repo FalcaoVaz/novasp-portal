@@ -1007,7 +1007,7 @@ function renderAvalPreview(x, precos){
       <div style="color:#94a3b8;font-size:.88em;margin-top:6px">${x.metodo||''}${x.anuncios_usados?` · ${x.anuncios_usados} anúncios ao vivo`:''}</div>
       ${x.preco_pedido?`<div style="margin-top:8px;font-size:.9em">Pretendido: <b>${_avR$(x.preco_pedido)}</b> ${_avCompara(x.preco_pedido,x.valor_mercado)}</div>`:''}
     </div></div>`:`<div class="card" style="margin-bottom:12px"><div class="cb" style="color:#b45309">Sem preço de mercado (faltou área útil ou anúncios do bairro).</div></div>`}
-    <div id="av-texto">${_avTextoHTML()}</div>
+    ${AV_TEXTO_ATIVO?`<div id="av-texto">${_avTextoHTML()}</div>`:''}
     ${_avMetodoHTML(_avForm.metodoUnico, x)}
     ${_avEvolutivoHTML((x.memoria&&x.memoria.evolutivo)||_avForm.evolutivo)}
     ${_avEntornoHTML(x.entorno||_avForm.entorno)}
@@ -1165,7 +1165,9 @@ function _avCompara(pedido,mercado){
   return d>0?`<span style="color:#dc2626">(${d}% acima do mercado)</span>`:`<span style="color:#059669">(${-d}% abaixo do mercado)</span>`;
 }
 
-// ═══════════════ TEXTO DO PARECER (Claude, via motor no Render) ═══════════════
+// ═══════════════ TEXTO DO PARECER (Claude) — DESLIGADO em 02/10/2026 (Rodrigo: não compensou o custo) ═══════════════
+// O código fica para uma eventual retomada; com AV_TEXTO_ATIVO=false o botão não aparece e nada é cobrado.
+const AV_TEXTO_ATIVO = false;
 // O portal resume a avaliação em JSON (sem dado pessoal) e o motor devolve o texto analítico.
 // O corretor pode editar antes de salvar; o texto vai para o dossiê em memoria.texto.
 function _avResumoParaTexto(){
