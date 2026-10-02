@@ -88,6 +88,17 @@ function renderHome(){
     </div>`).join('');
 }
 
+// Botão "Início" do menu lateral: fecha o módulo aberto e volta aos cards
+function voltarInicio(){
+  ['jur','int','cal','ges','reg','vnd','acv','avl'].forEach(k=>{ const el=document.getElementById('t-'+k); if(el) el.classList.remove('active'); });
+  const nav=document.getElementById('nav'); if(nav) nav.innerHTML='';
+  const tHome=document.getElementById('t-home'); if(tHome) tHome.classList.add('active');
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const ph=document.getElementById('p-home'); if(ph) ph.classList.add('active');
+  const tbt=document.getElementById('tbt'); if(tbt) tbt.textContent='Portal';
+  if (typeof renderHome==='function') renderHome();
+  if (window.innerWidth<=768 && typeof closeSB==='function') closeSB();
+}
 function setMod(mod){
   // Representante puro so acessa Vendas (e dentro dela, so o Forum)
   const ehRepPuro = (typeof ehRepresentantePuro === 'function') && ehRepresentantePuro();
@@ -114,6 +125,8 @@ function setMod(mod){
               : (mod==='vendas' && typeof menuVendasItens==='function') ? menuVendasItens()
               : (MENUS[mod]||[]);
   const nav=document.getElementById('nav');
+  if(tabEl && nav && tabEl.nextElementSibling!==nav) tabEl.after(nav);   // páginas do módulo logo abaixo dele (menu vertical)
+  const tHome=document.getElementById('t-home'); if(tHome) tHome.classList.remove('active');
   nav.innerHTML=itens.map(i=>`<div class="ni" onclick="goTo('${i.pg}')" id="n-${i.pg}"><span class="ic">${(typeof icon==='function'?icon(i.ic):'')||i.ic}</span><span>${i.lb}</span></div>`).join('');
   if(mod==='interno'){goTo('interno-home');}
   else if(mod==='regras'){goTo('regras-home');}

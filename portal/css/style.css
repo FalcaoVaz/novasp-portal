@@ -417,3 +417,17 @@ tr:hover td{background:var(--bg)}
   .sv { font-size: 16px !important; }
   .ph .btn { font-size: 13px; }
 }
+
+/* ═══ MENU LATERAL VERTICAL (02/10/2026): módulos com nome, páginas do módulo aberto logo abaixo ═══ */
+.sidebar .mtabs{display:flex;flex-direction:column;gap:1px;margin:6px 8px 4px;padding:0;flex:1 1 auto;min-height:0;overflow-y:auto}
+.sidebar .mtab{flex:none;display:flex;align-items:center;justify-content:flex-start;gap:10px;width:100%;min-height:0;padding:9px 12px;font-size:13px;font-weight:500;text-align:left;color:rgba(255,255,255,.62);background:transparent;border-radius:8px}
+.sidebar .mtab svg{width:17px;height:17px;margin:0;flex-shrink:0}
+.sidebar .mtab:hover{background:rgba(255,255,255,.07);color:#fff}
+.sidebar .mtab.active{background:rgba(255,255,255,.14);color:#fff;font-weight:600}
+.sidebar .mtab.off{display:none}
+.sidebar .mtab-lb{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sidebar .mtab-home{margin-bottom:4px}
+.sidebar .mtabs #nav{margin:2px 0 6px 18px;padding-left:8px;border-left:1px solid rgba(255,255,255,.12)}
+.sidebar .mtabs #nav .ni{margin:1px 0;padding:7px 10px;font-size:12.5px}
+.sidebar .mtabs #nav .ni .ic{font-size:14px;width:16px}
+.sidebar .mtabs #nav:empty{display:none}

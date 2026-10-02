@@ -15,7 +15,7 @@
 <link rel="icon" type="image/svg+xml" href="/icons/icon-192.svg">
 
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css?v=20261002a">
 <script>
   // Registra o service worker para virar PWA instalável
   if ('serviceWorker' in navigator) {
@@ -180,14 +180,15 @@
       <div><div class="sbn" id="sbn">—</div><div class="sbd" id="sbd">—</div></div>
     </div>
     <div class="mtabs">
-      <button class="mtab" id="t-jur" onclick="setMod('juridico')" title="Jurídico"><i data-icon="scale"></i></button>
-      <button class="mtab" id="t-int" onclick="setMod('interno')" title="Sistema Interno"><i data-icon="building"></i></button>
-      <button class="mtab" id="t-cal" onclick="setMod('calendar')" title="Calendar"><i data-icon="calendar"></i></button>
-      <button class="mtab" id="t-ges" onclick="setMod('gestao')" title="Gestão"><i data-icon="users"></i></button>
-      <button class="mtab" id="t-reg" onclick="setMod('regras')" title="Regras e Processos"><i data-icon="book"></i></button>
-      <button class="mtab" id="t-vnd" onclick="setMod('vendas')" title="Gestão de Vendas"><i data-icon="briefcase"></i></button>
-      <button class="mtab" id="t-avl" onclick="setMod('avaliacao')" title="Avaliação de Imóveis"><i data-icon="target"></i></button>
-      <button class="mtab" id="t-acv" onclick="setMod('acervo')" title="Acervo"><i data-icon="archive"></i></button>
+      <button class="mtab mtab-home" id="t-home" onclick="voltarInicio()" title="Início"><i data-icon="home"></i><span class="mtab-lb">Início</span></button>
+      <button class="mtab" id="t-jur" onclick="setMod('juridico')" title="Jurídico"><i data-icon="scale"></i><span class="mtab-lb">Jurídico</span></button>
+      <button class="mtab" id="t-int" onclick="setMod('interno')" title="Sistema Interno"><i data-icon="building"></i><span class="mtab-lb">Sistema Interno</span></button>
+      <button class="mtab" id="t-cal" onclick="setMod('calendar')" title="Calendar"><i data-icon="calendar"></i><span class="mtab-lb">Agenda e Tarefas</span></button>
+      <button class="mtab" id="t-ges" onclick="setMod('gestao')" title="Gestão"><i data-icon="users"></i><span class="mtab-lb">Gestão</span></button>
+      <button class="mtab" id="t-reg" onclick="setMod('regras')" title="Regras e Processos"><i data-icon="book"></i><span class="mtab-lb">Regras e Processos</span></button>
+      <button class="mtab" id="t-vnd" onclick="setMod('vendas')" title="Gestão de Vendas"><i data-icon="briefcase"></i><span class="mtab-lb">Vendas</span></button>
+      <button class="mtab" id="t-avl" onclick="setMod('avaliacao')" title="Avaliação de Imóveis"><i data-icon="target"></i><span class="mtab-lb">Avaliação de Imóveis</span></button>
+      <button class="mtab" id="t-acv" onclick="setMod('acervo')" title="Acervo"><i data-icon="archive"></i><span class="mtab-lb">Acervo</span></button>
     </div>
     <nav id="nav"></nav>
     <div class="sbb"><button class="btn-out" onclick="doLogout()"><i data-icon="logout" data-size="16"></i><span>Sair</span></button></div>
@@ -1864,7 +1865,7 @@
 <script src="js/01-state.js?v=20260911d"></script>
 <script src="js/02-manutencao.js?v=20261001a"></script>
 <script src="js/03-auth.js?v=20260911d"></script>
-<script src="js/04-init.js?v=20261001a"></script>
+<script src="js/04-init.js?v=20261002a"></script>
 <script src="js/05-crud.js?v=20260911d"></script>
 <script src="js/06-tarefas.js?v=20260911d"></script>
 <script src="js/07-agenda.js?v=20260917b"></script>
@@ -1879,7 +1880,7 @@
 <script src="js/17-forum.js?v=20260911d"></script>
 <script>window.AVAL_MOTOR_URL='https://novasp-motor-precos.onrender.com';</script>
 <script>window.IPTU_URL='https://ppdujpnmqerwouvwxqqa.supabase.co'; window.IPTU_KEY='sb_publishable_AuC7CMfpTcalVlk9SaCj8A_2b7a12EF';</script>   <!-- 2º projeto Supabase: cadastro do IPTU (dado público, chave publicável) -->   <!-- motor de preço ao vivo (Render); ver motor-precos/README.md -->
-<script src="js/18-avaliacoes.js?v=20261002b"></script>
+<script src="js/18-avaliacoes.js?v=20261002c"></script>
 <script src="js/18-vendas-planilhas.js?v=20260930b"></script>
 <script src="js/19-acervo-guess.js?v=20260930a"></script>
 <script src="js/20-acervo-nido.js?v=20260930a"></script>

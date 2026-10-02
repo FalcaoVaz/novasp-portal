@@ -186,6 +186,7 @@ function render(x){
         ${inc.custos_aquisicao?`<div class="linha"><span>Custos de aquisição do terreno (ITBI, comissão, jurídico, demolição, IPTU) ≈ ${pct(P.custo_aquisicao||0.12)}</span><b class="neg">− ${R$(inc.custos_aquisicao)}</b></div>`:''}
         <div class="linha tot"><span>Terreno máximo (o que chega ao proprietário)${inc.terreno_vgv?` <span class="sub">· ${(inc.terreno_vgv*100).toFixed(1)}% do VGV</span>`:''}</span><b>${R$(inc.terreno_max)}</b></div>
       </div>
+      ${(inc.lancRef||[]).length?`<div class="foot">Lançamentos anunciados perto: ${inc.lancRef.map(l=>`${l.nome} (${l.status||''}, ${R$(l.rs)}/m², ${N(l.d)} m)`).join('; ')}.</div>`:''}
       ${(inc.alertas||[]).length?`<ul style="margin:8px 0 0;padding-left:18px;font-size:.85em;color:#b45309">${inc.alertas.map(a=>`<li>${a}</li>`).join('')}</ul>`:''}
       ${(inc.base_legal||[]).length?`<div style="margin-top:10px;padding:8px 10px;background:#f0fdf4;border-radius:8px;font-size:.85em"><div style="font-weight:600;color:#047857;margin-bottom:4px">Por que a área vendável é ${inc.ca>(inc.ca_zona||inc.ca)?'maior que terreno × CA da zona':'essa'} — base legal</div><ul style="margin:0;padding-left:18px;color:#334155">${inc.base_legal.map(b=>`<li style="margin:2px 0">${b}</li>`).join('')}</ul></div>`:''}
       ${(inc.refs||[]).length?`<div class="foot">Referência de outorga: ${inc.refs.length} concessões da Prefeitura num raio de 1,5 km (ex.: ${inc.refs.slice(0,3).map(r=>`${r.endereco} — ${R$(r.ct_m2)}/m²`).join('; ')}).</div>`:''}

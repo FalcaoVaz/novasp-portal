@@ -117,6 +117,7 @@ const AV_PARAM = {
   marketing:0.045, adm:0.02, fator_obra:1.68, eficiencia:0.90, constr_sobre_computavel:1.29,
   lanc_cadastro_util:1.69, // ITBI de prédio novo: área do cadastro ÷ área útil ≈ 1,69 (prédios 2019+, medido no Foca 13/09/2026)
   lanc_itbi_min_n:30,      // mínimo de vendas de unidades novas no raio para usar o ITBI como preço de lançamento
+  lanc_anuncio_min_n:3,    // mínimo de empreendimentos anunciados (apto.vc) num raio de 2 km para usar como preço de lançamento
   lanc_sobre_usado:1.25,// se não houver lançamento anunciado no bairro: lançamento ≈ usado × 1,25
   casa_sobre_apto:0.60, // se não houver casa anunciada no bairro: R$/m² casa ≈ apto × 0,60 (mediana observada 30/09/2026)
   // Outorga onerosa (PDE, Lei 16.050/2014, art. 117): Ct = (At/Ac) × V × Fs × Fp por m² adicional acima do CA básico.
@@ -330,7 +331,14 @@ function _avUsarIptu(sql, silencioso){
   const t=document.getElementById('av-inc-terreno'); if(t && !t.value) t.value=Math.round(Number(r.area_terreno)||0)||'';
   if(!silencioso){ const el=document.getElementById('av-iptu-info'); el && el.querySelectorAll('tr[onclick]').forEach(tr=>tr.style.background= tr.getAttribute('onclick').includes(sql)?'#eff6ff':''); }
 }
-// Preço de lançamento automático: 1º vendas REAIS de apartamentos novos no ITBI (raio 1,5 km), 2º lançamentos anunciados, 3º usado × 1,25
+// Preço de lançamento automático: 1º lançamentos ANUNCIADOS na apto.vc (raio 2 km, preço atual de tabela),
+// 2º vendas REAIS de apartamentos novos no ITBI (raio 1,5 km, preço pago 2–3 anos atrás), 3º anúncios do motor, 4º usado × 1,25
+async function _avLancAnuncio(){
+  if(_avForm.lancAnuncio!==undefined || !_avPino) return _avForm.lancAnuncio;
+  try{ const r=await _avRpc('aval_lanc_anuncio',{p_lat:_avPino.lat,p_lng:_avPino.lng,p_raio_m:2000}); _avForm.lancAnuncio=(r&&r.n>=AV_PARAM.lanc_anuncio_min_n&&r.rs_m2)?r:(r&&r.n?Object.assign(r,{_poucos:true}):null); }
+  catch(_){ _avForm.lancAnuncio=null; }
+  return _avForm.lancAnuncio;
+}
 async function _avLancItbi(){
   if(_avForm.lancItbi!==undefined || !_avPino) return _avForm.lancItbi;
   try{ const r=await _avRpc('aval_lanc_itbi',{p_lat:_avPino.lat,p_lng:_avPino.lng,p_raio_m:1500}); _avForm.lancItbi=(r&&r.n>=AV_PARAM.lanc_itbi_min_n&&r.predios>=3)?r:null; }
@@ -338,7 +346,10 @@ async function _avLancItbi(){
   return _avForm.lancItbi;
 }
 function _avLancAuto(precos, rs_apto){
-  const it=_avForm.lancItbi;
+  const an=_avForm.lancAnuncio, it=_avForm.lancItbi;
+  if(an&&!an._poucos&&an.rs_m2) return {rs:an.rs_m2, n:an.n,
+    origem:`mediana de ${an.n} lançamentos anunciados a até ${(an.raio_m/1000).toLocaleString('pt-BR')} km (apto.vc, ${an.coletado_em}; faixa R$ ${(an.q1||0).toLocaleString('pt-BR')}–${(an.q3||0).toLocaleString('pt-BR')}/m²)`
+      +(it&&it.rs_m2_cadastro?` · vendas reais de novos no ITBI: R$ ${Math.round(it.rs_m2_cadastro*AV_PARAM.lanc_cadastro_util).toLocaleString('pt-BR')}/m²`:'')};
   if(it&&it.rs_m2_cadastro) return {rs:Math.round(it.rs_m2_cadastro*AV_PARAM.lanc_cadastro_util), n:it.n,
     origem:`vendas reais (ITBI) de ${it.n} unidades novas em ${it.predios} prédios a até ${(it.raio_m/1000).toLocaleString('pt-BR')} km, ${it.periodo} (R$ ${it.rs_m2_cadastro.toLocaleString('pt-BR')}/m² do cadastro × ${AV_PARAM.lanc_cadastro_util} → área útil)`};
   if(precos&&precos.rs_lanc) return {rs:precos.rs_lanc, n:precos.n_lanc||0, origem:`${precos.n_lanc} lançamentos anunciados`};
@@ -582,7 +593,7 @@ async function _avPinoInfo(){
     const z=await _avRpc('aval_geo',{p_lat:_avPino.lat,p_lng:_avPino.lng});
     const zi=Array.isArray(z)?z[0]:z;
     _avForm.geo=zi||null;
-    _avForm.lancItbi=undefined;
+    _avForm.lancItbi=undefined; _avForm.lancAnuncio=undefined;
     if(!_avForm.iptu) _avBuscarIptu();
     _avForm.comaer=null; _avComaer(_avPino.lat,_avPino.lng).then(k=>{ _avForm.comaer=k; const e=document.getElementById('av-comaer-info'); if(e) e.innerHTML=_avComaerTexto(k); }).catch(()=>{});
     if(zi){
@@ -692,7 +703,7 @@ async function avalCalcular(opts){
   const loteOrigem = rsTerrenoInf ? 'informado pelo corretor' : (tb&&tb.lote ? `mediana de ${tb.lote_n} lotes anunciados pela NSP em ${bairro}, ${tb.lote_per||'2018–2026'} (R$ ${tb.lote.toLocaleString('pt-BR')}/m² pedido × ${idxPF0.idx} pedido→fechado)` : (rs_casa ? `estimado: ${Math.round(AV_PARAM.lote_sobre_casa*100)}% do R$/m² de casa do bairro` : null));
   const padrao=(_avForm.incorp&&_avForm.incorp.padrao)||_avPadraoSugerido(bairro);
   const lancInformado=(_avForm.incorp&&_avForm.incorp.lanc)||null;
-  await _avLancItbi(); const la=_avLancAuto(precos, rs_apto);
+  await Promise.all([_avLancAnuncio(), _avLancItbi()]); const la=_avLancAuto(precos, rs_apto);
   const rs_lanc = lancInformado || la.rs;
   const lancOrigem = lancInformado ? 'informado' : la.origem;
 
@@ -802,7 +813,7 @@ async function _avCtxRapido(){
   const el=document.getElementById('av-incorp-painel'); if(el){ el.style.display=''; el.innerHTML='<div class="card"><div class="cb" style="color:#64748b">Buscando preços de lançamento em '+bairro+'…</div></div>'; }
   const precos=(await _avBuscarPrecos(bairro))||{};
   const rs_apto=precos.rs_apto||null;
-  await _avLancItbi(); const la=_avLancAuto(precos, rs_apto); const rs_lanc=la.rs;
+  await Promise.all([_avLancAnuncio(), _avLancItbi()]); const la=_avLancAuto(precos, rs_apto); const rs_lanc=la.rs;
   _avForm.cache=_avForm.cache||{}; _avForm.cache.precos=precos;
   _avForm.ctx={ehlote:true, rs_apto, rs_lanc, lancOrigem: la.origem, preco:null, bairro, padraoSugerido:_avPadraoSugerido(bairro), lancAuto:la.rs||null, lancN:la.n||0, lancAutoOrigem:la.origem};
   _avForm.podeIncorp=!!(geo.incorporavel && Number(geo.ca_maximo)>=2);
@@ -835,7 +846,7 @@ async function avalAbrirIncorp(){
       <input id="av-inc-frente" type="number" value="${inc.frente||''}" placeholder="Frente do terreno (m)" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px">
       <select id="av-inc-padrao" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px" title="Padrão do prédio que seria construído: define o custo de obra (CUB Sinduscon-SP)">
         ${Object.entries(AV_PADROES).map(([k,v])=>`<option value="${k}" ${(inc.padrao||c.padraoSugerido)===k?'selected':''}>Padrão ${v.lb} — obra ≈ ${_avR$(Math.round(v.cub*P.obra_sobre_cub))}/m²</option>`).join('')}</select>
-      <input id="av-inc-lanc" type="number" value="${inc.lanc||''}" placeholder="Lançamento R$/m² (auto: ${c.lancAuto?_avR$(c.lancAuto):'—'}${c.lancAutoOrigem&&/ITBI/.test(c.lancAutoOrigem)?' · vendas reais de novos':(c.lancN?' · '+c.lancN+' anunciados':' · usado × '+P.lanc_sobre_usado)})" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px" title="Preço por m² das unidades novas que o incorporador venderia. Se souber o lançamento da região, informe; senão o sistema usa os lançamentos anunciados ou o usado × ${P.lanc_sobre_usado}.">
+      <input id="av-inc-lanc" type="number" value="${inc.lanc||''}" placeholder="Lançamento R$/m² (auto: ${c.lancAuto?_avR$(c.lancAuto):'—'}${c.lancAutoOrigem&&/apto\.vc/.test(c.lancAutoOrigem)?' · '+c.lancN+' lançamentos anunciados perto':c.lancAutoOrigem&&/ITBI/.test(c.lancAutoOrigem)?' · vendas reais de novos':(c.lancN?' · '+c.lancN+' anunciados':' · usado × '+P.lanc_sobre_usado)})" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px" title="Preço por m² das unidades novas que o incorporador venderia. Se souber o lançamento da região, informe; senão o sistema usa os lançamentos anunciados ou o usado × ${P.lanc_sobre_usado}.">
       <select id="av-inc-categoria" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px" title="HIS e HMP têm outorga isenta/reduzida (Fs do PDE). Automático: pelo preço de lançamento (até ${P.his_max_rs_m2.toLocaleString('pt-BR')} HIS; até ${P.hmp_max_rs_m2.toLocaleString('pt-BR')} HMP).">
         <option value="auto" ${(inc.categoria||'auto')==='auto'?'selected':''}>Categoria: automática pelo preço</option>
         <option value="mercado" ${inc.categoria==='mercado'?'selected':''}>Mercado (outorga integral)</option>
@@ -886,7 +897,7 @@ async function _avCalcIncorp(){
   const m=_avContaIncorp({terreno:inc.terreno, ca, ca_basico:geo.ca_basico, rs_lanc, padrao:inc.padrao, qvt:null, frente:inc.frente, gabarito:geo.gabarito_m, outorga_ref_m2:refMed, outorga_ref_n:refs.length, fp:fpInfo&&fpInfo.fp, categoria:inc.categoria, fachada_ativa:inc.fachada_ativa, zona:geo.zona, comaer:_avForm.comaer||null});
   m.refs=refs.slice(0,10); m.fpInfo=fpInfo;
   _avForm.memoria=m; _avForm.lancOrigem=lancOrigem; _avForm.incorpMotivo=null;
-  dossie.memoria=dossie.memoria||{}; dossie.memoria.incorp={...m, lancOrigem, padraoLb:(AV_PADROES[inc.padrao]||{}).lb, cubRef:(AV_PADROES[inc.padrao]||{}).ref};
+  dossie.memoria=dossie.memoria||{}; dossie.memoria.incorp={...m, lancOrigem, lancRef:(_avForm.lancAnuncio&&_avForm.lancAnuncio.lista||[]).slice(0,6).map(l=>({nome:l.nome,bairro:l.bairro,status:l.status,rs:l.rs,d:l.d})), padraoLb:(AV_PADROES[inc.padrao]||{}).lb, cubRef:(AV_PADROES[inc.padrao]||{}).ref};
   // limpa rastro de cálculo anterior no método
   dossie.metodo=(dossie.metodo||'').replace(/ · incorporação:.*$/,'').replace(/ · incorporação inviável.*$/,'');
   if(m.terreno_max>0){
@@ -1013,6 +1024,9 @@ function _avMemoriaHTML(m){
       <tr style="border-top:2px solid #10b981;font-weight:700"><td style="padding:4px 8px">Terreno máximo (o que chega ao proprietário)${m.terreno_vgv?` <small style="font-weight:400;color:#64748b">· ${(m.terreno_vgv*100).toFixed(1)}% do VGV</small>`:''}</td><td style="padding:4px 8px;text-align:right;white-space:nowrap">${_avR$(Math.round(m.terreno_max))}</td></tr>
     </tbody></table>
     ${alertas}
+    ${(_avForm.lancAnuncio&&(_avForm.lancAnuncio.lista||[]).length)?`<details style="margin-top:8px;font-size:.84em"><summary style="cursor:pointer;color:#2563eb">Lançamentos anunciados perto (${_avForm.lancAnuncio.n})</summary>
+      <table style="width:100%;border-collapse:collapse;margin-top:4px"><thead><tr style="color:#94a3b8;text-align:left"><th style="padding:2px 6px">Empreendimento</th><th style="padding:2px 6px">Estágio</th><th style="padding:2px 6px;text-align:right">Dist.</th><th style="padding:2px 6px;text-align:right">R$/m²</th></tr></thead>
+      <tbody>${_avForm.lancAnuncio.lista.map(l=>`<tr style="border-top:1px solid #f1f5f9"><td style="padding:2px 6px"><a href="${l.url}" target="_blank" rel="noopener" style="color:#2563eb">${l.nome}</a> <span style="color:#94a3b8">${l.bairro||''}</span></td><td style="padding:2px 6px">${l.status||''}</td><td style="padding:2px 6px;text-align:right">${(l.d||0).toLocaleString('pt-BR')} m</td><td style="padding:2px 6px;text-align:right">${_avR$(l.rs)}</td></tr>`).join('')}</tbody></table></details>`:''}
     ${(m.base_legal||[]).length?`<div style="margin-top:10px;padding:8px 10px;background:#f0fdf4;border-radius:8px;font-size:.85em"><div style="font-weight:600;color:#047857;margin-bottom:4px">Por que a área vendável é ${m.ca>(m.ca_zona||m.ca)?'maior que terreno × CA da zona':'essa'}</div><ul style="margin:0;padding-left:18px;color:#334155">${m.base_legal.map(b=>`<li style="margin:2px 0">${b}</li>`).join('')}</ul></div>`:''}
     ${m.fpInfo?`<div style="font-size:.84em;color:#64748b;margin-top:8px">Fator de planejamento (Quadro 6 do PDE) no ponto: <b>${m.fpInfo.fp_texto||m.fpInfo.fp||'—'}</b> · ${m.fpInfo.macroarea||''}${m.fpInfo.setor?' · '+m.fpInfo.setor:''}</div>`:''}
     ${(m.refs||[]).length?`<div style="font-size:.84em;margin-top:8px"><div style="color:#64748b;margin-bottom:4px">Outorgas concedidas perto (GeoSampa) — contrapartida paga por m² excedente:</div>
