@@ -296,13 +296,22 @@ const _avN = v => (v==null||v===''||isNaN(Number(v)))?'—':Number(v).toLocaleSt
 async function _avBuscarIptu(){
   const el=document.getElementById('av-iptu-info'); if(!el) return;
   const rua=(_avForm.rua||'').trim(), num=(_avForm.num||'').trim();
-  _avForm.iptu=null;
+  _avForm.iptu=null; const seq=(window._avIptuSeq=(window._avIptuSeq||0)+1); const velho=()=>seq!==window._avIptuSeq;
   if(!rua||!num){ el.innerHTML=''; return; }
   el.innerHTML='<span style="color:#94a3b8;font-size:.88em">Consultando o cadastro do IPTU…</span>';
-  let rows=[];
-  try{ rows=await _avIptu('iptu_por_endereco',{p_logradouro:rua,p_numero:num,p_lim:300})||[]; }catch(e){ el.innerHTML='<span style="color:#94a3b8;font-size:.85em">Cadastro do IPTU indisponível agora.</span>'; return; }
+  let rows=[], ruas=[];
+  try{ ruas=await _avIptu('iptu_ruas',{p_logradouro:rua,p_numero:num,p_lim:4})||[]; }catch(e){ el.innerHTML='<span style="color:#94a3b8;font-size:.85em">Cadastro do IPTU indisponível agora.</span>'; return; }
+  if(velho()) return;
+  const comNum=ruas.find(r=>r.tem_numero);
+  if(comNum){ try{ rows=await _avIptu('iptu_por_rua',{p_logradouro_norm:comNum.logradouro_norm,p_numero:num,p_lim:300})||[]; }catch(_){} }
+  else if(!ruas.length || ruas[0].sim<0.6){
+    el.innerHTML = ruas.length ? `<div style="font-size:.86em;color:#334155;padding:6px 8px;background:#f8fafc;border-radius:8px">🏛️ <b>Cadastro do IPTU:</b> não achei "${rua}, ${num}". Você quis dizer: ${ruas.map(r=>`<a href="javascript:void(0)" onclick="_avForm.rua='${_avNomeRuaIptu(r.logradouro).replace(/'/g,"\\'")}';_avBuscarIptu()" style="color:#2563eb">${_avNomeRuaIptu(r.logradouro)}</a>`).join(' · ')}</div>`
+                               : `<span style="color:#94a3b8;font-size:.85em">🏛️ Cadastro do IPTU: rua não encontrada no recorte carregado (CEPs 04…).</span>`;
+    return;
+  }
+  if(velho()) return;
   if(!rows.length){
-    let prox=[]; try{ prox=await _avIptu('iptu_proximos',{p_logradouro:rua,p_numero:num,p_lim:6})||[]; }catch(_){}
+    let prox=[]; try{ prox=await _avIptu('iptu_proximos',{p_logradouro:(ruas[0]&&ruas[0].logradouro_norm)||rua,p_numero:num,p_lim:6})||[]; }catch(_){}
     el.innerHTML = prox.length
       ? `<div style="font-size:.86em;color:#334155;padding:6px 8px;background:#f8fafc;border-radius:8px">🏛️ <b>Cadastro do IPTU:</b> o nº ${num} não está no cadastro de ${prox[0].logradouro.replace(/\s+/g,' ')}. Números mais próximos: ${prox.map(p=>`<a href="javascript:void(0)" onclick="_avForm.num='${p.numero}';_avBuscarIptu()" style="color:#2563eb">${p.numero}</a> <span style="color:#94a3b8">(${p.unidades>1?p.unidades+' unid.':(p.uso||'')})</span>`).join(' · ')}</div>`
       : `<span style="color:#94a3b8;font-size:.85em">🏛️ Cadastro do IPTU: rua não encontrada no recorte carregado (CEPs 04…).</span>`;
@@ -454,10 +463,10 @@ function avalNova(){
     <div class="card"><div class="cb">
       <div style="font-weight:600;margin-bottom:10px">1 · Onde fica o imóvel</div>
       <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px">
-        <input id="av-rua" placeholder="Rua / Avenida (ex: Alameda dos Nhambiquaras)" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px">
-        <input id="av-num" placeholder="Número" inputmode="numeric" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px">
+        <input id="av-rua" placeholder="Rua / Avenida — pode digitar só o nome (ex: guaiós, nhambiquaras)" onkeydown="if(event.key==='Enter')avalGeocodificar()" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px">
+        <input id="av-num" placeholder="Número" inputmode="numeric" onkeydown="if(event.key==='Enter')avalGeocodificar()" style="padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px">
       </div>
-      <input id="av-bairro" placeholder="Bairro (ex: Moema)" style="margin-top:8px;width:100%;padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px">
+      <div id="av-bairro-box" style="display:none;margin-top:8px;font-size:.88em;color:#64748b">Bairro detectado: <input id="av-bairro" style="padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;width:220px" title="Usado para buscar os anúncios do bairro. Corrija se precisar."></div>
       <button class="btn btn-o" style="margin-top:10px" onclick="avalGeocodificar()">🔎 Localizar no mapa</button>
       <div id="av-geo-res" style="margin-top:10px"></div>
       <div id="av-mapa" style="height:280px;border-radius:10px;margin-top:10px;display:none;border:1px solid #e2e8f0"></div>
@@ -508,46 +517,68 @@ async function _avCarregarLeaflet(){
   });
 }
 
+// Localiza o endereço SEM pedir bairro. Ordem: (1) vendas do ITBI geolocalizadas (aceita grafia aproximada: "gaiós" → Al. dos Guaiós),
+// (2) base local, (3) OpenStreetMap, (4) OpenStreetMap com o nome corrigido pelo cadastro do IPTU. O bairro é detectado depois.
+const _avTipoRua = t => ({R:'Rua',AV:'Avenida',AL:'Alameda',TV:'Travessa',PC:'Praça',PCA:'Praça',ESTR:'Estrada',LGO:'Largo',VL:'Viela',PSG:'Passagem'}[String(t||'').toUpperCase()]||'');
+function _avNomeRuaIptu(lg){ const m=String(lg||'').trim().match(/^(\S+)\s+(.*)$/); if(!m) return lg; const t=_avTipoRua(m[1]); return (t?t+' ':m[1]+' ')+_avCap(m[2].replace(/\bDR\b/,'Doutor').replace(/\bPROF\b/,'Professor').replace(/\bGAL\b/,'General').replace(/\bCEL\b/,'Coronel').replace(/\bSTA\b/,'Santa').replace(/\bSTO\b/,'Santo')); }
+async function _avOsm(q){
+  try{ const url='https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=4&countrycodes=br&bounded=1&viewbox=-46.90,-23.35,-46.35,-24.00&q='+encodeURIComponent(q);
+       const arr=await (await fetch(url,{headers:{'Accept-Language':'pt-BR'}})).json();
+       return (arr||[]).map(o=>({label:o.display_name.split(',').slice(0,3).join(','),lat:+o.lat,lng:+o.lon,origem:'OpenStreetMap',bairro:(o.address||{}).suburb||(o.address||{}).neighbourhood||(o.address||{}).quarter||''})); }
+  catch(_){ return []; }
+}
 async function avalGeocodificar(){
   const rua=(document.getElementById('av-rua').value||'').trim();
   const num=(document.getElementById('av-num').value||'').trim();
-  const bairro=(document.getElementById('av-bairro').value||'').trim();
   const res=document.getElementById('av-geo-res');
   if(!rua){ res.innerHTML='<span style="color:#dc2626">Informe ao menos a rua.</span>'; return; }
-  _avForm={rua,num,bairro};
+  _avForm={rua,num,bairro:''}; window._avIptuSeq=(window._avIptuSeq||0)+1;
+  ['av-iptu-info','av-comaer-info','av-incorp-cta','av-pino-info'].forEach(id=>{ const e=document.getElementById(id); if(e) e.innerHTML=''; });
+  const bb=document.getElementById('av-bairro'); if(bb) bb.value='';
   res.innerHTML='Procurando…';
   let cands=[];
-  // 1) nosso banco (nada sai pra fora)
-  try{
-    const loc=await _avRpc('aval_geocode',{p_q:`${rua} ${num}`});
-    cands=(loc||[]).map(c=>({label:c.endereco,lat:c.lat,lng:c.lng,origem:'nosso banco'}));
-  }catch(e){ console.warn('geocode local',e); }
-  // 2) OSM na cauda
+  // 1) vendas registradas (ITBI) geolocalizadas — aceita grafia aproximada
+  try{ const r=await _avRpc('aval_geocode_endereco',{p_rua:rua,p_numero:num}); const h=Array.isArray(r)?r[0]:null;
+       if(h&&h.lat) cands.push({label:`${_avCap(h.rua_norm)}${num?', '+num:''} (digitado: ${rua})`,lat:h.lat,lng:h.lng,origem:`vendas registradas · ${h.precisao}`}); }catch(_){}
+  // 2) base local de endereços
+  try{ const loc=await _avRpc('aval_geocode',{p_q:`${rua} ${num}`}); (loc||[]).forEach(c=>cands.push({label:c.endereco,lat:c.lat,lng:c.lng,origem:'nosso banco',bairro:c.distrito||''})); }catch(_){}
+  // 3) OpenStreetMap com o que foi digitado
+  if(!cands.length) cands=await _avOsm([rua+(num?', '+num:''),'São Paulo','SP'].join(', '));
+  // 4) nome corrigido pelo cadastro do IPTU (ex.: "gaiós" → Alameda dos Guaiós) e nova tentativa no OSM
   if(!cands.length){
-    try{
-      const q=[rua+(num?', '+num:''), bairro, 'São Paulo', 'SP'].filter(Boolean).join(', ');
-      const url='https://nominatim.openstreetmap.org/search?format=json&limit=5&countrycodes=br&bounded=1&viewbox=-46.90,-23.35,-46.35,-24.00'
-        +'&q='+encodeURIComponent(q);
-      const r=await fetch(url,{headers:{'Accept-Language':'pt-BR'}});
-      const arr=await r.json();
-      cands=(arr||[]).map(o=>({label:o.display_name.split(',').slice(0,3).join(','),
-        lat:+o.lat,lng:+o.lon,origem:'OpenStreetMap'}));
-    }catch(e){ console.warn('osm',e); }
+    try{ const ruas=await _avIptu('iptu_ruas',{p_logradouro:rua,p_numero:num,p_lim:4})||[];
+         for(const r of ruas.filter(x=>x.tem_numero||x.sim>=0.6).slice(0,3)){
+           const nome=_avNomeRuaIptu(r.logradouro); const c=await _avOsm(`${nome}${num?', '+num:''}, São Paulo, SP`);
+           c.forEach(x=>{ x.origem='OpenStreetMap · nome do cadastro: '+nome; x.ruaCorrigida=nome; }); cands.push(...c.slice(0,1)); }
+    }catch(_){}
   }
   if(!cands.length){
-    res.innerHTML='<span style="color:#b45309">Não localizei automaticamente. Você pode ajustar o pino no mapa.</span>';
-    await _avMostrarMapa(-23.61,-46.66);   // centro aproximado zona sul
+    res.innerHTML='<span style="color:#b45309">Não localizei este endereço. Arraste o pino até o imóvel — o zoneamento e o cadastro são consultados depois que você posicionar.</span>';
+    _avForm.pinoProvisorio=true;
+    await _avMostrarMapa(-23.61,-46.66);   // ponto neutro: nada é calculado até o corretor arrastar
     return;
   }
   res.innerHTML='<div style="font-size:.9em;color:#64748b;margin-bottom:6px">Escolha o endereço certo (arraste o pino se precisar ajustar):</div>'
-    + cands.map((c,i)=>`<div style="padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:4px;cursor:pointer"
+    + cands.slice(0,5).map((c,i)=>`<div style="padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:4px;cursor:pointer"
         onclick="_avEscolher(${c.lat},${c.lng},${i})">📍 ${c.label} <span style="color:#94a3b8;font-size:.82em">· ${c.origem}</span></div>`).join('');
-  window._avCands=cands;
+  window._avCands=cands.slice(0,5);
   await _avEscolher(cands[0].lat,cands[0].lng,0);
+}
+// Bairro a partir do ponto (OpenStreetMap reverso); cai no distrito do zoneamento se não houver
+async function _avDetectarBairro(){
+  const c=(window._avCands||[]).find(x=>Math.abs(x.lat-_avPino.lat)<1e-6&&Math.abs(x.lng-_avPino.lng)<1e-6);
+  let b=c&&c.bairro||'';
+  if(!b){ try{ const o=await (await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&zoom=16&addressdetails=1&lat=${_avPino.lat}&lon=${_avPino.lng}`,{headers:{'Accept-Language':'pt-BR'}})).json(); const ad=(o&&o.address)||{}; b=ad.suburb||ad.neighbourhood||ad.quarter||''; }catch(_){} }
+  if(!b && _avForm.geo && _avForm.geo.distrito) b=_avCap(_avForm.geo.distrito);
+  _avForm.bairro=b;
+  const inp=document.getElementById('av-bairro'), box=document.getElementById('av-bairro-box');
+  if(inp){ inp.value=b; inp.onchange=()=>{ _avForm.bairro=inp.value.trim(); }; }
+  if(box) box.style.display='';
 }
 
 async function _avEscolher(lat,lng,i){
-  _avPino={lat,lng};
+  _avPino={lat,lng}; _avForm.pinoProvisorio=false;
+  const c=(window._avCands||[])[i]; if(c&&c.ruaCorrigida) _avForm.rua=c.ruaCorrigida;
   await _avMostrarMapa(lat,lng);
   if(window._avCands) document.querySelectorAll('#av-geo-res > div[onclick]').forEach((el,k)=>
     el.style.borderColor = k===i ? '#1E2D4A' : '#e2e8f0');
@@ -560,14 +591,14 @@ async function _avMostrarMapa(lat,lng){
     _avMapa=L.map('av-mapa').setView([lat,lng],17);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(_avMapa);
     _avMarker=L.marker([lat,lng],{draggable:true}).addTo(_avMapa);
-    _avMarker.on('dragend',e=>{ const p=e.target.getLatLng(); _avPino={lat:p.lat,lng:p.lng}; _avPinoInfo(); });
+    _avMarker.on('dragend',e=>{ const p=e.target.getLatLng(); _avPino={lat:p.lat,lng:p.lng}; _avForm.pinoProvisorio=false; _avForm.iptu=null; _avPinoInfo(); });
     setTimeout(()=>_avMapa.invalidateSize(),200);
   }else{
     _avMapa.setView([lat,lng],17); _avMarker.setLatLng([lat,lng]);
   }
   _avPino={lat,lng}; _avPinoInfo(); _avLiberaPasso2();
 }
-function _avLiberaPasso2(){ _avRenderCta(); }
+function _avLiberaPasso2(){ if(!_avForm.pinoProvisorio) _avRenderCta(); }
 // Depois do pino: o corretor escolhe o caminho — venda a mercado (passo 2) OU terreno para incorporadora (painel próprio)
 function _avRenderCta(){
   const cta=document.getElementById('av-incorp-cta'); if(!cta||!_avPino) return;
@@ -588,12 +619,14 @@ function _avModo(m){
 
 async function _avPinoInfo(){
   const el=document.getElementById('av-pino-info'); if(!el||!_avPino) return;
+  if(_avForm.pinoProvisorio){ el.innerHTML='<span style="color:#b45309">📍 Arraste o pino até o imóvel.</span>'; ['av-comaer-info','av-iptu-info','av-incorp-cta'].forEach(id=>{ const e=document.getElementById(id); if(e) e.innerHTML=''; }); return; }
   el.innerHTML='Confirmando zoneamento…';
   try{
     const z=await _avRpc('aval_geo',{p_lat:_avPino.lat,p_lng:_avPino.lng});
     const zi=Array.isArray(z)?z[0]:z;
     _avForm.geo=zi||null;
     _avForm.lancItbi=undefined; _avForm.lancAnuncio=undefined;
+    _avDetectarBairro();
     if(!_avForm.iptu) _avBuscarIptu();
     _avForm.comaer=null; _avComaer(_avPino.lat,_avPino.lng).then(k=>{ _avForm.comaer=k; const e=document.getElementById('av-comaer-info'); if(e) e.innerHTML=_avComaerTexto(k); }).catch(()=>{});
     if(zi){
@@ -622,7 +655,7 @@ async function avalCalcular(opts){
   if(grupo==='terreno' && !terreno){ alert('Informe a área do terreno (m²).'); return; }
   if(grupo!=='terreno' && !area){ alert(grupo==='apto'?'Informe a área útil.':'Informe a área construída.'); return; }
   if(grupo==='casa' && !terreno){ alert('Casa: informe também a área do terreno (m²) — ela entra na conta.'); return; }
-  if(!bairro){ alert('Informe o bairro (usado para buscar o preço de mercado).'); return; }
+  if(!bairro){ alert('Não identifiquei o bairro deste ponto. Preencha o campo "Bairro detectado" abaixo do endereço.'); const bx=document.getElementById('av-bairro-box'); if(bx) bx.style.display=''; return; }
   const stt=document.getElementById('av-calc-status')||{ set textContent(v){}, set innerHTML(v){} };
   stt.textContent='Buscando anúncios ao vivo em '+bairro+'…';
 
@@ -655,9 +688,15 @@ async function avalCalcular(opts){
   amostraTodos.forEach(a=>{ a._k=kAn(a); a.excluido=_avForm.excl.has(a._k); });
   const amostra=amostraTodos.filter(a=>!a.excluido);
   const compsItbiAtivos=compsItbi.filter(c=>!c.excluido);
+  // anúncios só trazem a rua: centro da rua pelas vendas registradas (com leve dispersão para não empilhar); vendas reais: número exato ou próximo
+  const _jit=(i)=>((i*7919)%13-6)*0.00006;
+  if(!recalc){ try{
+      const ruas=[...new Set(amostraTodos.map(a=>a.rua).filter(Boolean))];
+      const geo=ruas.length?(await _avRpc('aval_geocode_ruas',{p_ruas:ruas})||[]):[]; const m=Object.fromEntries(geo.map(g=>[g.rua,g]));
+      amostraTodos.forEach((a,i)=>{ const g=m[a.rua]; if(g){ a.lat=g.lat+_jit(i); a.lng=g.lng+_jit(i+5); a.aprox=true; } });
+    }catch(_){} }
   if(!recalc) await Promise.all([
-    ...amostra.map(async a=>{ if(a.rua){ const g=await geocodar(a.rua+' '+(a.bairro||bairro)); if(g) Object.assign(a,g); } }),
-    ...compsItbi.slice(0,12).map(async c=>{ const g=await geocodar(`${c.logradouro||''} ${c.numero||''}`); if(g) Object.assign(c,g); }),
+    ...compsItbi.slice(0,12).map(async c=>{ try{ const r=await _avRpc('aval_geocode_endereco',{p_rua:c.logradouro||'',p_numero:c.numero||''}); const h=Array.isArray(r)?r[0]:null; if(h&&h.lat){ c.lat=h.lat; c.lng=h.lng; return; } }catch(_){} const g=await geocodar(`${c.logradouro||''} ${c.numero||''}`); if(g) Object.assign(c,g); }),
   ]);
   // R$/m² dos anúncios: o motor manda a mediana de toda a página; se o corretor excluiu algum, recalcula pela amostra restante
   const mediana=v=>{ v=v.filter(x=>x>0).sort((a,b)=>a-b); return v.length?(v.length%2?v[(v.length-1)/2]:(v[v.length/2-1]+v[v.length/2])/2):null; };
@@ -743,7 +782,7 @@ async function avalCalcular(opts){
     valor_mercado:null, faixa_min:null, faixa_max:null, metodo:null,
     incorp_aplicavel:false, incorp_area_constr:null, incorp_lancamento_rs_m2:null,
     incorp_vgv:null, incorp_valor_terreno:null, incorp_ganho_pct:null,
-    comparaveis: JSON.stringify(amostraTodos.map(a=>({k:a._k,excluido:!!a.excluido,tipo:a.tipo,area:a.area,preco:a.preco,rs_m2:a.rs_m2,dorm:a.dorm,vaga:a.vaga,endereco:[a.rua,a.bairro].filter(Boolean).join(', '),url:a.url,lat:a.lat||null,lng:a.lng||null,origem:a.lancamento?'lançamento':'anúncio'}))
+    comparaveis: JSON.stringify(amostraTodos.map(a=>({k:a._k,excluido:!!a.excluido,tipo:a.tipo,area:a.area,preco:a.preco,rs_m2:a.rs_m2,dorm:a.dorm,vaga:a.vaga,endereco:[a.rua,a.bairro].filter(Boolean).join(', '),aprox:!!a.aprox,url:a.url,lat:a.lat||null,lng:a.lng||null,origem:a.lancamento?'lançamento':'anúncio'}))
                   .concat(compsItbi.map(c=>({k:c._k,excluido:!!c.excluido,tipo:'Venda real',area:c.area_constr,area_util_est:Math.round(c.area_util_est||0),preco:c.valor,rs_m2:c.rs_m2,rs_util:c.rs_util,endereco:`${c.logradouro||''}${c.numero?', '+c.numero:''}`,data:c.data,lat:c.lat||null,lng:c.lng||null,origem:'Venda real '+(c.data||'')})))),
     lat:_avPino?_avPino.lat:null, lng:_avPino?_avPino.lng:null,
     entorno: entorno ? Object.assign({}, entorno, {iptu: _avForm.iptuSel ? (({sql,uso,padrao,area_terreno,area_construida,testada,ano_construcao,pavimentos,fracao_ideal})=>({sql,uso,padrao,area_terreno,area_construida,testada,ano_construcao,pavimentos,fracao_ideal}))(_avForm.iptuSel) : null}) : null,
@@ -807,7 +846,7 @@ async function _avBuscarPrecos(bairro){
 // Contexto mínimo para rodar a incorporação antes da avaliação completa (direto do mapa)
 async function _avCtxRapido(){
   const g=id=>{ const el=document.getElementById(id); return el?el.value:''; };
-  const bairro=(g('av-bairro')||_avForm.bairro||'').trim(); if(!bairro){ alert('Informe o bairro (usado para buscar o preço de lançamento).'); return false; }
+  const bairro=(g('av-bairro')||_avForm.bairro||(_avForm.geo&&_avForm.geo.distrito)||'').trim(); if(!bairro){ alert('Não identifiquei o bairro deste ponto. Preencha o campo "Bairro detectado".'); return false; }
   _avForm.bairro=bairro;
   const geo=_avForm.geo||{};
   const el=document.getElementById('av-incorp-painel'); if(el){ el.style.display=''; el.innerHTML='<div class="card"><div class="cb" style="color:#64748b">Buscando preços de lançamento em '+bairro+'…</div></div>'; }
@@ -1115,7 +1154,7 @@ async function _avDesenharMapaComps(comps, centro){
   if(_c){ L.circleMarker([_c.lat,_c.lng],{radius:18,color:'#dc2626',weight:2,fillColor:'#dc2626',fillOpacity:.15}).addTo(map);
     L.circleMarker([_c.lat,_c.lng],{radius:9,color:'#fff',weight:3,fillColor:'#dc2626',fillOpacity:1}).addTo(map).bindTooltip('Imóvel avaliado',{permanent:true,direction:'top',offset:[0,-10],className:'av-tt'}); b.push([_c.lat,_c.lng]); }
   pts.forEach(c=>{ const itbi=/ITBI|Fechamento|Venda real/i.test(c.origem||''); L.circleMarker([c.lat,c.lng],{radius:7,color:itbi?'#047857':'#2563eb',fillColor:itbi?'#34d399':'#60a5fa',fillOpacity:.8,weight:2}).addTo(map)
-      .bindPopup(`<b>${c.origem||''}</b><br>${c.endereco||''}<br>${c.area?Math.round(c.area)+' m² · ':''}${_avR$(c.preco)} · ${_avR$(c.rs_m2)}/m²${c.url?`<br><a href="${c.url}" target="_blank">abrir anúncio</a>`:''}`); b.push([c.lat,c.lng]); });
+      .bindPopup(`<b>${c.origem||''}</b><br>${c.endereco||''}${c.aprox?' <i>(posição aproximada na rua)</i>':''}<br>${c.area?Math.round(c.area)+' m² · ':''}${_avR$(c.preco)} · ${_avR$(c.rs_m2)}/m²${c.url?`<br><a href="${c.url}" target="_blank">abrir anúncio</a>`:''}`); b.push([c.lat,c.lng]); });
   if(b.length>1) map.fitBounds(b,{padding:[20,20]});
   setTimeout(()=>map.invalidateSize(),200);
 }
@@ -1193,7 +1232,7 @@ function abrirAvalDetalhe(id){
       ${_avCompsTabela(comps)}
     </div></div>`:''}
     ${acoes}`;
-  (async()=>{ let centro=null; try{ const r=await _avRpc('aval_geocode',{p_q:(x.endereco||'')+' '+(x.bairro||'')}); const h=Array.isArray(r)?r[0]:null; if(h) centro={lat:h.lat,lng:h.lng}; }catch(_){} _avDesenharMapaComps(comps, centro); })();
+  (async()=>{ let centro=(x.lat&&x.lng)?{lat:+x.lat,lng:+x.lng}:null; if(!centro){ try{ const r=await _avRpc('aval_geocode',{p_q:(x.endereco||'')+' '+(x.bairro||'')}); const h=Array.isArray(r)?r[0]:null; if(h) centro={lat:h.lat,lng:h.lng}; }catch(_){} } _avDesenharMapaComps(comps, centro); })();
 }
 
 async function _avAprovar(id, novoStatus){
