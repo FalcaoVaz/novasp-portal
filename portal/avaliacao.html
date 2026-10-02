@@ -139,6 +139,7 @@ function render(x){
       ${(()=>{ const pois=ent.pois||{}, n500=ent.n500||{}, n1000=ent.n1000||{};
         const CAT=[['onibus','🚌','Ônibus'],['parque','🌳','Parques e praças'],['escola','🏫','Escolas'],['hospital','🏥','Hospitais'],['feira','🥬','Feiras livres'],['clube','🏊','Clubes e centros esportivos'],['ciclovia','🚲','Ciclovias']];
         return CAT.filter(([k])=>(pois[k]||[]).length).map(([k,ic,lb])=>`<div style="font-size:.93em;margin-top:3px">${ic} <b>${lb}:</b> ${(pois[k]||[]).slice(0,k==='onibus'?1:3).map(p=>`${cap(p.nome)} <span class="sub">a ${N(p.dist_m)} m</span>`).join(' · ')}${n1000[k]?` <span class="sub">(${n500[k]||0} a 500 m, ${n1000[k]} a 1 km)</span>`:''}</div>`).join(''); })()}
+      ${ent.iptu?`<div style="font-size:.93em;margin-top:6px">🏛️ <b>Cadastro do IPTU:</b> contribuinte ${ent.iptu.sql} · ${ent.iptu.uso||''} · terreno ${N(ent.iptu.area_terreno)} m² · construída ${N(ent.iptu.area_construida)} m² no cadastro${ent.iptu.ano_construcao>1800?' · construído em '+ent.iptu.ano_construcao:''}${ent.iptu.padrao?' · '+ent.iptu.padrao:''}</div>`:''}
       <div class="foot">Distâncias em linha reta. Fontes: GeoSampa (Prefeitura de São Paulo: equipamentos, parques, ônibus, ciclovias, metrô) e OpenStreetMap (hospitais particulares).</div>
     </div>` : '';
 

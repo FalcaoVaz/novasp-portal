@@ -282,6 +282,52 @@ const AV_STATUS = {
 };
 
 // ── RPC helper (usa o JWT do corretor via hdr()) ─────────────────
+// ── Cadastro do IPTU (2º projeto Supabase, dado público da Prefeitura, sem dados pessoais) ──
+async function _avIptu(fn, args){
+  const U=window.IPTU_URL, K=window.IPTU_KEY; if(!U||!K) return null;
+  const r=await fetch(`${U}/rest/v1/rpc/${fn}`,{method:'POST',headers:{'apikey':K,'Authorization':'Bearer '+K,'Content-Type':'application/json'},body:JSON.stringify(args||{})});
+  if(!r.ok) throw new Error('IPTU '+fn+' HTTP '+r.status);
+  return r.json();
+}
+const _avN = v => (v==null||v===''||isNaN(Number(v)))?'—':Number(v).toLocaleString('pt-BR',{maximumFractionDigits:2});
+async function _avBuscarIptu(){
+  const el=document.getElementById('av-iptu-info'); if(!el) return;
+  const rua=(_avForm.rua||'').trim(), num=(_avForm.num||'').trim();
+  _avForm.iptu=null;
+  if(!rua||!num){ el.innerHTML=''; return; }
+  el.innerHTML='<span style="color:#94a3b8;font-size:.88em">Consultando o cadastro do IPTU…</span>';
+  let rows=[];
+  try{ rows=await _avIptu('iptu_por_endereco',{p_logradouro:rua,p_numero:num,p_lim:300})||[]; }catch(e){ el.innerHTML='<span style="color:#94a3b8;font-size:.85em">Cadastro do IPTU indisponível agora.</span>'; return; }
+  if(!rows.length){
+    let prox=[]; try{ prox=await _avIptu('iptu_proximos',{p_logradouro:rua,p_numero:num,p_lim:6})||[]; }catch(_){}
+    el.innerHTML = prox.length
+      ? `<div style="font-size:.86em;color:#334155;padding:6px 8px;background:#f8fafc;border-radius:8px">🏛️ <b>Cadastro do IPTU:</b> o nº ${num} não está no cadastro de ${prox[0].logradouro.replace(/\s+/g,' ')}. Números mais próximos: ${prox.map(p=>`<a href="javascript:void(0)" onclick="_avForm.num='${p.numero}';_avBuscarIptu()" style="color:#2563eb">${p.numero}</a> <span style="color:#94a3b8">(${p.unidades>1?p.unidades+' unid.':(p.uso||'')})</span>`).join(' · ')}</div>`
+      : `<span style="color:#94a3b8;font-size:.85em">🏛️ Cadastro do IPTU: rua não encontrada no recorte carregado (CEPs 04…).</span>`;
+    return;
+  }
+  _avForm.iptu=rows;
+  const lote=rows[0], vertical=rows.length>1 || /condom|apart/i.test(lote.uso||'');
+  const anos=rows.map(r=>+r.ano_construcao).filter(x=>x>1800);
+  const resumo = vertical
+    ? `<b>${rows.length} unidades</b> no lote · terreno ${_avN(lote.area_terreno)} m² · ${lote.pavimentos||'?'} pavimentos · construído em ${anos.length?Math.min(...anos):'?'} · ${lote.padrao||''}`
+    : `<b>${lote.uso||'Imóvel'}</b> · terreno <b>${_avN(lote.area_terreno)} m²</b> · construída ${_avN(lote.area_construida)} m² no cadastro · testada ${_avN(lote.testada)} m · ${lote.ano_construcao>1800?'construído em '+lote.ano_construcao:''} · ${lote.padrao||''}`;
+  const tabela = vertical ? `<details style="margin-top:4px"><summary style="cursor:pointer;color:#2563eb;font-size:.85em">ver unidades</summary>
+      <div style="max-height:220px;overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:.82em"><thead><tr style="color:#94a3b8;text-align:left"><th style="padding:2px 6px">Contribuinte</th><th style="padding:2px 6px">Complemento</th><th style="padding:2px 6px;text-align:right">Construída (cadastro)</th><th style="padding:2px 6px;text-align:right">Fração</th><th style="padding:2px 6px">Uso</th></tr></thead>
+      <tbody>${rows.map(r=>`<tr style="border-top:1px solid #f1f5f9;cursor:pointer" onclick="_avUsarIptu('${r.sql}')"><td style="padding:2px 6px">${r.sql}</td><td style="padding:2px 6px">${r.complemento||''}</td><td style="padding:2px 6px;text-align:right">${_avN(r.area_construida)} m²</td><td style="padding:2px 6px;text-align:right">${_avN(r.fracao_ideal)}</td><td style="padding:2px 6px">${r.uso||''}</td></tr>`).join('')}</tbody></table></div>
+      <div style="color:#94a3b8;font-size:.78em">Clique numa unidade para usá-la. Área construída do cadastro inclui a fração das áreas comuns e garagem — não é a área útil.</div></details>` : '';
+  el.innerHTML=`<div style="font-size:.88em;color:#334155;padding:6px 8px;background:#f8fafc;border-radius:8px">🏛️ <b>Cadastro do IPTU</b> (Prefeitura, 2026): ${resumo}${!vertical?` · contribuinte ${lote.sql}`:''}${tabela}</div>`;
+  if(!vertical) _avUsarIptu(lote.sql, true);
+}
+// Preenche o formulário com os dados do cadastro (casa/terreno: terreno e testada; apto: só referência)
+function _avUsarIptu(sql, silencioso){
+  const r=(_avForm.iptu||[]).find(x=>x.sql===sql); if(!r) return;
+  _avForm.iptuSel=r;
+  const set=(id,v)=>{ const e=document.getElementById(id); if(e && v && Number(v)>0 && (!e.value||!silencioso)) e.value=Math.round(Number(v)); };
+  set('av-terreno', r.area_terreno); set('av-frente', r.testada);
+  if(r.ano_construcao>1800){ const id=document.getElementById('av-idade'); if(id && (!id.value||!silencioso)) id.value=new Date().getFullYear()-r.ano_construcao; }
+  const t=document.getElementById('av-inc-terreno'); if(t && !t.value) t.value=Math.round(Number(r.area_terreno)||0)||'';
+  if(!silencioso){ const el=document.getElementById('av-iptu-info'); el && el.querySelectorAll('tr[onclick]').forEach(tr=>tr.style.background= tr.getAttribute('onclick').includes(sql)?'#eff6ff':''); }
+}
 async function _avRpc(fn, args){
   const call=()=>fetch(`${SBU}/rest/v1/rpc/${fn}`, { method:'POST', headers:hdr(), body:JSON.stringify(args||{}) });
   let r=await call();
@@ -390,6 +436,7 @@ function avalNova(){
       <div id="av-mapa" style="height:280px;border-radius:10px;margin-top:10px;display:none;border:1px solid #e2e8f0"></div>
       <div id="av-pino-info" style="margin-top:8px;color:#64748b;font-size:.9em"></div>
       <div id="av-comaer-info" style="margin-top:4px;color:#64748b;font-size:.88em"></div>
+      <div id="av-iptu-info" style="margin-top:6px"></div>
       <div id="av-incorp-cta"></div>
       <div id="av-incorp-painel" style="display:none;margin-top:10px"></div>
       <div id="av-incorp-solo"></div>
@@ -519,6 +566,7 @@ async function _avPinoInfo(){
     const z=await _avRpc('aval_geo',{p_lat:_avPino.lat,p_lng:_avPino.lng});
     const zi=Array.isArray(z)?z[0]:z;
     _avForm.geo=zi||null;
+    if(!_avForm.iptu) _avBuscarIptu();
     _avForm.comaer=null; _avComaer(_avPino.lat,_avPino.lng).then(k=>{ _avForm.comaer=k; const e=document.getElementById('av-comaer-info'); if(e) e.innerHTML=_avComaerTexto(k); }).catch(()=>{});
     if(zi){
       el.innerHTML=`✅ <b>${zi.zona}</b> · CA máx <b>${Number(zi.ca_maximo)}</b>${zi.dist_m>0?` <span style="color:#94a3b8">(zona mais próxima, pino na rua a ${zi.dist_m} m)</span>`:''}`
@@ -669,7 +717,7 @@ async function avalCalcular(opts){
     comparaveis: JSON.stringify(amostraTodos.map(a=>({k:a._k,excluido:!!a.excluido,tipo:a.tipo,area:a.area,preco:a.preco,rs_m2:a.rs_m2,dorm:a.dorm,vaga:a.vaga,endereco:[a.rua,a.bairro].filter(Boolean).join(', '),url:a.url,lat:a.lat||null,lng:a.lng||null,origem:a.lancamento?'lançamento':'anúncio'}))
                   .concat(compsItbi.map(c=>({k:c._k,excluido:!!c.excluido,tipo:'Venda real',area:c.area_constr,area_util_est:Math.round(c.area_util_est||0),preco:c.valor,rs_m2:c.rs_m2,rs_util:c.rs_util,endereco:`${c.logradouro||''}${c.numero?', '+c.numero:''}`,data:c.data,lat:c.lat||null,lng:c.lng||null,origem:'Venda real '+(c.data||'')})))),
     lat:_avPino?_avPino.lat:null, lng:_avPino?_avPino.lng:null,
-    entorno: entorno||null,
+    entorno: entorno ? Object.assign({}, entorno, {iptu: _avForm.iptuSel ? (({sql,uso,padrao,area_terreno,area_construida,testada,ano_construcao,pavimentos,fracao_ideal})=>({sql,uso,padrao,area_terreno,area_construida,testada,ano_construcao,pavimentos,fracao_ideal}))(_avForm.iptuSel) : null}) : null,
     memoria: null,
     metodo_unico: null
   };

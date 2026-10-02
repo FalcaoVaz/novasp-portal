@@ -62,19 +62,28 @@ if a.dry:
         if n<=3: print(dict(zip(COLS,r)))
     print('linhas no recorte:', n); sys.exit()
 import psycopg2
-c=psycopg2.connect(open(a.dsn).read().strip(), connect_timeout=30, keepalives=1, keepalives_idle=30); cur=c.cursor()
-cur.execute('create temp table _t (like iptu including defaults) on commit preserve rows'); 
-buf=io.StringIO(); n=0; tot=0
+# Carga em lotes direto na tabela (plano gratuito derruba um INSERT único de 1 mi de linhas): sem índices durante a carga, recria no fim.
+c=psycopg2.connect(open(a.dsn).read().strip(), connect_timeout=30, keepalives=1, keepalives_idle=30, keepalives_interval=10, keepalives_count=6); cur=c.cursor()
+cur.execute("set statement_timeout=0")
+cur.execute("drop index if exists iptu_end_idx; drop index if exists iptu_lnorm_trgm; drop index if exists iptu_cep_idx; drop index if exists iptu_cond_idx")
+cur.execute("truncate iptu"); c.commit()
+vistos=set(); buf=io.StringIO(); lote=0; tot=0
 def flush():
-    global buf, tot
-    buf.seek(0); cur.copy_expert("copy _t ("+",".join(COLS)+") from stdin with (format text, null '')", buf); tot+=n_lote[0]; n_lote[0]=0; buf=io.StringIO()
-n_lote=[0]
+    global buf, lote, tot
+    if not lote: return
+    buf.seek(0); cur.copy_expert("copy iptu ("+",".join(COLS)+") from stdin with (format text, null '')", buf); c.commit()
+    tot+=lote; lote=0; buf=io.StringIO(); print('gravadas', tot, flush=True)
 for r in linhas():
-    buf.write('\t'.join(r)+'\n'); n_lote[0]+=1
-    if n_lote[0]>=50000: flush(); print('lidas', tot, flush=True)
+    if not r[0] or r[0] in vistos: continue
+    vistos.add(r[0]); buf.write('\t'.join(r)+'\n'); lote+=1
+    if lote>=50000: flush()
 flush()
-cur.execute("delete from _t where sql is null or sql=''")
-cur.execute("insert into iptu select distinct on (sql) * from _t order by sql on conflict (sql) do update set "+",".join(f"{k}=excluded.{k}" for k in COLS if k!='sql'))
-c.commit()
+for ddl in ["create index iptu_end_idx on iptu (logradouro_norm, numero)",
+            "create index iptu_cep_idx on iptu (cep)",
+            "create index iptu_cond_idx on iptu (condominio)",
+            "set maintenance_work_mem='256MB'",
+            "create index iptu_lnorm_trgm on iptu using gin (logradouro_norm gin_trgm_ops)",
+            "analyze iptu"]:
+    cur.execute(ddl); c.commit(); print('ok:', ddl[:60], flush=True)
 cur.execute("select count(*), pg_size_pretty(pg_total_relation_size('iptu')), pg_size_pretty(pg_database_size(current_database())) from iptu"); print('iptu:', cur.fetchone())
-cur.execute("analyze iptu"); c.commit(); c.close()
+c.close()
