@@ -14,21 +14,32 @@ def page(u):
         except Exception as e:
             time.sleep(3*(t+1))
     return None
-# 1) lista
+T0=time.time(); MAX_MIN=float(os.environ.get('MAX_MIN','0'))   # orçamento de tempo por etapa (0 = sem limite); o que faltar fica para a próxima
+LISTA=os.path.join(CACHE,'_lista.json')
+# 1) lista (reaproveita a do mesmo dia)
 lista=[]; p=1
-while True:
+if os.path.exists(LISTA) and time.time()-os.path.getmtime(LISTA)<86400: lista=json.load(open(LISTA)); print('lista do cache:', len(lista), flush=True)
+while not os.path.exists(LISTA) or time.time()-os.path.getmtime(LISTA)>=86400:
     pp=page('https://apto.vc/br/sp/sao-paulo'+(f'?page={p}' if p>1 else ''))
     if not pp or 'realties' not in pp: break
     for r in pp['realties']['data']: lista.append({'id':r['id'],'permalink':r['permalink'],'status':(r.get('status') or {}).get('name'),'bairro':((r.get('neighborhoods') or [{}])[0] or {}).get('name')})
     if p%20==0: print('lista: página', p, len(lista), flush=True)
-    if not pp['pagination'].get('hasNextPage'): break
+    if not pp['pagination'].get('hasNextPage'): json.dump(lista,open(LISTA,'w')); break
     p+=1
 print('lançamentos listados:', len(lista), flush=True)
+# Zona Sul primeiro (o resto da cidade vem nas etapas seguintes)
+import unicodedata
+_n=lambda x: unicodedata.normalize('NFD',str(x or '')).encode('ascii','ignore').decode().lower()
+ZS=('saude','vila mariana','moema','campo belo','jabaquara','ipiranga','clementino','klabin','brooklin','santo amaro','cursino','sacoma','vila guarani',
+    'planalto paulista','mirandopolis','indianopolis','aclimacao','paraiso','vila monumento','vila gumercindo','bosque da saude','jardim da saude','vila mascote',
+    'vila olimpia','itaim','chacara santo antonio','campo grande','americanopolis','cidade ademar','vila santa catarina','jardim aeroporto','conceicao','vila clementino')
+lista.sort(key=lambda it: 0 if any(z in _n(it.get('bairro')) for z in ZS) else 1)
 # 2) detalhes (cache por id)
 linhas=[]; feitos=0
 for i,it in enumerate(lista):
     f=os.path.join(CACHE,f"{it['id']}.json")
     if os.path.exists(f) and time.time()-os.path.getmtime(f)<20*86400: d=json.load(open(f))
+    elif MAX_MIN and time.time()-T0>MAX_MIN*60: d=None   # fora do orçamento: só usa o cache nesta etapa
     else:
         pp=page(it['permalink']); d=pp.get('data') if pp and isinstance(pp.get('data'),dict) else None
         if d: json.dump(d,open(f,'w'))
@@ -43,7 +54,8 @@ for i,it in enumerate(lista):
         if not (15<=a<=600 and 80000<=pr<=40e6): continue
         linhas.append((it['id'], d.get('name'), it['bairro'], it['status'], lat, lng, d.get('lotArea') or None, d.get('floors') or None, a, pr, it['permalink']))
     if (i+1)%100==0: print('detalhes:', i+1, '/', len(lista), '· baixados', feitos, '· plantas', len(linhas), flush=True)
-print('plantas válidas:', len(linhas), flush=True)
+faltam=sum(1 for it in lista if not os.path.exists(os.path.join(CACHE,f"{it['id']}.json")))
+print('plantas válidas:', len(linhas), '· lançamentos ainda sem detalhe:', faltam, flush=True)
 # 3) grava
 c=psycopg2.connect(open(os.path.expanduser('~/.config/novasp/prod-pooler.dsn')).read().strip(), connect_timeout=30); cur=c.cursor()
 cur.execute("""create table if not exists aval_lanc_anuncio (

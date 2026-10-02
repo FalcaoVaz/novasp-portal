@@ -14,7 +14,7 @@
 const AVAL_MOTOR = (typeof window!=='undefined' && window.AVAL_MOTOR_URL)
   || 'http://localhost:8902';
 
-const AV_CASA = ['CASA','CASA TÉRREA','CASA ASSOBRADADA','CASA DE VILA','SOBRADO','CONDOMÍNIO'];
+const AV_CASA = ['CASA','CASA TÉRREA','CASA ASSOBRADADA','CASA DE VILA','CASA EM CONDOMÍNIO','SOBRADO','CONDOMÍNIO'];
 // Texto legal — aparece no preview, no detalhe e no dossiê (avaliacao.html tem cópia idêntica)
 const AV_TEXTO_LEGAL = 'Este documento é uma opinião de valor para fins de comercialização, elaborada pela Imobiliária Nova São Paulo a partir de dados públicos (ITBI, zoneamento, outorga) e de mercado (anúncios e negócios fechados), por meio automatizado revisado pelo corretor responsável. Não constitui laudo de avaliação nem parecer técnico de avaliação mercadológica (NBR 14.653 / Resolução COFECI 1.066/2007), não substitui vistoria e não vale como garantia de preço de venda. Os valores podem variar com as condições do imóvel, da documentação e do mercado. O zoneamento, os coeficientes de aproveitamento e os gabaritos indicados vêm da base pública do GeoSampa e são aproximados: o enquadramento do lote deve ser confirmado pelo proprietário junto à Prefeitura de São Paulo (ficha técnica / certidão de zoneamento) antes de qualquer decisão, e a altura máxima construível depende ainda das restrições do COMAER (zona de proteção do Aeroporto de Congonhas) e de verificação em projeto.';
 const AV_TIPOS = ['Apartamento','Studio','Cobertura','Casa térrea','Sobrado','Casa de vila','Casa em condomínio','Terreno','Comercial'];
@@ -85,7 +85,7 @@ async function _avComaer(lat,lng){
   const sup=_avComaerSuperficie(lat,lng); if(!sup) return null;
   let elev=null;
   try{ const r=await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`); const j=await r.json(); elev=Array.isArray(j.elevation)?j.elevation[0]:null; }catch(_){}
-  if(elev==null) return {...sup, elev:null, altura:null, pav:null};
+  if(elev==null) return {...sup, alt:Math.round(sup.alt), elev:null, altura:null, pav:null};
   const altura=Math.max(0, Math.round(sup.alt-elev)), pav=Math.floor(altura/AV_COMAER.pe_direito);
   return {...sup, alt:Math.round(sup.alt), elev:Math.round(elev), altura, pav};
 }
@@ -152,7 +152,7 @@ const AV_INDICES = {
   iptu_por_util: 1.35, iptu_por_vaga: 29,
   fonte: 'NIDO 2019–26 (pedido→fechado) · Foca 28/09/2026 (ITBI × fechamento) · Foca 13/09/2026 (área IPTU × útil)',
 };
-function _avIdxPedidoFechado(bairro){ const b=_avNormBairro(bairro).toUpperCase(); const k=Object.keys(AV_INDICES.pedido_fechado).find(k=>k!=='global' && b.includes(k)); return { idx: k?AV_INDICES.pedido_fechado[k]:AV_INDICES.pedido_fechado.global, origem: k?`${k} (NIDO)`:'média NSP (NIDO)' }; }
+function _avIdxPedidoFechado(bairro){ const b=_avNormBairro(bairro).toUpperCase(); const k=Object.keys(AV_INDICES.pedido_fechado).filter(k=>k!=='global').sort((a,c)=>c.length-a.length).find(k=>b.includes(k)); return { idx: k?AV_INDICES.pedido_fechado[k]:AV_INDICES.pedido_fechado.global, origem: k?`${k} (NIDO)`:'média NSP (NIDO)' }; }
 // Bairros onde o padrão sugerido é ALTO (o corretor pode trocar na tela)
 const AV_BAIRROS_ALTO = ['moema','itaim','vila nova conceicao','brooklin','campo belo','jardim paulista','jardins','paraiso','vila olimpia','ibirapuera','chacara klabin','vila mariana','pinheiros','perdizes'];
 const _avNormBairro = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
@@ -335,6 +335,35 @@ async function _avBuscarIptu(){
   if(!vertical) _avUsarIptu(lote.sql, true);
 }
 // Preenche o formulário com os dados do cadastro (casa/terreno: terreno e testada; apto: só referência)
+// Resumo do cadastro para a caixa "Cadastro da Prefeitura" (tela e dossiê): a unidade escolhida, ou o lote quando nenhuma foi escolhida
+function _avIptuResumo(tipo){
+  const lote=(_avForm&&_avForm.iptu)||[]; if(!lote.length) return null;
+  const sel=_avForm.iptuSel||null, base=sel||lote[0];
+  const unid=lote.filter(r=>!/garagem|dep[oó]sito/i.test(r.uso||'')).length, vagas=lote.length-unid;
+  const ehApto=/apart|studio|cobertura|duplex/i.test(tipo||'');
+  return { unidade: sel?{sql:sel.sql, complemento:sel.complemento||null, uso:sel.uso, area_construida:sel.area_construida, fracao_ideal:sel.fracao_ideal}:null,
+           sql: sel?sel.sql:(lote.length===1?base.sql:null), uso:base.uso, padrao:base.padrao, ano_construcao:base.ano_construcao>1800?base.ano_construcao:null,
+           pavimentos:base.pavimentos||null, area_terreno:base.area_terreno, testada:base.testada, area_construida:sel||lote.length===1?base.area_construida:null,
+           unidades_no_lote:unid, vagas_avulsas:vagas,
+           desatualizado: ehApto && !/apart|condom/i.test(base.uso||'') };
+}
+function _avIptuCaixaHTML(ip){
+  if(!ip) return '';
+  const N=v=>(v==null||v===''||isNaN(Number(v)))?null:Number(v).toLocaleString('pt-BR',{maximumFractionDigits:2});
+  const it=(lb,v)=>v==null||v===''?'':`<div><span style="color:#94a3b8;font-size:.85em">${lb}</span><br><b>${v}</b></div>`;
+  return `<div class="card" style="margin-bottom:12px"><div class="cb">
+    <div style="color:#64748b;font-size:.85em;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">🏛️ Cadastro da Prefeitura (IPTU 2026)</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;font-size:.92em">
+      ${it('Contribuinte (SQL)', ip.unidade?ip.unidade.sql:ip.sql)}${it('Unidade', ip.unidade&&ip.unidade.complemento)}
+      ${it('Uso', ip.unidade?ip.unidade.uso:ip.uso)}${it('Padrão', ip.padrao)}${it('Ano de construção', ip.ano_construcao)}
+      ${it('Pavimentos', ip.pavimentos)}${it('Terreno do lote', N(ip.area_terreno)&&N(ip.area_terreno)+' m²')}${it('Testada', N(ip.testada)&&N(ip.testada)+' m')}
+      ${it('Área construída no cadastro', N(ip.unidade?ip.unidade.area_construida:ip.area_construida)&&N(ip.unidade?ip.unidade.area_construida:ip.area_construida)+' m²')}
+      ${it('Fração ideal', ip.unidade&&N(ip.unidade.fracao_ideal))}${ip.unidades_no_lote>1?it('Unidades no lote', ip.unidades_no_lote+(ip.vagas_avulsas?` + ${ip.vagas_avulsas} vagas/depósitos`:'')):''}
+    </div>
+    ${ip.desatualizado?`<div style="margin-top:8px;font-size:.85em;color:#b45309">O cadastro de 2026 ainda descreve o lote de outra forma (${ip.uso||'—'}). É comum em prédio recente, antes de a Prefeitura desmembrar as unidades: confirme área e ano na matrícula e no carnê de IPTU da unidade.</div>`:''}
+    <div style="margin-top:6px;font-size:.78em;color:#94a3b8">A área construída do cadastro inclui áreas comuns e garagem; não é a área útil. Dado de referência, não entra na conta de valor.</div>
+  </div></div>`;
+}
 function _avUsarIptu(sql, silencioso){
   const r=(_avForm.iptu||[]).find(x=>x.sql===sql); if(!r) return;
   _avForm.iptuSel=r;
@@ -398,7 +427,7 @@ async function carregarAvalImoveis(opts){
     const q='?select=id,codigo,fonte,tipo,bairro,endereco,area_util,terreno,preco_pedido,'
       +'valor_mercado,zona,ca,incorp_aplicavel,incorp_valor_terreno,incorp_ganho_pct,'
       +'status,aprovado_por,token,gerado_em,comparaveis,faixa_min,faixa_max,mercado_rs_m2,'
-      +'anuncios_usados,metodo,incorp_area_constr,incorp_lancamento_rs_m2,incorp_vgv,edificio,dorm,suite,vaga,observacao,'
+      +'anuncios_usados,metodo,incorp_area_constr,incorp_lancamento_rs_m2,incorp_vgv,edificio,dorm,suite,vaga,observacao,lat,lng,entorno,memoria,frente,'
       +'corretor_nome,corretor_creci,lat,lng,entorno,memoria'
       +'&fonte=eq.ondemand&order=gerado_em.desc&limit=300';
     _avImoveis = await db.get('aval_resultado', q);
@@ -448,7 +477,7 @@ function renderAvalLista(){
 function _avLinha(x){
   const st=AV_STATUS[x.status]||AV_STATUS.gerada;
   const inc=x.incorp_aplicavel
-    ? `<span style="color:#047857;font-weight:600">${_avR$(x.incorp_valor_terreno)}</span>${x.incorp_ganho_pct!=null?` <span style="color:#059669;font-size:.85em">+${Math.round(x.incorp_ganho_pct)}%</span>`:''}`
+    ? `<span style="color:#047857;font-weight:600">${_avR$(x.incorp_valor_terreno)}</span>${x.incorp_ganho_pct!=null?` <span style="color:#059669;font-size:.85em">${x.incorp_ganho_pct>=0?'+':''}${Math.round(x.incorp_ganho_pct)}%</span>`:''}`
     : '<span style="color:#cbd5e1">—</span>';
   return `<tr style="border-bottom:1px solid #f1f5f9;cursor:pointer" onclick="abrirAvalDetalhe(${x.id})">
     <td style="padding:10px 12px"><div style="font-weight:600">${x.endereco||x.codigo}</div>
@@ -572,9 +601,11 @@ async function avalGeocodificar(){
 }
 // Bairro a partir do ponto (OpenStreetMap reverso); cai no distrito do zoneamento se não houver
 async function _avDetectarBairro(){
+  const seq=window._avPinoSeq;
   const c=(window._avCands||[]).find(x=>Math.abs(x.lat-_avPino.lat)<1e-6&&Math.abs(x.lng-_avPino.lng)<1e-6);
   let b=c&&c.bairro||'';
   if(!b){ try{ const o=await (await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&zoom=16&addressdetails=1&lat=${_avPino.lat}&lon=${_avPino.lng}`,{headers:{'Accept-Language':'pt-BR'}})).json(); const ad=(o&&o.address)||{}; b=ad.suburb||ad.neighbourhood||ad.quarter||''; }catch(_){} }
+  if(seq!==window._avPinoSeq) return;
   if(!b && _avForm.geo && _avForm.geo.distrito) b=_avCap(_avForm.geo.distrito);
   _avForm.bairro=b;
   const inp=document.getElementById('av-bairro'), box=document.getElementById('av-bairro-box');
@@ -582,7 +613,14 @@ async function _avDetectarBairro(){
   if(box) box.style.display='';
 }
 
+// Ponto mudou: descarta tudo o que foi calculado para o ponto anterior (incorporação, cache de buscas, dossiê)
+function _avNovoPonto(){
+  ['ctx','dossie','cache','incorp','memoria','lancItbi','lancAnuncio','evolutivo','comaer','entorno','geo','iptu','iptuSel','podeIncorp','incorpMotivo','metodoUnico'].forEach(k=>{ delete _avForm[k]; });
+  const pan=document.getElementById('av-incorp-painel'); if(pan){ pan.style.display='none'; pan.innerHTML=''; }
+  const solo=document.getElementById('av-incorp-solo'); if(solo) solo.innerHTML='';
+}
 async function _avEscolher(lat,lng,i){
+  _avNovoPonto();
   _avPino={lat,lng}; _avForm.pinoProvisorio=false;
   const c=(window._avCands||[])[i]; if(c&&c.ruaCorrigida) _avForm.rua=c.ruaCorrigida;
   await _avMostrarMapa(lat,lng);
@@ -597,7 +635,7 @@ async function _avMostrarMapa(lat,lng){
     _avMapa=L.map('av-mapa').setView([lat,lng],17);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(_avMapa);
     _avMarker=L.marker([lat,lng],{draggable:true}).addTo(_avMapa);
-    _avMarker.on('dragend',e=>{ const p=e.target.getLatLng(); _avPino={lat:p.lat,lng:p.lng}; _avForm.pinoProvisorio=false; _avForm.iptu=null; _avPinoInfo(); });
+    _avMarker.on('dragend',e=>{ const p=e.target.getLatLng(); _avNovoPonto(); _avPino={lat:p.lat,lng:p.lng}; _avForm.pinoProvisorio=false; _avPinoInfo(); });
     setTimeout(()=>_avMapa.invalidateSize(),200);
   }else{
     _avMapa.setView([lat,lng],17); _avMarker.setLatLng([lat,lng]);
@@ -627,23 +665,26 @@ async function _avPinoInfo(){
   const el=document.getElementById('av-pino-info'); if(!el||!_avPino) return;
   if(_avForm.pinoProvisorio){ el.innerHTML='<span style="color:#b45309">📍 Arraste o pino até o imóvel.</span>'; ['av-comaer-info','av-iptu-info','av-incorp-cta'].forEach(id=>{ const e=document.getElementById(id); if(e) e.innerHTML=''; }); return; }
   el.innerHTML='Confirmando zoneamento…';
+  const seq=(window._avPinoSeq=(window._avPinoSeq||0)+1), pino={..._avPino};
   try{
-    const z=await _avRpc('aval_geo',{p_lat:_avPino.lat,p_lng:_avPino.lng});
+    const z=await _avRpc('aval_geo',{p_lat:pino.lat,p_lng:pino.lng});
+    if(seq!==window._avPinoSeq) return;   // o pino mudou enquanto esperava: a resposta é de outro ponto
     const zi=Array.isArray(z)?z[0]:z;
     _avForm.geo=zi||null;
     _avForm.lancItbi=undefined; _avForm.lancAnuncio=undefined;
     _avDetectarBairro();
     if(!_avForm.iptu) _avBuscarIptu();
-    _avForm.comaer=null; _avComaer(_avPino.lat,_avPino.lng).then(k=>{ _avForm.comaer=k; const e=document.getElementById('av-comaer-info'); if(e) e.innerHTML=_avComaerTexto(k); }).catch(()=>{});
+    _avForm.comaer=null; _avComaer(pino.lat,pino.lng).then(k=>{ if(seq!==window._avPinoSeq) return; _avForm.comaer=k; const e=document.getElementById('av-comaer-info'); if(e) e.innerHTML=_avComaerTexto(k); }).catch(()=>{});
     if(zi){
       el.innerHTML=`✅ <b>${zi.zona}</b> · CA máx <b>${Number(zi.ca_maximo)}</b>${zi.dist_m>0?` <span style="color:#94a3b8">(zona mais próxima, pino na rua a ${zi.dist_m} m)</span>`:''}`
         +`${zi.incorporavel?' · <span style="color:#047857">eixo (incorporável)</span>':''}`
         +`${zi.distrito?' · '+zi.distrito:''} <span style="color:#94a3b8">(${_avPino.lat.toFixed(5)}, ${_avPino.lng.toFixed(5)})</span>`;
       _avRenderCta();
     }else{
+      _avRenderCta();
       el.innerHTML=`<span style="color:#b45309">Este ponto está fora da área com zoneamento carregado</span> <span style="color:#94a3b8">(${_avPino.lat.toFixed(5)}, ${_avPino.lng.toFixed(5)})</span>. Confira se o pino caiu no endereço certo (arraste-o se precisar). A avaliação de mercado funciona; só a conta de incorporação fica sem zona.`;
     }
-  }catch(e){ el.innerHTML='<span style="color:#b45309">Não consegui confirmar o zoneamento deste ponto.</span> <span style="color:#94a3b8;font-size:.85em">'+String(e&&e.message||e).replace(/</g,'&lt;')+(/401/.test(String(e&&e.message))?' — sessão vencida; saia e entre de novo.':'')+'</span>'; }
+  }catch(e){ if(seq!==window._avPinoSeq) return; _avRenderCta(); el.innerHTML='<span style="color:#b45309">Não consegui confirmar o zoneamento deste ponto.</span> <span style="color:#94a3b8;font-size:.85em">'+String(e&&e.message||e).replace(/</g,'&lt;')+(/401/.test(String(e&&e.message))?' — sessão vencida; saia e entre de novo.':'')+'</span>'; }
 }
 
 // ═══════════════ CÁLCULO (preço ao vivo + conta no navegador) ═══════════════
@@ -654,9 +695,14 @@ async function avalCalcular(opts){
   const g=id=>{ const el=document.getElementById(id); return el?el.value:((_avForm.entrada||{})[id]||''); };
   if(!recalc) _avForm.entrada=Object.fromEntries(['av-tipo','av-area','av-terreno','av-frente','av-dorm','av-suite','av-vaga','av-padrao-casa','av-idade','av-estado','av-rs-terreno'].map(id=>[id,g(id)]));
   _avForm.modo='mercado';
-  const tipo=g('av-tipo'), grupo=_avTipoGrupo(tipo), area=grupo==='terreno'?null:(+g('av-area')||null);
-  const terreno=+g('av-terreno')||(_avForm.incorp&&_avForm.incorp.terreno)||null, frente=+g('av-frente')||null;
-  const dorm=+g('av-dorm')||null, suite=+g('av-suite')||null, vaga=+g('av-vaga')||null, preco=null;   // valor pretendido saiu do formulário (Rodrigo, 01/10/2026)
+  const tipo=g('av-tipo'), grupo=_avTipoGrupo(tipo);
+  // só valem os campos do tipo escolhido (campo escondido ou herdado de outro tipo não entra no dossiê)
+  const CAMPOS={apto:['av-area','av-dorm','av-suite','av-vaga'], casa:['av-area','av-terreno','av-frente','av-dorm','av-suite','av-vaga','av-padrao-casa','av-idade','av-estado','av-rs-terreno'],
+                terreno:['av-terreno','av-frente','av-rs-terreno'], com:['av-area','av-terreno','av-frente','av-vaga','av-padrao-casa','av-idade','av-estado','av-rs-terreno']}[grupo]||[];
+  const gt=id=>CAMPOS.includes(id)?g(id):'';
+  const area=+gt('av-area')||null;
+  const terreno=+gt('av-terreno')||(CAMPOS.includes('av-terreno')&&_avForm.incorp&&_avForm.incorp.terreno)||null, frente=+gt('av-frente')||null;
+  const dorm=+gt('av-dorm')||null, suite=+gt('av-suite')||null, vaga=+gt('av-vaga')||null, preco=null;   // valor pretendido saiu do formulário (Rodrigo, 01/10/2026)
   const bairro=(_avForm.bairro||'').trim();
   if(grupo==='terreno' && !terreno){ alert('Informe a área do terreno (m²).'); return; }
   if(grupo!=='terreno' && !area){ alert(grupo==='apto'?'Informe a área útil.':'Informe a área construída.'); return; }
@@ -682,8 +728,9 @@ async function avalCalcular(opts){
   if(recalc) compsItbi=_avForm.cache.compsItbi;
   else {
     // vendas reais pelo RAIO em volta do imóvel (o bairro detectado no mapa nem sempre bate com o do ITBI); sem resultado, cai no bairro
-    try{ compsItbi=await _avRpc('aval_comps_itbi_raio',{p_lat:_avPino.lat,p_lng:_avPino.lng,p_tipo:_ehCasa(tipo)?'casa':'apto',p_lim:20})||[]; compsItbi.forEach(c=>{ c.porRaio=true; }); }catch(_){ compsItbi=[]; }
-    if(!compsItbi.length){ try{ compsItbi=await _avRpc('aval_comps_itbi',{p_bairro:bairro,p_lim:20}); }catch(_){} }
+    if(grupo==='terreno') compsItbi=[];   // terreno: o valor vem de lotes; vendas de apartamento não são referência
+    else try{ compsItbi=await _avRpc('aval_comps_itbi_raio',{p_lat:_avPino.lat,p_lng:_avPino.lng,p_tipo:_ehCasa(tipo)?'casa':'apto',p_lim:20})||[]; compsItbi.forEach(c=>{ c.porRaio=true; }); }catch(_){ compsItbi=[]; }
+    if(!compsItbi.length && grupo!=='terreno'){ try{ compsItbi=await _avRpc('aval_comps_itbi',{p_bairro:bairro,p_lim:20}); }catch(_){} }
   }
   compsItbi=(compsItbi||[]).filter(c=>!/GARAGEM|VAGA|DEP[OÓ]SITO/i.test(c.uso||'') && (_ehCasa(tipo) ? /RESID|CASA|SOBRADO/i.test(c.uso||'') : /APART/i.test(c.uso||'')));
   // exclusões feitas pelo corretor (comparável destoante) — chave estável por origem
@@ -716,11 +763,11 @@ async function avalCalcular(opts){
   // dos fechamentos ITBI do bairro como preço de mercado, e avisa. Quando o motor entrar
   // no ar (AVAL_MOTOR_URL), o fluxo volta ao normal sem mexer aqui.
   if(semMotor){
-    const rs=(compsItbi||[]).map(c=>Number(c.rs_m2)).filter(v=>v>0).sort((a,b)=>a-b);
-    if(rs.length){
-      const med=rs.length%2?rs[(rs.length-1)/2]:(rs[rs.length/2-1]+rs[rs.length/2])/2;
-      precos={rs_apto:Math.round(med), rs_casa:null, n_apto:0, amostra:[], base:'ITBI', n_itbi:rs.length};
-      stt.innerHTML='<span style="color:#b45309">Motor de anúncios ao vivo indisponível — usando a mediana de '+rs.length+' fechamentos ITBI de '+bairro+' (preço pago). Modo teste.</span>';
+    const rs=(compsItbi||[]).map(c=>Number(c.rs_m2)).filter(v=>v>0);
+    if(rs.length || grupo==='terreno'){
+      // sem anúncios: a conta usa só as vendas reais (em área útil, no método único); nada de "anúncio" derivado do ITBI
+      precos={rs_apto:null, rs_casa:null, n_apto:0, n_casa:0, amostra:[], base:'ITBI', n_itbi:rs.length};
+      stt.innerHTML='<span style="color:#b45309">Anúncios ao vivo indisponíveis agora — o valor usa só as '+rs.length+' vendas reais registradas por perto.</span>';
     }else{
       stt.innerHTML='<span style="color:#dc2626">Motor de anúncios indisponível e sem fechamentos ITBI para "'+bairro+'". Confira o nome do bairro.</span>'; return;
     }
@@ -740,7 +787,7 @@ async function avalCalcular(opts){
   //  · rs_terreno: o que o terreno vale DENTRO de uma casa vendida como casa (regressão valor = a·terreno + b·construída)
   //  · rs_lote:    o que o lote vale vendido PARA CONSTRUIR (mediana de lotes anunciados, trazida a preço fechado)
   const tb=_avTerrenoBairro(bairro), idxPF0=_avIdxPedidoFechado(bairro);
-  const rsTerrenoInf=+g('av-rs-terreno')||null;
+  const rsTerrenoInf=+gt('av-rs-terreno')||null;
   const rs_terreno = rsTerrenoInf || (tb&&tb.terreno) || (rs_casa ? Math.round(rs_casa*AV_PARAM.terreno_sobre_casa) : null);
   const rsTerrenoOrigem = rsTerrenoInf ? 'informado pelo corretor' : (tb&&tb.terreno ? `modelo conjunto da carteira NSP: ${tb.n} casas anunciadas em ${bairro}, preços de ${tb.per||'2018–2026'}, custo de construção único de R$ ${(tb.constr||0).toLocaleString('pt-BR')}/m² (terreno = ${Math.round(tb.share*100)}% do valor)` : (rs_casa ? `estimado: ${Math.round(AV_PARAM.terreno_sobre_casa*100)}% do R$/m² de casa do bairro (${casaEstimada?'casa ≈ apto × '+AV_PARAM.casa_sobre_apto:'anúncios de casas'})` : null));
   const rs_lote = rsTerrenoInf || (tb&&tb.lote ? Math.round(tb.lote*idxPF0.idx) : null) || (rs_casa ? Math.round(rs_casa*AV_PARAM.lote_sobre_casa) : null);
@@ -788,9 +835,9 @@ async function avalCalcular(opts){
     incorp_aplicavel:false, incorp_area_constr:null, incorp_lancamento_rs_m2:null,
     incorp_vgv:null, incorp_valor_terreno:null, incorp_ganho_pct:null,
     comparaveis: JSON.stringify(amostraTodos.map(a=>({k:a._k,excluido:!!a.excluido,tipo:a.tipo,area:a.area,preco:a.preco,rs_m2:a.rs_m2,dorm:a.dorm,vaga:a.vaga,endereco:[a.rua,a.bairro].filter(Boolean).join(', '),aprox:!!a.aprox,url:a.url,lat:a.lat||null,lng:a.lng||null,origem:a.lancamento?'lançamento':'anúncio'}))
-                  .concat(compsItbi.map(c=>({k:c._k,excluido:!!c.excluido,tipo:'Venda real',area:c.area_constr,area_util_est:Math.round(c.area_util_est||0),preco:c.valor,rs_m2:c.rs_m2,rs_util:c.rs_util,endereco:`${c.logradouro||''}${c.numero?', '+c.numero:''}`,data:c.data,lat:c.lat||null,lng:c.lng||null,origem:'Venda real '+(c.data||'')})))),
+                  .concat(compsItbi.map(c=>({k:c._k,excluido:!!c.excluido,tipo:grupo==='com'?'Venda real (ref. residencial)':'Venda real',area:c.area_constr,area_util_est:Math.round(c.area_util_est||0),preco:c.valor,rs_m2:c.rs_m2,rs_util:c.rs_util,endereco:`${c.logradouro||''}${c.numero?', '+c.numero:''}`,data:c.data,lat:c.lat||null,lng:c.lng||null,origem:'Venda real '+(c.data||'')})))),
     lat:_avPino?_avPino.lat:null, lng:_avPino?_avPino.lng:null,
-    entorno: entorno ? Object.assign({}, entorno, {iptu: _avForm.iptuSel ? (({sql,uso,padrao,area_terreno,area_construida,testada,ano_construcao,pavimentos,fracao_ideal})=>({sql,uso,padrao,area_terreno,area_construida,testada,ano_construcao,pavimentos,fracao_ideal}))(_avForm.iptuSel) : null}) : null,
+    entorno: Object.assign({}, entorno||{}, {iptu: _avIptuResumo(tipo)}),
     memoria: null,
     metodo_unico: null
   };
@@ -821,6 +868,10 @@ async function avalCalcular(opts){
     dossie.mercado_rs_m2=mu.rs_final;
     dossie.metodo=`${area} m² × R$ ${mu.rs_final.toLocaleString('pt-BR')}/m² = média de [anúncios ${mu.rs_anuncio?mu.rs_anuncio.toLocaleString('pt-BR'):'—'} × ${mu.idx_pedido_fechado} (pedido→fechado, ${mu.idx_origem})`+
       (mu.rs_itbi_ajust?` ; ITBI ${mu.rs_itbi_util.toLocaleString('pt-BR')}/m² útil est. × ${(1+mu.sub_itbi).toFixed(3)} (subdeclaração)`:'')+`]`+(mu.divergencia!=null?` · fontes divergem ${mu.divergencia}%`:'')+(nExcl?` · ${nExcl} comparável(is) excluído(s) pelo corretor`:'')+(precos.base==='ITBI'?' · modo teste (sem anúncios ao vivo)':'');
+  }else if(evolutivo){
+    const vm=evolutivo.total;
+    dossie.valor_mercado=vm; dossie.faixa_min=Math.round(vm*0.9); dossie.faixa_max=Math.round(vm*1.1);
+    dossie.metodo=`evolutivo: terreno ${terreno} m² × R$ ${evolutivo.rs_terreno.toLocaleString('pt-BR')} + construção ${area} m² depreciada ${Math.round(evolutivo.dep*100)}% (sem comparativo suficiente no bairro)`;
   }else if(rs_tipo && area){
     const vm=area*rs_tipo;
     dossie.valor_mercado=Math.round(vm); dossie.faixa_min=Math.round(vm*0.9); dossie.faixa_max=Math.round(vm*1.1);
@@ -877,7 +928,7 @@ async function avalAbrirIncorp(){
   const el=document.getElementById('av-incorp-painel'); if(!el) return;
   if(!_avForm.ctx){ if(!(await _avCtxRapido())) return; }
   const c=_avForm.ctx||{}, inc=_avForm.incorp||{};
-  const gv=id=>{ const e=document.getElementById(id); return e&&e.value?+e.value:null; };
+  const gv=id=>{ const e=document.getElementById(id); const v=e&&e.value?e.value:((_avForm.entrada||{})[id]||''); return v?+v:null; };
   if(!inc.terreno && gv('av-terreno')) inc.terreno=gv('av-terreno');
   if(!inc.frente && gv('av-frente')) inc.frente=gv('av-frente');
   const P=AV_PARAM;
@@ -927,7 +978,7 @@ async function _avCalcIncorp(){
   const ca=Number(geo.ca_maximo)||dossie.ca;
   const rs_lanc = inc.lanc || c.lancAuto || (c.rs_apto ? Math.round(c.rs_apto*P.lanc_sobre_usado) : null);
   const lancOrigem = inc.lanc ? 'informado pelo corretor' : (c.lancAutoOrigem || (c.lancAuto ? `${c.lancN} lançamentos anunciados` : `usado × ${P.lanc_sobre_usado} (sem lançamento anunciado)`));
-  dossie.terreno=terrenoOk(inc.terreno);
+  if(!dossie.terreno) dossie.terreno=terrenoOk(inc.terreno);   // não sobrescreve o terreno digitado no passo 2 (usado no evolutivo)
   function terrenoOk(v){ return v; }
   if(!rs_lanc){ _avForm.incorpMotivo='Sem preço de lançamento no bairro: informe um valor de lançamento R$/m².'; return; }
   let refs=[], refMed=null, fpInfo=null;
@@ -1010,17 +1061,19 @@ function renderAvalPreview(x, precos){
       <div style="color:#64748b;font-size:.85em;text-transform:uppercase;letter-spacing:.04em">Valor de mercado</div>
       <div style="font-size:1.8em;font-weight:800;margin:4px 0">${_avR$(x.valor_mercado)}</div>
       <div style="color:#64748b">Faixa: ${_avR$(x.faixa_min)} — ${_avR$(x.faixa_max)}</div>
-      <div style="color:#94a3b8;font-size:.88em;margin-top:6px">${x.metodo||''}${x.anuncios_usados?` · ${x.anuncios_usados} anúncios ao vivo`:''}</div>
+      <div style="color:#94a3b8;font-size:.88em;margin-top:6px">${String(x.metodo||'').replace(/\s*\[incorp:.*?\]/g,'')}${x.anuncios_usados?` · ${x.anuncios_usados} anúncios ao vivo`:''}</div>
       ${x.preco_pedido?`<div style="margin-top:8px;font-size:.9em">Pretendido: <b>${_avR$(x.preco_pedido)}</b> ${_avCompara(x.preco_pedido,x.valor_mercado)}</div>`:''}
     </div></div>`:`<div class="card" style="margin-bottom:12px"><div class="cb" style="color:#b45309">Sem preço de mercado (faltou área útil ou anúncios do bairro).</div></div>`}
     ${AV_TEXTO_ATIVO?`<div id="av-texto">${_avTextoHTML()}</div>`:''}
     ${_avMetodoHTML(_avForm.metodoUnico, x)}
     ${_avEvolutivoHTML((x.memoria&&x.memoria.evolutivo)||_avForm.evolutivo)}
+    ${_avIptuCaixaHTML(x.entorno&&x.entorno.iptu)}
     ${_avEntornoHTML(x.entorno||_avForm.entorno)}
     ${(_avForm.ctx&&_avForm.ctx.ehlote)?(_avForm.podeIncorp
         ?`<div class="card" style="margin-bottom:12px;border-left:3px solid #10b981"><div class="cb" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
             <button class="btn ${x.incorp_aplicavel?'btn-o':'btn-p'}" onclick="avalAbrirIncorp()">🏗️ ${x.incorp_aplicavel?'Ajustar premissas da incorporação':'Avaliar para incorporadora'}</button>
-            <span style="color:#64748b;font-size:.88em">Zona ${x.zona||''} permite adensar (CA ${x.ca}). Calcula quanto um incorporador pagaria pelo terreno.</span></div></div>`
+            <span style="color:#64748b;font-size:.88em">Zona ${x.zona||''} permite adensar (CA ${x.ca}). Calcula quanto um incorporador pagaria pelo terreno.</span>
+            ${(_avForm.incorp&&!x.incorp_aplicavel)?`<div style="width:100%;color:#b45309;font-size:.88em">${_avForm.incorpMotivo||'Com estas premissas a incorporação não paga o terreno (conta negativa). Ajuste o lançamento ou o padrão.'}</div>`:''}</div></div>`
         :`<div class="card" style="margin-bottom:12px;border-left:3px solid #cbd5e1"><div class="cb" style="color:#64748b;font-size:.9em">🏗️ Terreno para incorporação: ${_avForm.incorpMotivo||'não se aplica'}</div></div>`):''}
     <div id="av-incorp-painel" style="display:none"></div>
     ${(comps.some(c=>c.lat)||x.lat||_avPino)?`<div class="card" style="margin-bottom:12px"><div class="cb"><div style="color:#64748b;font-size:.85em;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Mapa: imóvel avaliado e vendas reais</div><div id="av-mapa-comps" style="height:320px;border-radius:10px;border:1px solid #e2e8f0"></div><div style="font-size:.82em;color:#64748b;margin-top:6px"><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#dc2626;border:2px solid #fff;box-shadow:0 0 0 2px #dc2626;vertical-align:middle"></span> imóvel avaliado &nbsp; <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#34d399;border:2px solid #047857;vertical-align:middle"></span> vendas reais (ITBI). Os anúncios não trazem o número do imóvel e por isso aparecem só na tabela abaixo.</div></div></div>`:''}
@@ -1064,14 +1117,14 @@ function _avMemoriaHTML(m){
       ${l(`Terreno máximo antes da outorga`, m.antes)}
       ${m.outorga?l(m.outorga_modo==='referencia'
           ? `Outorga onerosa: ${n(m.area_adicional)} m² adicionais × ${_avR$(Math.round(m.v))}/m² (${m.v_origem})`
-          : `Outorga onerosa (fórmula PDE): ${n(m.area_adicional)} m² adicionais × (terreno/computável) × V ${_avR$(Math.round(m.v))}/m² (${m.v_origem}) × Fs ${P.outorga_fs} × Fp ${m.fp}`, m.outorga, true):''}
+          : `Outorga onerosa (fórmula PDE): ${n(m.area_adicional)} m² adicionais × (terreno/computável) × V ${_avR$(Math.round(m.v))}/m² (${m.v_origem}) × Fs ${m.fs!=null?m.fs:P.outorga_fs} × Fp ${m.fp}`, m.outorga, true):''}
       ${m.custos_aquisicao?l(`Custos de aquisição do terreno (ITBI, comissão, jurídico, demolição, IPTU) ≈ ${P.custo_aquisicao*100}%`, m.custos_aquisicao, true):''}
       <tr style="border-top:2px solid #10b981;font-weight:700"><td style="padding:4px 8px">Terreno máximo (o que chega ao proprietário)${m.terreno_vgv?` <small style="font-weight:400;color:#64748b">· ${(m.terreno_vgv*100).toFixed(1)}% do VGV</small>`:''}</td><td style="padding:4px 8px;text-align:right;white-space:nowrap">${_avR$(Math.round(m.terreno_max))}</td></tr>
     </tbody></table>
     ${alertas}
-    ${(_avForm.lancAnuncio&&(_avForm.lancAnuncio.lista||[]).length)?`<details style="margin-top:8px;font-size:.84em"><summary style="cursor:pointer;color:#2563eb">Lançamentos anunciados perto (${_avForm.lancAnuncio.n})</summary>
+    ${(()=>{ const la=m.lancRef?{n:m.lancRef.length,lista:m.lancRef}:(m===_avForm.memoria?_avForm.lancAnuncio:null); return (la&&(la.lista||[]).length)?la:null; })()?`<details style="margin-top:8px;font-size:.84em"><summary style="cursor:pointer;color:#2563eb">Lançamentos anunciados perto (${(m.lancRef||(_avForm.lancAnuncio||{}).lista||[]).length})</summary>
       <table style="width:100%;border-collapse:collapse;margin-top:4px"><thead><tr style="color:#94a3b8;text-align:left"><th style="padding:2px 6px">Empreendimento</th><th style="padding:2px 6px">Estágio</th><th style="padding:2px 6px;text-align:right">Dist.</th><th style="padding:2px 6px;text-align:right">R$/m²</th></tr></thead>
-      <tbody>${_avForm.lancAnuncio.lista.map(l=>`<tr style="border-top:1px solid #f1f5f9"><td style="padding:2px 6px"><a href="${l.url}" target="_blank" rel="noopener" style="color:#2563eb">${l.nome}</a> <span style="color:#94a3b8">${l.bairro||''}</span></td><td style="padding:2px 6px">${l.status||''}</td><td style="padding:2px 6px;text-align:right">${(l.d||0).toLocaleString('pt-BR')} m</td><td style="padding:2px 6px;text-align:right">${_avR$(l.rs)}</td></tr>`).join('')}</tbody></table></details>`:''}
+      <tbody>${(m.lancRef||(_avForm.lancAnuncio||{}).lista||[]).map(l=>`<tr style="border-top:1px solid #f1f5f9"><td style="padding:2px 6px">${l.url?`<a href="${l.url}" target="_blank" rel="noopener" style="color:#2563eb">${l.nome}</a>`:l.nome} <span style="color:#94a3b8">${l.bairro||''}</span></td><td style="padding:2px 6px">${l.status||''}</td><td style="padding:2px 6px;text-align:right">${(l.d||0).toLocaleString('pt-BR')} m</td><td style="padding:2px 6px;text-align:right">${_avR$(l.rs)}</td></tr>`).join('')}</tbody></table></details>`:''}
     ${(m.base_legal||[]).length?`<div style="margin-top:10px;padding:8px 10px;background:#f0fdf4;border-radius:8px;font-size:.85em"><div style="font-weight:600;color:#047857;margin-bottom:4px">Por que a área vendável é ${m.ca>(m.ca_zona||m.ca)?'maior que terreno × CA da zona':'essa'}</div><ul style="margin:0;padding-left:18px;color:#334155">${m.base_legal.map(b=>`<li style="margin:2px 0">${b}</li>`).join('')}</ul></div>`:''}
     ${m.fpInfo?`<div style="font-size:.84em;color:#64748b;margin-top:8px">Fator de planejamento (Quadro 6 do PDE) no ponto: <b>${m.fpInfo.fp_texto||m.fpInfo.fp||'—'}</b> · ${m.fpInfo.macroarea||''}${m.fpInfo.setor?' · '+m.fpInfo.setor:''}</div>`:''}
     ${(m.refs||[]).length?`<div style="font-size:.84em;margin-top:8px"><div style="color:#64748b;margin-bottom:4px">Outorgas concedidas perto (GeoSampa) — contrapartida paga por m² excedente:</div>
@@ -1081,6 +1134,7 @@ function _avMemoriaHTML(m){
 }
 // Reconstrói a memória de uma avaliação salva (padrão vem do texto do método; sem ele, médio)
 function _avMemoriaSalva(x){
+  if(x&&x.memoria&&x.memoria.incorp&&x.memoria.incorp.vgv) return x.memoria.incorp;   // conta gravada no momento da avaliação
   if(!x||!x.incorp_aplicavel||!x.terreno||!x.ca||!x.incorp_lancamento_rs_m2) return null;
   let extra={}; try{ const mj=/\[incorp:(\{.*?\})\]/.exec(x.metodo||''); if(mj) extra=JSON.parse(mj[1]); }catch(_){}
   const mp=/padrão (economico|medio|alto)/.exec(x.metodo||''); const padrao=extra.padrao||(mp?mp[1]:'medio');
@@ -1119,18 +1173,20 @@ function _avEntornoHTML(e){
     <div style="color:#94a3b8;font-size:.78em;margin-top:6px">Distâncias em linha reta. Fontes: GeoSampa (equipamentos, parques, ônibus, ciclovias, metrô) e OpenStreetMap (hospitais particulares). Entorno é leitura qualitativa; não altera a conta.</div>
   </div></div>`;
 }
-function _avCompsTabela(comps){
+function _avCompsTabela(comps, opts){
+  const editavel=!(opts&&opts.editavel===false) && !!(_avForm&&_avForm.cache&&_avForm.dossie);
+  window._avCompKeys=[];
   return `<table style="width:100%;border-collapse:collapse;font-size:.86em"><thead><tr style="text-align:left;color:#94a3b8">
       <th style="padding:4px 8px">Origem</th><th style="padding:4px 8px">Endereço</th><th style="padding:4px 8px;text-align:right">Área</th>
-      <th style="padding:4px 8px;text-align:right">Preço</th><th style="padding:4px 8px;text-align:right">R$/m²</th>${(_avForm&&_avForm.cache)?'<th></th>':''}</tr></thead>
-    <tbody>${comps.slice(0,24).map(c=>{ const itbi=/ITBI|Fechamento|Venda real/i.test(c.origem||c.tipo||''); const podeExcluir=!!(_avForm&&_avForm.cache&&c.k);
+      <th style="padding:4px 8px;text-align:right">Preço</th><th style="padding:4px 8px;text-align:right">R$/m²</th>${editavel?'<th></th>':''}</tr></thead>
+    <tbody>${comps.slice(0,24).map(c=>{ const itbi=/ITBI|Fechamento|Venda real/i.test(c.origem||c.tipo||''); const podeExcluir=editavel&&!!c.k; const ki=window._avCompKeys.push(c.k)-1;
       return `<tr style="border-top:1px solid #f1f5f9${c.excluido?';opacity:.45;text-decoration:line-through':''}">
         <td style="padding:4px 8px;white-space:nowrap">${itbi?'<span style="color:#047857">●</span> ':'<span style="color:#2563eb">●</span> '}${c.origem||c.tipo||'—'}</td>
         <td style="padding:4px 8px">${c.url?`<a href="${c.url}" target="_blank" style="color:#2563eb">${c.endereco||'anúncio'}</a>`:(c.endereco||'—')}${c.dorm?` <small style="color:#94a3b8">${c.dorm} dorm${c.vaga?' · '+c.vaga+' vg':''}</small>`:''}</td>
         <td style="padding:4px 8px;text-align:right;white-space:nowrap">${itbi&&c.area_util_est?`≈ ${c.area_util_est} m² útil${c.area?`<br><small style="color:#94a3b8">${Math.round(c.area)} m² no cadastro</small>`:''}`:(c.area?Math.round(c.area)+' m²':'—')}</td>
         <td style="padding:4px 8px;text-align:right;white-space:nowrap">${_avR$(c.preco)}</td>
         <td style="padding:4px 8px;text-align:right;white-space:nowrap">${itbi&&c.rs_util?`${_avR$(c.rs_util)} útil${c.rs_m2?`<br><small style="color:#94a3b8">${_avR$(c.rs_m2)} no cadastro</small>`:''}`:_avR$(c.rs_m2)}</td>
-        ${podeExcluir?`<td style="padding:4px 4px;text-align:right;white-space:nowrap"><button class="btn btn-o bsm" style="text-decoration:none" title="${c.excluido?'Voltar a usar este comparável':'Excluir este comparável da conta (destoante)'}" onclick="_avExcluir('${String(c.k).replace(/'/g,'')}')">${c.excluido?'↩︎ incluir':'✕ excluir'}</button></td>`:''}</tr>`; }).join('')}</tbody></table>
+        ${podeExcluir?`<td style="padding:4px 4px;text-align:right;white-space:nowrap"><button class="btn btn-o bsm" style="text-decoration:none" title="${c.excluido?'Voltar a usar este comparável':'Excluir este comparável da conta (destoante)'}" onclick="_avExcluir(window._avCompKeys[${ki}])">${c.excluido?'↩︎ incluir':'✕ excluir'}</button></td>`:''}</tr>`; }).join('')}</tbody></table>
     <div style="font-size:.8em;color:#94a3b8;margin-top:6px"><b>Venda real</b> = transação registrada na Prefeitura (guia de ITBI), preço efetivamente declarado. <b>Anúncio</b> = preço pedido em portal, ajustado pelo índice pedido→fechado. ITBI: área do cadastro (IPTU); área útil estimada por (cadastro − ${AV_INDICES.iptu_por_vaga} m²) ÷ ${AV_INDICES.iptu_por_util} (casas: construída ≈ útil). Anúncio: área útil anunciada.</div>`;
 }
 function _avMetodoHTML(mu, x){
@@ -1274,6 +1330,7 @@ async function avalSalvar(){
     const payload=Object.fromEntries(Object.entries(d).filter(([k])=>!k.startsWith('_')));
     const rows=await db.post('aval_resultado', payload);
     const novo=Array.isArray(rows)?rows[0]:rows;
+    _avForm={}; _avPino=null;   // avaliação gravada: nada dela continua valendo nas próximas telas
     await carregarAvalImoveis({lista:true});
     if(novo?.id) abrirAvalDetalhe(novo.id);
   }catch(e){ alert('Não foi possível salvar: '+(e.message||e)); }
@@ -1290,7 +1347,7 @@ function abrirAvalDetalhe(id){
     <div class="card" style="margin-bottom:12px;border-left:3px solid #10b981"><div class="cb">
       <div style="color:#047857;font-weight:600">💡 Potencial de incorporação</div>
       <div style="font-size:1.7em;font-weight:800;color:#047857;margin:4px 0">${_avR$(x.incorp_valor_terreno)}</div>
-      <div style="color:#64748b">${x.zona} · CA ${x.ca} · construível ${x.incorp_area_constr} m² · lançamento ${_avR$(x.incorp_lancamento_rs_m2)}/m² · VGV ${_avR$(x.incorp_vgv)}${x.incorp_ganho_pct!=null?` · <b style="color:#059669">+${Math.round(x.incorp_ganho_pct)}%</b>`:''}</div>
+      <div style="color:#64748b">${x.zona} · CA ${x.ca} · construível ${x.incorp_area_constr} m² · lançamento ${_avR$(x.incorp_lancamento_rs_m2)}/m² · VGV ${_avR$(x.incorp_vgv)}${x.incorp_ganho_pct!=null?` · <b style="color:#059669">${x.incorp_ganho_pct>=0?'+':''}${Math.round(x.incorp_ganho_pct)}%</b>`:''}</div>
       ${_avMemoriaHTML(_avMemoriaSalva(x))}
     </div></div>`:'';
   const acoes = x.status==='aprovada' ? `
@@ -1312,7 +1369,7 @@ function abrirAvalDetalhe(id){
     </div></div>`;
   corpo.innerHTML = `
     <div class="ph" style="display:flex;align-items:center;gap:12px">
-      <button class="btn btn-o bsm" onclick="carregarAvalImoveis()">← Voltar</button>
+      <button class="btn btn-o bsm" onclick="carregarAvalImoveis({lista:true})">← Voltar</button>
       <div><h1 class="pt">${x.endereco||x.codigo}</h1>
         <div class="pst">${x.tipo||''} · ${x.bairro||''}
           <span style="background:${st.bg};color:${st.cor};padding:1px 8px;border-radius:999px;font-size:.85em;font-weight:600;margin-left:6px">${st.lb}</span></div></div>
@@ -1322,14 +1379,15 @@ function abrirAvalDetalhe(id){
       <div style="color:#64748b;font-size:.85em;text-transform:uppercase">Valor de mercado</div>
       <div style="font-size:1.8em;font-weight:800;margin:4px 0">${_avR$(x.valor_mercado)}</div>
       <div style="color:#64748b">Faixa: ${_avR$(x.faixa_min)} — ${_avR$(x.faixa_max)}</div>
-      <div style="color:#94a3b8;font-size:.88em;margin-top:6px">${x.metodo||''}</div>
+      <div style="color:#94a3b8;font-size:.88em;margin-top:6px">${String(x.metodo||'').replace(/\s*\[incorp:.*?\]/g,'')}</div>
+      ${_avIptuCaixaHTML(x.entorno&&x.entorno.iptu)}
       ${x.preco_pedido?`<div style="margin-top:8px;font-size:.9em">Pretendido: <b>${_avR$(x.preco_pedido)}</b> ${_avCompara(x.preco_pedido,x.valor_mercado)}</div>`:''}
     </div></div>`:''}
     ${inc}
     ${(comps.some(c=>c.lat)||x.lat||_avPino)?`<div class="card" style="margin-bottom:12px"><div class="cb"><div style="color:#64748b;font-size:.85em;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Mapa: imóvel, anúncios e fechamentos</div><div id="av-mapa-comps" style="height:320px;border-radius:10px;border:1px solid #e2e8f0"></div><div style="font-size:.82em;color:#64748b;margin-top:6px"><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#dc2626;border:2px solid #fff;box-shadow:0 0 0 2px #dc2626;vertical-align:middle"></span> imóvel avaliado &nbsp; <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#34d399;border:2px solid #047857;vertical-align:middle"></span> vendas reais (ITBI). Os anúncios não trazem o número do imóvel e por isso aparecem só na tabela abaixo.</div></div></div>`:''}
     ${comps.length?`<div class="card" style="margin-bottom:12px"><div class="cb">
       <div style="color:#64748b;font-size:.85em;text-transform:uppercase;margin-bottom:6px">Comparáveis</div>
-      ${_avCompsTabela(comps)}
+      ${_avCompsTabela(comps,{editavel:false})}
     </div></div>`:''}
     ${acoes}`;
   (async()=>{ let centro=(x.lat&&x.lng)?{lat:+x.lat,lng:+x.lng}:null; if(!centro){ try{ const r=await _avRpc('aval_geocode',{p_q:(x.endereco||'')+' '+(x.bairro||'')}); const h=Array.isArray(r)?r[0]:null; if(h) centro={lat:h.lat,lng:h.lng}; }catch(_){} } _avDesenharMapaComps(comps, centro); })();

@@ -127,8 +127,24 @@ function render(x){
     <div class="card">
       <div class="kicker">Valor de mercado estimado</div>
       <div class="big">${R$(x.valor_mercado)}</div>
-      <div class="sub">Faixa de referência: ${R$(x.faixa_min)} — ${R$(x.faixa_max)}${x.mercado_rs_m2?` · ${R$(x.mercado_rs_m2)}/m² de área útil`:''}</div>
+      <div class="sub">Faixa de referência: ${R$(x.faixa_min)} — ${R$(x.faixa_max)}${x.mercado_rs_m2?` · ${R$(x.mercado_rs_m2)}/m² de ${ev&&ev.so_terreno?'terreno':'área útil'}`:''}</div>
       ${x.preco_pedido&&x.valor_mercado?`<div class="foot">Valor pretendido ${R$(x.preco_pedido)}: ${compara(x.preco_pedido,x.valor_mercado)}</div>`:''}
+    </div>` : '';
+
+  const ip = ent && ent.iptu || null; const ipU = ip && ip.unidade || null;
+  const ipIt = (lb,v)=> v==null||v===''?'':`<div><div class="kicker">${lb}</div><b>${v}</b></div>`;
+  const cadastro = ip ? `
+    <div class="card">
+      <div class="kicker">Cadastro da Prefeitura (IPTU 2026)</div>
+      <div class="grid3" style="margin-top:8px">
+        ${ipIt('Contribuinte (SQL)', ipU?ipU.sql:ip.sql)}${ipIt('Unidade', ipU&&ipU.complemento)}${ipIt('Uso', ipU?ipU.uso:ip.uso)}
+        ${ipIt('Padrão', ip.padrao)}${ipIt('Ano de construção', ip.ano_construcao)}${ipIt('Pavimentos', ip.pavimentos)}
+        ${ipIt('Terreno do lote', ip.area_terreno?N(ip.area_terreno)+' m²':null)}${ipIt('Testada', ip.testada?N(ip.testada)+' m':null)}
+        ${ipIt('Área construída no cadastro', (ipU?ipU.area_construida:ip.area_construida)?N(ipU?ipU.area_construida:ip.area_construida)+' m²':null)}
+        ${ip.unidades_no_lote>1?ipIt('Unidades no lote', ip.unidades_no_lote):''}
+      </div>
+      ${ip.desatualizado?`<div class="foot" style="color:#b45309">O cadastro de 2026 ainda descreve o lote de outra forma. É comum em prédio recente, antes de a Prefeitura desmembrar as unidades: confirme área e ano na matrícula e no carnê de IPTU da unidade.</div>`:''}
+      <div class="foot">A área construída do cadastro inclui áreas comuns e garagem; não é a área útil. Informação de referência: não entra no cálculo do valor.</div>
     </div>` : '';
 
   const entorno = ent ? `
@@ -139,7 +155,6 @@ function render(x){
       ${(()=>{ const pois=ent.pois||{}, n500=ent.n500||{}, n1000=ent.n1000||{};
         const CAT=[['onibus','🚌','Ônibus'],['parque','🌳','Parques e praças'],['escola','🏫','Escolas'],['hospital','🏥','Hospitais'],['feira','🥬','Feiras livres'],['clube','🏊','Clubes e centros esportivos'],['ciclovia','🚲','Ciclovias']];
         return CAT.filter(([k])=>(pois[k]||[]).length).map(([k,ic,lb])=>`<div style="font-size:.93em;margin-top:3px">${ic} <b>${lb}:</b> ${(pois[k]||[]).slice(0,k==='onibus'?1:3).map(p=>`${cap(p.nome)} <span class="sub">a ${N(p.dist_m)} m</span>`).join(' · ')}${n1000[k]?` <span class="sub">(${n500[k]||0} a 500 m, ${n1000[k]} a 1 km)</span>`:''}</div>`).join(''); })()}
-      ${ent.iptu?`<div style="font-size:.93em;margin-top:6px">🏛️ <b>Cadastro do IPTU:</b> contribuinte ${ent.iptu.sql} · ${ent.iptu.uso||''} · terreno ${N(ent.iptu.area_terreno)} m² · construída ${N(ent.iptu.area_construida)} m² no cadastro${ent.iptu.ano_construcao>1800?' · construído em '+ent.iptu.ano_construcao:''}${ent.iptu.padrao?' · '+ent.iptu.padrao:''}</div>`:''}
       <div class="foot">Distâncias em linha reta. Fontes: GeoSampa (Prefeitura de São Paulo: equipamentos, parques, ônibus, ciclovias, metrô) e OpenStreetMap (hospitais particulares).</div>
     </div>` : '';
 
@@ -157,14 +172,14 @@ function render(x){
   const metodo = `
     <div class="card metodo">
       <div class="kicker">Como chegamos ao valor · método</div>
-      <p>A avaliação parte do <b>macro</b>, os índices do bairro, e aplica no <b>micro</b>, este imóvel. Duas fontes independentes de preço são combinadas:</p>
+      ${mu&&(mu.rs_anuncio||mu.rs_itbi_ajust)?`<p>A avaliação parte do <b>macro</b>, os índices do bairro, e aplica no <b>micro</b>, este imóvel. ${mu.rs_anuncio&&mu.rs_itbi_ajust?'Duas fontes independentes de preço são combinadas:':'A fonte de preço usada:'}</p>`:''}
       ${mu&&mu.rs_anuncio?`<p><b>1. Anúncios ao vivo.</b> Mediana de ${mu.n_anuncio||'—'} anúncios de venda de imóveis semelhantes no bairro, coletados no dia da avaliação: ${R$(mu.rs_anuncio)}/m² pedido. Como preço pedido não é preço fechado, aplicamos o índice pedido→fechado medido nos negócios da própria Nova São Paulo (${mu.idx_origem||'média'}): × ${mu.idx_pedido_fechado} → <b>${R$(mu.rs_anuncio_ajust)}/m²</b>.</p>`:''}
       ${mu&&mu.rs_itbi_ajust?`<p><b>2. Vendas reais (ITBI).</b> Mediana de ${mu.n_itbi||'—'} vendas efetivamente registradas na Prefeitura no mesmo bairro, com o preço declarado na guia de ITBI: ${R$(mu.rs_itbi_util)}/m² de área útil estimada. Como a guia de ITBI declara em média ${Math.round((mu.sub_itbi||0)*100)}% abaixo do valor negociado, corrigimos: × ${(1+(mu.sub_itbi||0)).toFixed(3)} → <b>${R$(mu.rs_itbi_ajust)}/m²</b>.</p>`:''}
-      ${mu&&mu.rs_final?`<p><b>${ev&&!ev.so_terreno?'Valor comparativo:':'Valor adotado:'}</b> média das fontes, <b>${R$(mu.rs_final)}/m²</b>${mu.divergencia!=null?` (as fontes divergem ${mu.divergencia}%)`:''}, vezes ${Math.round(x.area_util||0)} m² de área ${ev?'construída':'útil'} = <b>${R$(ev&&ev.comparativo?ev.comparativo:x.valor_mercado)}</b>.${ev&&!ev.so_terreno?'':' Faixa de ±7% para negociação.'}${mu.excluidos?` ${mu.excluidos} referência(s) destoante(s) foram excluídas pelo corretor.`:''}</p>`:(ev?'':`<p>${x.metodo||''}</p>`)}
+      ${mu&&mu.rs_final?`<p><b>${ev&&!ev.so_terreno?'Valor comparativo:':'Valor adotado:'}</b> média das fontes, <b>${R$(mu.rs_final)}/m²</b>${mu.divergencia!=null?` (as fontes divergem ${mu.divergencia}%)`:''}, vezes ${Math.round(x.area_util||0)} m² de área ${ev?'construída':'útil'} = <b>${R$(ev&&ev.comparativo?ev.comparativo:x.valor_mercado)}</b>.${ev&&!ev.so_terreno?'':' Faixa de ±7% para negociação.'}${mu.excluidos?` ${mu.excluidos} referência(s) destoante(s) foram excluídas pelo corretor.`:''}</p>`:(ev?'':`<p>${String(x.metodo||'').replace(/\s*\[incorp:.*?\]/g,'')}</p>`)}
       ${ev&&ev.so_terreno?`<p><b>Terreno nu.</b> ${N(ev.terreno)} m² × ${R$(ev.rs_terreno)}/m² de terreno (${ev.rs_terreno_origem||''}) = <b>${R$(ev.total)}</b>.</p>`:''}
       ${ev&&!ev.so_terreno?`<p><b>3. Terreno + construção (método evolutivo).</b> Em casa o terreno pesa: ${N(ev.terreno)} m² × ${R$(ev.rs_terreno)}/m² de terreno (${ev.rs_terreno_origem||''}) = ${R$(ev.v_terreno)}; mais a construção de ${N(ev.constr)} m² ao custo de reposição de ${R$(ev.custo_m2)}/m² (CUB ${ev.cubRef||''}, padrão ${ev.padraoLb||''}), depreciada ${Math.round((ev.dep||0)*100)}% por idade e estado (Ross-Heidecke: ${ev.idade} anos, ${ev.estadoLb||''}) = ${R$(ev.v_benf)}. Total <b>${R$(ev.total)}</b>; o terreno responde por ${ev.pct_terreno}% do valor como casa.${ev.ref&&ev.ref.constr?` Referência da carteira da Nova São Paulo (${ev.ref.n} casas anunciadas no bairro): construção ≈ ${R$(ev.ref.constr)}/m², terreno ≈ ${Math.round(ev.ref.share*100)}% do preço.`:''}</p>
       ${ev.v_lote?`<p><b>Vendido como lote (para construir):</b> ${N(ev.terreno)} m² × ${R$(ev.rs_lote)}/m² = <b>${R$(ev.v_lote)}</b> (${ev.lote_origem||''}).${ev.v_lote>ev.total?' Supera o valor como casa: vale ofertar o imóvel a construtoras.':''}</p>`:''}
-      <p><b>Valor adotado:</b> média entre o comparativo (${R$(ev.comparativo)}) e o evolutivo (${R$(ev.total)}) = <b>${R$(x.valor_mercado)}</b>${ev.divergencia!=null?` (os métodos divergem ${ev.divergencia}%)`:''}. Faixa de ±7% para negociação.</p>`:''}
+      <p><b>Valor adotado:</b> ${ev.comparativo?`média entre o comparativo (${R$(ev.comparativo)}) e o evolutivo (${R$(ev.total)})`:'o evolutivo, por falta de comparativo suficiente no bairro,'} = <b>${R$(x.valor_mercado)}</b>${ev.divergencia!=null?` (os métodos divergem ${ev.divergencia}%)`:''}. Faixa de ±7% para negociação.</p>`:''}
       ${(ent&&ent.metro&&ent.metro.length)?`<p class="foot">O entorno (transporte, parques, escolas, saúde, comércio) é informado para leitura qualitativa; não altera a conta.</p>`:''}
       <p class="foot">Fontes: anúncios públicos de portais imobiliários; ITBI da Prefeitura de São Paulo (Secretaria da Fazenda); negócios fechados da Nova São Paulo 2019–2026; zoneamento e outorga onerosa do GeoSampa (Prefeitura de São Paulo); CUB Sinduscon-SP.</p>
     </div>`;
@@ -193,7 +208,7 @@ function render(x){
         <div class="linha"><span>Margem do incorporador ${pct(P.margem||0.15)}</span><b class="neg">− ${R$(inc.margem)}</b></div>
         ${inc.fachada_ativa?`<div class="linha"><span class="sub">Fachada ativa: +${N(inc.area_fachada)} m² de térreo comercial não computável, incluídos no VGV e na obra</span><b></b></div>`:''}
         ${inc.categoria&&inc.categoria!=='mercado'?`<div class="linha"><span class="sub">Categoria ${String(inc.categoria).toUpperCase()}: fator social Fs = ${inc.fs} aplicado à outorga (PDE)</span><b></b></div>`:''}
-        ${inc.outorga?`<div class="linha"><span>Outorga onerosa: ${N(inc.area_adicional)} m² acima do CA básico × ${R$(inc.v)}/m² <span class="sub">(${inc.v_origem||''})</span></span><b class="neg">− ${R$(inc.outorga)}</b></div>`:''}
+        ${inc.outorga?`<div class="linha"><span>Outorga onerosa: ${N(inc.area_adicional)} m² acima do CA básico × ${inc.outorga_modo==='formula'?`(terreno ÷ área computável) × ${R$(inc.v)}/m² × Fs ${inc.fs!=null?inc.fs:1} × Fp ${inc.fp!=null?inc.fp:1}`:`${R$(inc.v)}/m²${inc.fs!=null&&inc.fs<1?' × Fs '+inc.fs:''}`} <span class="sub">(${inc.v_origem||''})</span></span><b class="neg">− ${R$(inc.outorga)}</b></div>`:''}
         ${inc.custos_aquisicao?`<div class="linha"><span>Custos de aquisição do terreno (ITBI, comissão, jurídico, demolição, IPTU) ≈ ${pct(P.custo_aquisicao||0.12)}</span><b class="neg">− ${R$(inc.custos_aquisicao)}</b></div>`:''}
         <div class="linha tot"><span>Terreno máximo (o que chega ao proprietário)${inc.terreno_vgv?` <span class="sub">· ${(inc.terreno_vgv*100).toFixed(1)}% do VGV</span>`:''}</span><b>${R$(inc.terreno_max)}</b></div>
       </div>
@@ -235,14 +250,14 @@ function render(x){
       <div class="foot">Opinião de valor gerada em ${dt}${x.aprovado_em?` e revisada em ${dtAp}`:''}.</div>
     </div>`;
 
-  return cabecalho + mercado + parecer + incorp + entorno + metodo + mapa + comptab + assinatura + `
+  return cabecalho + mercado + parecer + incorp + cadastro + entorno + metodo + mapa + comptab + assinatura + `
     <div class="cta">
       <div style="font-size:1.05em;font-weight:700">Quer vender pelo melhor valor possível?</div>
       <div style="opacity:.85;font-size:.92em;margin-top:4px">Nossa equipe apresenta a estratégia completa para o seu imóvel.</div>
       <a href="https://www.novasaopaulo.com.br" target="_blank">Falar com a Nova São Paulo</a>
     </div>`;
 }
-function pct(v){ return v==null?'—':Math.round(Number(v)*100)+'%'; }
+function pct(v){ return v==null?'—':(Number(v)*100).toLocaleString('pt-BR',{maximumFractionDigits:1})+'%'; }
 function cap(s){ return String(s||'').toLowerCase().replace(/(^|\s|-)([a-zà-ú])/g,(m,a,b)=>a+b.toUpperCase()); }
 function compara(pedido,mercado){
   const p=Number(pedido),m=Number(mercado); if(!p||!m) return '';

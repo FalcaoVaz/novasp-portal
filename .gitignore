@@ -39,3 +39,5 @@ scratchpad/
 .DS_Store
 Thumbs.db
 *~
+
+sandbox/cache_apto/
