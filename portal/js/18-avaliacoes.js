@@ -674,7 +674,11 @@ async function avalCalcular(opts){
   // comparáveis de fechamento (ITBI) — do banco, via RPC
   let compsItbi=[];
   if(recalc) compsItbi=_avForm.cache.compsItbi;
-  else { try{ compsItbi=await _avRpc('aval_comps_itbi',{p_bairro:bairro,p_lim:20}); }catch(_){} }
+  else {
+    // vendas reais pelo RAIO em volta do imóvel (o bairro detectado no mapa nem sempre bate com o do ITBI); sem resultado, cai no bairro
+    try{ compsItbi=await _avRpc('aval_comps_itbi_raio',{p_lat:_avPino.lat,p_lng:_avPino.lng,p_tipo:_ehCasa(tipo)?'casa':'apto',p_lim:20})||[]; compsItbi.forEach(c=>{ c.porRaio=true; }); }catch(_){ compsItbi=[]; }
+    if(!compsItbi.length){ try{ compsItbi=await _avRpc('aval_comps_itbi',{p_bairro:bairro,p_lim:20}); }catch(_){} }
+  }
   compsItbi=(compsItbi||[]).filter(c=>_ehCasa(tipo) ? /RESID|CASA|SOBRADO/i.test(c.uso||'') : /APART|CONDOM/i.test(c.uso||''));
   // exclusões feitas pelo corretor (comparável destoante) — chave estável por origem
   _avForm.excl=_avForm.excl||new Set();
@@ -691,7 +695,7 @@ async function avalCalcular(opts){
   // anúncios só trazem a rua (sem número): ficam fora do mapa — só na tabela de comparáveis (Rodrigo, 02/10/2026)
   amostraTodos.forEach(a=>{ delete a.lat; delete a.lng; });
   if(!recalc) await Promise.all([
-    ...compsItbi.slice(0,12).map(async c=>{ try{ const r=await _avRpc('aval_geocode_endereco',{p_rua:c.logradouro||'',p_numero:c.numero||''}); const h=Array.isArray(r)?r[0]:null; if(h&&h.lat){ c.lat=h.lat; c.lng=h.lng; return; } }catch(_){} const g=await geocodar(`${c.logradouro||''} ${c.numero||''}`); if(g) Object.assign(c,g); }),
+    ...compsItbi.slice(0,12).filter(c=>!(c.lat&&c.lng)).map(async c=>{ try{ const r=await _avRpc('aval_geocode_endereco',{p_rua:c.logradouro||'',p_numero:c.numero||''}); const h=Array.isArray(r)?r[0]:null; if(h&&h.lat){ c.lat=h.lat; c.lng=h.lng; return; } }catch(_){} const g=await geocodar(`${c.logradouro||''} ${c.numero||''}`); if(g) Object.assign(c,g); }),
   ]);
   // R$/m² dos anúncios: o motor manda a mediana de toda a página; se o corretor excluiu algum, recalcula pela amostra restante
   const mediana=v=>{ v=v.filter(x=>x>0).sort((a,b)=>a-b); return v.length?(v.length%2?v[(v.length-1)/2]:(v[v.length/2-1]+v[v.length/2])/2):null; };
