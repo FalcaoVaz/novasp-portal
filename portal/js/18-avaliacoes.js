@@ -886,7 +886,9 @@ async function avalCalcular(opts){
   // ── EVOLUTIVO: casas (e comerciais com terreno) — terreno + construção depreciada ──
   let evolutivo=null;
   if((grupo==='casa'||grupo==='com') && terreno && area && rs_terreno){
-    evolutivo=_avContaEvolutivo({terreno, rs_terreno, rs_terreno_origem:rsTerrenoOrigem, constr:area, padrao:g('av-padrao-casa')||'medio', idade:+g('av-idade')||0, estado:g('av-estado')||'bom', rs_lote, lote_origem:loteOrigem, ref:tb});
+    // comercial (galpão/loja): o terreno vale como LOTE para construir; na casa, o terreno "dentro" da casa
+    const rsT = (grupo==='com' && rs_lote) ? rs_lote : rs_terreno, rsTO = (grupo==='com' && rs_lote) ? loteOrigem : rsTerrenoOrigem;
+    evolutivo=_avContaEvolutivo({terreno, rs_terreno:rsT, rs_terreno_origem:rsTO, constr:area, padrao:g('av-padrao-casa')||'medio', idade:+g('av-idade')||0, estado:g('av-estado')||'bom', rs_lote, lote_origem:loteOrigem, ref:tb});
     if(metodoUnico && metodoUnico.valor_final){ evolutivo.comparativo=metodoUnico.valor_final; evolutivo.divergencia=Math.round((evolutivo.total/metodoUnico.valor_final-1)*100); }
   }
   dossie.memoria.evolutivo=evolutivo; _avForm.evolutivo=evolutivo;
@@ -897,10 +899,18 @@ async function avalCalcular(opts){
       dossie.metodo=`terreno nu: ${terreno} m² × R$ ${rs_lote.toLocaleString('pt-BR')}/m² de lote (${loteOrigem})`;
       dossie.memoria.evolutivo={terreno, rs_terreno:rs_lote, rs_terreno_origem:loteOrigem, v_terreno:vm, total:vm, so_terreno:true, ref:tb};
     }
+  }else if(grupo==='com' && evolutivo){
+    // comercial: as referências de venda e anúncio são residenciais (o coletor não busca comercial) — o valor é
+    // terreno a preço de lote + construção depreciada; o residencial fica como referência (04/10/2026: o galpão da
+    // R. Alba saía 50% acima do parecer manual com a média; assim fica perto)
+    const vm=evolutivo.total;
+    dossie.valor_mercado=vm; dossie.faixa_min=Math.round(vm*0.9); dossie.faixa_max=Math.round(vm*1.1); dossie.mercado_rs_m2=Math.round(vm/area);
+    dossie.metodo=`terreno ${terreno} m² × R$ ${evolutivo.rs_terreno.toLocaleString('pt-BR')}/m² de lote + construção ${area} m² depreciada ${Math.round(evolutivo.dep*100)}%`+
+      (metodoUnico&&metodoUnico.valor_final?` · referência residencial do entorno: ${_avR$(metodoUnico.valor_final)}`:'');
   }else if(metodoUnico && metodoUnico.valor_final && evolutivo){
     const mu=metodoUnico, vm=Math.round((mu.valor_final+evolutivo.total)/2);
     dossie.valor_mercado=vm; dossie.faixa_min=Math.round(vm*0.93); dossie.faixa_max=Math.round(vm*1.07); dossie.mercado_rs_m2=mu.rs_final;
-    dossie.metodo=`média de [comparativo ${area} m² × R$ ${mu.rs_final.toLocaleString('pt-BR')}/m² = ${_avR$(mu.valor_final)} ; evolutivo terreno ${terreno} m² × R$ ${rs_terreno.toLocaleString('pt-BR')} + construção ${area} m² depreciada ${Math.round(evolutivo.dep*100)}% = ${_avR$(evolutivo.total)}]`+
+    dossie.metodo=`média de [comparativo ${area} m² × R$ ${mu.rs_final.toLocaleString('pt-BR')}/m² = ${_avR$(mu.valor_final)} ; evolutivo terreno ${terreno} m² × R$ ${evolutivo.rs_terreno.toLocaleString('pt-BR')} + construção ${area} m² depreciada ${Math.round(evolutivo.dep*100)}% = ${_avR$(evolutivo.total)}]`+
       (evolutivo.divergencia!=null?` · métodos divergem ${evolutivo.divergencia}%`:'')+(nExcl?` · ${nExcl} comparável(is) excluído(s)`:'');
   }else if(metodoUnico && metodoUnico.valor_final){
     const mu=metodoUnico;
