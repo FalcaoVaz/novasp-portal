@@ -813,12 +813,7 @@ async function avalCalcular(opts){
   if(recalc){ precos=_avForm.cache.precos; semMotor=!!_avForm.cache.semMotor; }
   else if(_avForm.cache&&_avForm.cache.precos&&_avForm.cache.precos.rs_apto&&_avForm.ctx&&_avForm.ctx.bairro===bairro&&_avForm.dossie&&_avForm.dossie._solo){ precos=_avForm.cache.precos; }
   else try{
-    const ctrl=(typeof AbortController!=='undefined')?new AbortController():null;
-    const timer=ctrl?setTimeout(()=>ctrl.abort(),45000):null;   // Render free acorda em 30-60 s
-    const r=await fetch(`${AVAL_MOTOR}/precos?bairro=`+encodeURIComponent(bairro),Object.assign({headers:hdr()},ctrl?{signal:ctrl.signal}:{}));
-    if(timer) clearTimeout(timer);
-    if(!r.ok) throw new Error('motor HTTP '+r.status);
-    precos=await r.json();
+    precos=await _avBuscarPrecos(bairro); if(!precos) throw new Error('motor indisponível');
   }catch(e){ semMotor=true; }
 
   // comparáveis de fechamento (ITBI) — do banco, via RPC
@@ -840,6 +835,14 @@ async function avalCalcular(opts){
   // endereços → coordenadas (base local de endereços do portal; o que não resolver fica sem pino)
   const geocodar=async q=>{ try{ const r=await _avRpc('aval_geocode',{p_q:q}); const h=Array.isArray(r)?r[0]:null; return h?{lat:h.lat,lng:h.lng}:null; }catch(_){ return null; } };
   const amostraTodos=(precos.amostra||[]).slice(0,12);
+  // distância de cada anúncio (pela rua) até o imóvel: aparece na tabela e ordena a lista; o cálculo não muda
+  // (filtrar por distância foi testado em 04/10/2026 e não melhorou o valor: 16% → 20% de erro nos negócios fechados)
+  if(!recalc && amostraTodos.length && _avPino){
+    try{ const ruas=[...new Set(amostraTodos.map(a=>a.rua).filter(Boolean))]; const dist={};
+         (await _avRpc('aval_ruas_distancia',{p_lat:_avPino.lat,p_lng:_avPino.lng,p_ruas:ruas})||[]).forEach(x=>{ dist[x.rua]=x.dist_m; });
+         amostraTodos.forEach(a=>{ a.dist_m=(dist[a.rua]!=null)?dist[a.rua]:null; }); }catch(_){}
+  }
+  if(amostraTodos.some(a=>a.dist_m!=null)) amostraTodos.sort((x,y)=>(x.dist_m==null)-(y.dist_m==null) || (x.dist_m||0)-(y.dist_m||0));
   amostraTodos.forEach(a=>{ a._k=kAn(a); a.excluido=_avForm.excl.has(a._k); });
   const amostra=amostraTodos.filter(a=>!a.excluido);
   const compsItbiAtivos=compsItbi.filter(c=>!c.excluido);
@@ -932,7 +935,7 @@ async function avalCalcular(opts){
     valor_mercado:null, faixa_min:null, faixa_max:null, metodo:null,
     incorp_aplicavel:false, incorp_area_constr:null, incorp_lancamento_rs_m2:null,
     incorp_vgv:null, incorp_valor_terreno:null, incorp_ganho_pct:null,
-    comparaveis: JSON.stringify(amostraTodos.map(a=>({k:a._k,excluido:!!a.excluido,tipo:a.tipo,area:a.area,preco:a.preco,rs_m2:a.rs_m2,dorm:a.dorm,vaga:a.vaga,endereco:[a.rua,a.bairro].filter(Boolean).join(', '),aprox:!!a.aprox,url:a.url,lat:a.lat||null,lng:a.lng||null,origem:a.lancamento?'lançamento':'anúncio'}))
+    comparaveis: JSON.stringify(amostraTodos.map(a=>({k:a._k,excluido:!!a.excluido,tipo:a.tipo,area:a.area,preco:a.preco,rs_m2:a.rs_m2,dorm:a.dorm,vaga:a.vaga,endereco:[a.rua,a.bairro].filter(Boolean).join(', '),aprox:!!a.aprox,url:a.url,dist_m:a.dist_m!=null?a.dist_m:null,lat:a.lat||null,lng:a.lng||null,origem:a.lancamento?'lançamento':'anúncio'}))
                   .concat(compsItbi.map(c=>({k:c._k,excluido:!!c.excluido,tipo:grupo==='com'?'Venda real (ref. residencial)':'Venda real',area:c.area_constr,area_util_est:Math.round(c.area_util_est||0),preco:c.valor,rs_m2:c.rs_m2,rs_util:c.rs_util,endereco:`${c.logradouro||''}${c.numero?', '+c.numero:''}`,data:c.data,lat:c.lat||null,lng:c.lng||null,origem:'Venda real '+(c.data||'')})))),
     lat:_avPino?_avPino.lat:null, lng:_avPino?_avPino.lng:null,
     entorno: Object.assign({}, entorno||{}, {iptu: _avIptuResumo(tipo)}),
@@ -1317,7 +1320,7 @@ function _avCompsTabela(comps, opts){
     <tbody>${comps.slice(0,24).map(c=>{ const itbi=/ITBI|Fechamento|Venda real/i.test(c.origem||c.tipo||''); const podeExcluir=editavel&&!!c.k; const ki=window._avCompKeys.push(c.k)-1;
       return `<tr style="border-top:1px solid #f1f5f9${c.excluido?';opacity:.45;text-decoration:line-through':''}">
         <td style="padding:4px 8px;white-space:nowrap">${itbi?'<span style="color:#047857">●</span> ':'<span style="color:#2563eb">●</span> '}${c.origem||c.tipo||'—'}</td>
-        <td style="padding:4px 8px">${c.url?`<a href="${c.url}" target="_blank" style="color:#2563eb">${c.endereco||'anúncio'}</a>`:(c.endereco||'—')}${c.dorm?` <small style="color:#94a3b8">${c.dorm} dorm${c.vaga?' · '+c.vaga+' vg':''}</small>`:''}</td>
+        <td style="padding:4px 8px">${c.url?`<a href="${c.url}" target="_blank" style="color:#2563eb">${c.endereco||'anúncio'}</a>`:(c.endereco||'—')}${c.dorm?` <small style="color:#94a3b8">${c.dorm} dorm${c.vaga?' · '+c.vaga+' vg':''}</small>`:''}${c.dist_m!=null?` <small style="color:#94a3b8">· a ${n0(c.dist_m)} m</small>`:''}</td>
         <td style="padding:4px 8px;text-align:right;white-space:nowrap">${itbi&&c.area_util_est?`≈ ${c.area_util_est} m² útil${c.area?`<br><small style="color:#94a3b8">${Math.round(c.area)} m² no cadastro</small>`:''}`:(c.area?Math.round(c.area)+' m²':'—')}</td>
         <td style="padding:4px 8px;text-align:right;white-space:nowrap">${_avR$(c.preco)}</td>
         <td style="padding:4px 8px;text-align:right;white-space:nowrap">${itbi&&c.rs_util?`${_avR$(c.rs_util)} útil${c.rs_m2?`<br><small style="color:#94a3b8">${_avR$(c.rs_m2)} no cadastro</small>`:''}`:_avR$(c.rs_m2)}</td>

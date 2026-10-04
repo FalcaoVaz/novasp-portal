@@ -48,3 +48,12 @@ Terreno local passou de valores da carteira (ex.: Vila Guarani R$ 1.296/m²) par
 Anúncios ativos de casa seguem ~46% acima da avaliação: o ITBI de casa = preço de fechamento (razão 1,00 em 427 pares) e as
 casas vendidas pela NSP fecharam 7% abaixo do último pedido → o excesso está nos anúncios de casa que não vendem. Para casa,
 anúncio ativo não é régua; para apartamento é (+4%).
+
+## 5. Anúncios por proximidade (testado e NÃO adotado no cálculo, 04/10/2026)
+Busca no bairro do mapa + distrito oficial, distância de cada rua ao pino (`aval_ruas_distancia`), anúncios a até 800 m (1.200 m se faltar):
+| apartamentos | cálculo atual (bairro do mapa) | anúncios perto |
+|---|---|---|
+| 30 vendidos NSP — erro abs mediano | 16% | 20% |
+| 30 vendidos NSP — dentro de 20% | 60% | 50% |
+| 70 anúncios — desvio mediano da marca de +7% | 23% | 22% |
+Adotado só para a TELA: cada anúncio mostra "a X m" do imóvel e a lista vem em ordem de distância; o cálculo não muda.
