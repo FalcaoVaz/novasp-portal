@@ -19,7 +19,7 @@ Ordem de prioridade:
 1. O PRÉDIO. Se a pesquisa identificou o edifício, o texto gira em torno dele: nome, ano, incorporadora/construtora, número de andares e unidades, plantas, vagas, lazer — só o que tiver fonte.
 2. O QUE O PRÓPRIO PRÉDIO DIZ DO PREÇO. Anúncios atuais no edifício (preço, área, R$/m²) e vendas registradas no número do edifício (em "vendas_reais_proximas", pelo número do endereço, e em "mercado_local.mesmo_predio"; o número do prédio pode diferir alguns números do digitado — use o que a pesquisa e "predio_no_cadastro_em_numero_vizinho" indicarem). Compare com o valor calculado. Anúncio é preço pedido: desconte a negociação usual (cerca de 5%) antes de comparar. Se a evidência do próprio prédio aponta para um valor diferente do calculado em mais de 10%, diga isso já na "resposta", com o número, e explique a provável razão (andar, reforma, planta, vagas).
 3. Concorrência: um prédio novo perto ("predios_novos_perto") só entra se ajudar a situar o preço deste imóvel, em uma ou duas frases.
-4. Vizinhança e entorno: só com lugares e fatos nomeados e com fonte, e só se sobrar espaço; no máximo um parágrafo curto.
+4. A REGIÃO: sempre que a pesquisa trouxer lugares ou fatos nomeados com fonte, uma seção "A região" de um parágrafo: 3 a 5 destaques a pé (comércio, serviços, parques, o que está mudando) e o que isso diz sobre o perfil de quem mora ali. Nada de lugar-comum ("bairro bem servido", "ótima localização"): só nomes e fatos.
 
 Proibido:
 - Seções ou parágrafos genéricos sobre como tamanho, idade do prédio ou andar mexem no preço da região. Os números de "mercado_local" (por_idade_do_predio, por_tamanho_util, por_andar, por_semestre) só podem aparecer em UMA frase, e só para justificar um ajuste deste imóvel cuja idade ou tamanho é conhecido.
@@ -32,10 +32,10 @@ Proibido:
 
 Forma: português do Brasil, frases curtas, tom sóbrio, sem adjetivos de venda. Valores arredondados ("R$ 1,45 milhão", "cerca de R$ 11,6 mil por m² útil"). R$/m² sempre em área útil; mediana, não média.
 
-Estrutura (texto inteiro com no máximo 300 palavras):
+Estrutura (texto inteiro com no máximo 380 palavras):
 - "titulo": pergunta curta com o endereço.
 - "resposta": 2 a 3 frases: o valor e o achado principal sobre este imóvel (de preferência, o que o próprio prédio indica).
-- "secoes": 2 a 4 seções curtas, 1 parágrafo cada, cada uma com um achado específico deste imóvel. Ex.: "O edifício", "O que o prédio pede e vendeu", "Como anunciar", "Ao redor".
+- "secoes": 3 a 5 seções curtas, 1 parágrafo cada, cada uma com um achado específico deste imóvel. Ex.: "O edifício", "O que o prédio pede e vendeu", "A região", "Como anunciar".
 - "atencao": até 3 itens a confirmar (andar, vagas, estado, documentação). Lista vazia se não houver.
 - "fontes": as páginas usadas no texto (título curto e URL). Lista vazia se nenhuma.`;
 
@@ -153,7 +153,10 @@ TAREFA 1 — a mais importante, use nela as primeiras buscas: identificar o edif
 - Sites de imóveis (QuintoAndar, Loft, Lopes, ZAP, Imovelweb, VivaReal) têm páginas de condomínio por endereço; o número pode diferir alguns números do digitado (ex.: 150 x 154). Confira pelo tamanho das unidades (o imóvel avaliado tem ${im.area_util || '?'} m² úteis).
 - Do edifício: nome, número oficial, ano de construção/entrega, incorporadora e construtora, andares, unidades, plantas (m², dormitórios, vagas), lazer.
 - Abra (web_fetch) a página do condomínio no QuintoAndar ou na Loft e traga os anúncios atuais NESTE prédio: preço, área, andar quando houver, R$/m²; e histórico de vendas se a página mostrar.
-TAREFA 2 — só com as buscas que sobrarem, uma busca para cada: a incorporadora (tempo de mercado, reputação pública com fonte); destaques da vizinhança a pé (restaurantes, cafés e comércio bem avaliados em guias ou listas, nota só com 30+ avaliações); mudanças no entorno (obras, metrô, grandes empreendimentos).
+TAREFA 2 — OBRIGATÓRIA, faça mesmo que o edifício já esteja resolvido: no mínimo DUAS buscas sobre a região a pé do endereço:
+  (a) o que há de destaque perto: restaurantes, cafés, padarias, mercados, parques, hospitais, escolas e serviços citados em guias, listas ou matérias (Veja Comer & Beber, Guia Michelin, TripAdvisor, jornais, blogs do bairro); traga nomes, o que os destaca e a distância aproximada quando der; nota só com 30+ avaliações;
+  (b) o que está mudando ou marca o entorno: obras, metrô, parques, grandes empreendimentos, revitalizações, perfil do bairro em matérias recentes.
+TAREFA 3 — só se sobrar busca: a incorporadora do edifício (tempo de mercado, reputação pública com fonte).
 Responda em tópicos curtos, cada fato com a URL. Comece pelo edifício: nome e grau de certeza.`;
   const messages = [{ role: 'user', content: pedido }];
   const corpo = {
