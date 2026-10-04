@@ -353,6 +353,11 @@ async function _avBuscarIptu(){
     return;
   }
   _avForm.iptu=rows;
+  if(rows[0] && rows[0].sql && _avPino){
+    try{ const q=await _avRpc('aval_quadra_ponto',{p_sql:rows[0].sql}); const h=Array.isArray(q)?q[0]:q;
+      if(!velho() && h && h.lat){ const d=_avDistM(_avPino,h); _avForm.quadraIptu={lat:h.lat,lng:h.lng,dist:d};
+        if(d>300) setTimeout(()=>{ const e=document.getElementById('av-iptu-info'); if(e) e.insertAdjacentHTML('afterbegin',`<div style="font-size:.86em;color:#b45309;padding:6px 8px;background:#fffbeb;border-radius:8px;margin-bottom:6px">⚠️ O cadastro da Prefeitura põe ${rua}, ${num} numa quadra a <b>${n0(d)} m</b> do pino. <a href="javascript:void(0)" onclick="_avEscolher(${h.lat},${h.lng},-1)" style="color:#2563eb;font-weight:600">Mover o pino para a quadra do cadastro</a></div>`); },0); } }catch(_){}
+  }
   const lote=rows[0], vertical=rows.length>1 || /condom|apart/i.test(lote.uso||'');
   const anos=rows.map(r=>+r.ano_construcao).filter(x=>x>1800);
   const resumo = vertical
@@ -628,6 +633,21 @@ async function _avOsm(q){
        return (arr||[]).map(o=>({label:o.display_name.split(',').slice(0,3).join(','),lat:+o.lat,lng:+o.lon,origem:'OpenStreetMap',bairro:(o.address||{}).suburb||(o.address||{}).neighbourhood||(o.address||{}).quarter||''})); }
   catch(_){ return []; }
 }
+// Endereço → cadastro do IPTU (número exato) → centro da QUADRA FISCAL do contribuinte (04/10/2026).
+// É a fonte mais segura do pino: não depende do nome da rua bater com vendas registradas nem com o OpenStreetMap.
+async function _avPontoIptu(rua, num){
+  if(!rua || !num) return null;
+  try{
+    const ruas=await _avIptu('iptu_ruas',{p_logradouro:rua,p_numero:num,p_lim:4})||[];
+    const r=ruas.find(x=>x.tem_numero && x.sim>=0.5); if(!r) return null;
+    const rows=await _avIptu('iptu_por_rua',{p_logradouro_norm:r.logradouro_norm,p_numero:num,p_lim:3})||[];
+    if(!rows.length || !rows[0].sql) return null;
+    const q=await _avRpc('aval_quadra_ponto',{p_sql:rows[0].sql}); const h=Array.isArray(q)?q[0]:q;
+    if(!h || !h.lat) return null;
+    return {lat:h.lat, lng:h.lng, nome:_avNomeRuaIptu(r.logradouro), sql:rows[0].sql, distrito:h.distrito||''};
+  }catch(_){ return null; }
+}
+const _avDistM=(a,b)=>Math.round(Math.hypot((a.lat-b.lat)*111320,(a.lng-b.lng)*111320*Math.cos(a.lat*Math.PI/180)));
 async function avalGeocodificar(){
   const rua=(document.getElementById('av-rua').value||'').trim();
   const num=(document.getElementById('av-num').value||'').trim();
@@ -638,11 +658,16 @@ async function avalGeocodificar(){
   const bb=document.getElementById('av-bairro'); if(bb) bb.value='';
   res.innerHTML='Procurando…';
   let cands=[];
+  // 0) cadastro do IPTU → quadra fiscal (quando o número existe no cadastro, é o pino mais confiável)
+  const pIptu=await _avPontoIptu(rua,num);
+  if(pIptu) cands.push({label:`${pIptu.nome}, ${num}`,lat:pIptu.lat,lng:pIptu.lng,origem:'cadastro da Prefeitura · quadra fiscal',ruaCorrigida:pIptu.nome,bairro:''});
   // 1) vendas registradas (ITBI) geolocalizadas — aceita grafia aproximada
   try{ const r=await _avRpc('aval_geocode_endereco',{p_rua:rua,p_numero:num}); const h=Array.isArray(r)?r[0]:null;
        if(h&&h.lat) cands.push({label:`${_avCap(h.rua_norm)}${num?', '+num:''} (digitado: ${rua})`,lat:h.lat,lng:h.lng,origem:`vendas registradas · ${h.precisao}`}); }catch(_){}
   // 2) base local de endereços
   try{ const loc=await _avRpc('aval_geocode',{p_q:`${rua} ${num}`}); (loc||[]).forEach(c=>cands.push({label:c.endereco,lat:c.lat,lng:c.lng,origem:'nosso banco',bairro:c.distrito||''})); }catch(_){}
+  // com o cadastro achado, o que cair a mais de 600 m da quadra é outra rua de nome parecido: fora da lista
+  if(pIptu) cands=cands.filter((c,i)=>i===0 || _avDistM(c,pIptu)<=600);
   // 3) OpenStreetMap com o que foi digitado
   if(!cands.length) cands=await _avOsm([rua+(num?', '+num:''),'São Paulo','SP'].join(', '));
   // 4) nome corrigido pelo cadastro do IPTU (ex.: "gaiós" → Alameda dos Guaiós) e nova tentativa no OSM

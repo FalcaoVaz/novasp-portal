@@ -3,7 +3,7 @@
 import http.server, json, os, sys, urllib.parse, decimal, datetime, psycopg2
 sys.path.insert(0, '/Users/Rodrigo/Downloads/novasp-extraido/motor-precos'); os.environ['EXIGE_LOGIN'] = '0'
 import precos_api
-LEITURA = {'aval_comps_itbi_raio','aval_comps_itbi_raio2','aval_terreno_local','aval_comps_itbi','aval_geocode','aval_geocode_endereco','aval_geocode_ruas','aval_geo','aval_entorno',
+LEITURA = {'aval_comps_itbi_raio','aval_comps_itbi_raio2','aval_terreno_local','aval_quadra_ponto','aval_comps_itbi','aval_geocode','aval_geocode_endereco','aval_geocode_ruas','aval_geo','aval_entorno',
            'aval_lanc_anuncio','aval_lanc_itbi','aval_outorga_ref','aval_fp','aval_fatos','aval_rua_geo'}
 c = psycopg2.connect(open(os.path.expanduser('~/.config/novasp/prod-pooler.dsn')).read().strip()); c.autocommit = True
 cur = c.cursor(); cur.execute("set default_transaction_read_only = on")
