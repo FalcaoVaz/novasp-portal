@@ -267,6 +267,32 @@ function _avCamposTipo(){
 }
 // Método evolutivo: V = (terreno × R$/m² terreno + construída × custo de reposição × (1 − depreciação)) × Fc. Depreciação Ross-Heidecke.
 function _avTerrenoBairro(bairro){ const k=_avNorm(bairro).split('(')[0].replace(/\s+/g,' ').trim(); return AV_TERRENO[k]||null; }
+// ── CASA: terreno + construção CALIBRADO nas vendas de casas do ITBI (04/10/2026) ──
+// valor = terreno × L_local × (terreno/154)^-0,5 + construída × 3.500 × fator do padrão × max(0,5; 1 − idade/100) × estado
+// L_local = RPC aval_terreno_local (30 vendas de casa mais próximas). Validação deixando cada venda de fora, 10.585 casas:
+// erro absoluto mediano 23%, viés 0% (comparativo por R$/m² construído 26%; a conta anterior saía ~metade do mercado).
+const AV_CASA_CAL = { c0:3500, lote_ref:154, beta:0.5, vida:100, piso:0.5,
+  kpad:{ economico:0.8, medio:1, alto:1.25 }, kletra:{ A:0.65, B:0.8, C:1, D:1.25, E:1.55, F:1.9 },
+  estado:{ novo:[1.05,'novo'], bom:[1,'bom'], regular:[0.85,'regular'], reforma:[0.65,'precisa de reforma'], ruim:[0.45,'ruim'] },
+  fonte:'10.585 vendas de casas registradas no ITBI nos últimos 24 meses (Zona Sul e entorno); erro mediano de 23% na validação' };
+function _avContaCasaCalibrada({terreno, constr, idade, padrao, padraoIptu, estado, tl, rs_lote, lote_origem}){
+  const C=AV_CASA_CAL;
+  const letra=(String(padraoIptu||'').match(/padr[aã]o\s+([A-F])/i)||[])[1];
+  const kp = letra ? C.kletra[letra.toUpperCase()] : (C.kpad[padrao]||1);
+  const padraoLb = letra ? `IPTU padrão ${letra.toUpperCase()}` : ({economico:'econômico',medio:'médio',alto:'alto'}[padrao]||'médio');
+  const fl=Math.pow(terreno/C.lote_ref, -C.beta);                       // lote menor vale mais por m²
+  const rs_terreno=Math.round(Number(tl.rs_terreno_ref)*fl), v_terreno=Math.round(terreno*rs_terreno);
+  const custo_m2=Math.round(C.c0*kp), v_novo=Math.round(constr*custo_m2);
+  const fid=Math.max(C.piso, 1-(idade||50)/C.vida), est=C.estado[estado]||C.estado.bom;
+  const v_benf=Math.round(v_novo*fid*est[0]);
+  const total=v_terreno+v_benf;
+  return { calibrado:true, terreno, rs_terreno, rs_terreno_ref:Number(tl.rs_terreno_ref), fator_lote:Math.round(fl*100)/100,
+    rs_terreno_origem:`mediana de ${tl.n} vendas de casas por perto (até ${n0(tl.raio_m)} m), já descontada a construção; lote de referência ${C.lote_ref} m², ajustado ao tamanho deste`,
+    rs_terreno_faixa:[Number(tl.rs_terreno_p25), Number(tl.rs_terreno_p75)], v_terreno, constr, padrao, padraoLb, custo_m2, v_novo, idade:idade||null,
+    fator_idade:Math.round(fid*100)/100, estado, estadoLb:est[1], fator_estado:est[0], dep:Math.round((1-fid*est[0])*100)/100, v_benf, fc:1, total,
+    pct_terreno: total?Math.round(v_terreno/total*100):null, rs_lote:rs_lote||null, lote_origem:lote_origem||null,
+    v_lote:(rs_lote&&terreno)?Math.round(terreno*rs_lote):null, fonte:C.fonte };
+}
 function _avContaEvolutivo({terreno, rs_terreno, rs_terreno_origem, constr, padrao, idade, estado, rs_lote, lote_origem, ref}){
   const P=AV_PARAM, p=AV_PADROES[padrao]||AV_PADROES.medio;
   const v_terreno=terreno*rs_terreno;
@@ -885,7 +911,13 @@ async function avalCalcular(opts){
   if(/comercial|loja|galp|sala/i.test(tipo) && metodoUnico) metodoUnico.aviso='Imóvel comercial: o valor como imóvel pronto usa referências residenciais do bairro (o coletor ainda não busca anúncios comerciais); trate como ordem de grandeza.';
   // ── EVOLUTIVO: casas (e comerciais com terreno) — terreno + construção depreciada ──
   let evolutivo=null;
-  if((grupo==='casa'||grupo==='com') && terreno && area && rs_terreno){
+  // casa: terreno + construção calibrado (preço local do terreno pelas vendas do ITBI); sem base suficiente, a conta antiga
+  let tlocal=null;
+  if(grupo==='casa' && terreno && area){ try{ const r=await _avRpc('aval_terreno_local',{p_lat:_avPino.lat,p_lng:_avPino.lng}); tlocal=Array.isArray(r)?r[0]:r; }catch(_){} }
+  if(grupo==='casa' && terreno && area && tlocal && tlocal.n>=10 && Number(tlocal.rs_terreno_ref)>300){
+    evolutivo=_avContaCasaCalibrada({terreno, constr:area, idade:+g('av-idade')||0, padrao:g('av-padrao-casa')||'medio', padraoIptu:(_avForm.iptuSel||{}).padrao, estado:g('av-estado')||'bom', tl:tlocal, rs_lote, lote_origem:loteOrigem});
+    if(metodoUnico && metodoUnico.valor_final){ evolutivo.comparativo=metodoUnico.valor_final; evolutivo.divergencia=Math.round((metodoUnico.valor_final/evolutivo.total-1)*100); }
+  }else if((grupo==='casa'||grupo==='com') && terreno && area && rs_terreno){
     // comercial (galpão/loja): o terreno vale como LOTE para construir; na casa, o terreno "dentro" da casa
     const rsT = (grupo==='com' && rs_lote) ? rs_lote : rs_terreno, rsTO = (grupo==='com' && rs_lote) ? loteOrigem : rsTerrenoOrigem;
     evolutivo=_avContaEvolutivo({terreno, rs_terreno:rsT, rs_terreno_origem:rsTO, constr:area, padrao:g('av-padrao-casa')||'medio', idade:+g('av-idade')||0, estado:g('av-estado')||'bom', rs_lote, lote_origem:loteOrigem, ref:tb});
@@ -899,6 +931,11 @@ async function avalCalcular(opts){
       dossie.metodo=`terreno nu: ${terreno} m² × R$ ${rs_lote.toLocaleString('pt-BR')}/m² de lote (${loteOrigem})`;
       dossie.memoria.evolutivo={terreno, rs_terreno:rs_lote, rs_terreno_origem:loteOrigem, v_terreno:vm, total:vm, so_terreno:true, ref:tb};
     }
+  }else if(grupo==='casa' && evolutivo && evolutivo.calibrado){
+    const ev=evolutivo, vm=ev.total;
+    dossie.valor_mercado=vm; dossie.faixa_min=Math.round(vm*0.9); dossie.faixa_max=Math.round(vm*1.1); dossie.mercado_rs_m2=Math.round(vm/area);
+    dossie.metodo=`terreno ${terreno} m² × R$ ${ev.rs_terreno.toLocaleString('pt-BR')}/m² + construção ${area} m² × R$ ${ev.custo_m2.toLocaleString('pt-BR')}/m² × ${Math.round(ev.fator_idade*ev.fator_estado*100)}% (idade e estado)`+
+      (ev.comparativo?` · referência comparativa: ${_avR$(ev.comparativo)} (${ev.divergencia>0?'+':''}${ev.divergencia}%)`:'')+(nExcl?` · ${nExcl} comparável(is) excluído(s)`:'');
   }else if(grupo==='com' && evolutivo){
     // comercial: as referências de venda e anúncio são residenciais (o coletor não busca comercial) — o valor é
     // terreno a preço de lote + construção depreciada; o residencial fica como referência (04/10/2026: o galpão da
@@ -1081,6 +1118,22 @@ function _avIncorpCardHTML(x){
 function _avEvolutivoHTML(ev){
   if(!ev) return '';
   const n=v=>Math.round(v||0).toLocaleString('pt-BR');
+  if(ev.calibrado){
+    const l=(r,v,neg)=>`<tr style="border-top:1px solid #f1f5f9"><td style="padding:3px 8px;color:#64748b">${r}</td><td style="padding:3px 8px;text-align:right;white-space:nowrap;${neg?'color:#b91c1c':''}">${neg?'− ':''}${_avR$(Math.round(v))}</td></tr>`;
+    return `<div class="card" style="margin-bottom:12px"><div class="cb">
+    <div style="color:#64748b;font-size:.85em;text-transform:uppercase;letter-spacing:.04em">Terreno + construção (método adotado para casa)</div>
+    <div style="font-size:1.3em;font-weight:700;margin:4px 0">${_avR$(ev.total)} <span style="font-size:.6em;font-weight:400;color:#64748b">${ev.comparativo?`· referência comparativa ${_avR$(ev.comparativo)} (${ev.divergencia>0?'+':''}${ev.divergencia}%)`:''}</span></div>
+    <table style="width:100%;border-collapse:collapse;font-size:.86em;margin-top:6px"><tbody>
+      ${l(`Terreno: ${n(ev.terreno)} m² × ${_avR$(ev.rs_terreno)}/m² <small style="color:#94a3b8">(${ev.rs_terreno_origem}; faixa local ${_avR$(ev.rs_terreno_faixa[0])}–${_avR$(ev.rs_terreno_faixa[1])}/m² no lote de referência)</small>`, ev.v_terreno)}
+      ${l(`Construção nova: ${n(ev.constr)} m² × ${_avR$(ev.custo_m2)}/m² <small style="color:#94a3b8">(padrão ${ev.padraoLb})</small>`, ev.v_novo)}
+      ${l(`Idade e estado: mantém ${Math.round(ev.fator_idade*ev.fator_estado*100)}% <small style="color:#94a3b8">(${ev.idade?ev.idade+' anos':'idade não informada: 50 anos'}, estado ${ev.estadoLb}; uma casa antiga conservada mantém ao menos metade do valor de construção)</small>`, ev.v_novo-ev.v_benf, true)}
+      ${l(`Construção depreciada`, ev.v_benf)}
+      <tr style="border-top:2px solid #1E2D4A;font-weight:700"><td style="padding:4px 8px">Terreno + construção</td><td style="padding:4px 8px;text-align:right">${_avR$(ev.total)}</td></tr>
+    </tbody></table>
+    ${ev.v_lote?`<div style="font-size:.9em;margin-top:8px;padding:6px 8px;background:#f8fafc;border-radius:8px">🏗️ <b>Vendido como lote (para construir):</b> ${n(ev.terreno)} m² × ${_avR$(ev.rs_lote)}/m² = <b>${_avR$(ev.v_lote)}</b> <span style="color:#94a3b8">(${ev.lote_origem||''})</span>${ev.v_lote>ev.total?` — <span style="color:#047857">acima do valor como casa: vale ofertar a construtoras</span>`:''}</div>`:''}
+    <div style="color:#94a3b8;font-size:.8em;margin-top:6px">Terreno pesa ${ev.pct_terreno}% do valor. Parâmetros calibrados em ${ev.fonte}.</div>
+  </div></div>`;
+  }
   if(ev.so_terreno) return `<div class="card" style="margin-bottom:12px"><div class="cb"><div style="color:#64748b;font-size:.85em;text-transform:uppercase;letter-spacing:.04em">Valor como terreno nu</div>
     <div style="font-size:.9em;margin-top:6px">${n(ev.terreno)} m² × ${_avR$(ev.rs_terreno)}/m² = <b>${_avR$(ev.total)}</b> <span style="color:#94a3b8">(${ev.rs_terreno_origem||''})</span></div></div></div>`;
   const l=(r,v,neg)=>`<tr style="border-top:1px solid #f1f5f9"><td style="padding:3px 8px;color:#64748b">${r}</td><td style="padding:3px 8px;text-align:right;white-space:nowrap;${neg?'color:#b91c1c':''}">${neg?'− ':''}${_avR$(Math.round(v))}</td></tr>`;

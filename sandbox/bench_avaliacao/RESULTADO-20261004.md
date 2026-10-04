@@ -31,3 +31,20 @@ geocode, que caiu 3 km em outra rua, −62%) · galpão da R. Alba +50% → com 
 - Comercial: valor = terreno a preço de lote + construção (adotado).
 - Bug: geocode por nome parecido quando a rua não tem venda no ITBI (Manoel Correia Júnior → "Correia Júnior").
   Caminho: pino pela quadra fiscal do cadastro IPTU.
+
+## 4. Casa por terreno + construção CALIBRADO (adotado em 04/10/2026, v83)
+Calibração (`calibra_casa.py`, `calibra_casa2.py`) em 10.585 vendas de casas do ITBI (24 meses), cada venda avaliada sem ela mesma:
+valor = terreno × L_local × (terreno/154)^-0,5 + construída × R$ 3.500 × fator do padrão IPTU × max(0,5; 1 − idade/100) × estado.
+L_local = mediana do terreno implícito das 30 vendas de casa mais próximas (RPC `aval_terreno_local`).
+| | erro abs mediano | viés | ≤10% | ≤20% |
+|---|---|---|---|---|
+| Terreno + construção calibrado (ITBI, 10.585) | 23% | 0% | 23% | 44% |
+| Comparativo local por R$/m² construído (ITBI) | 26% | 0% | 21% | 40% |
+| Só R$/m² de terreno dos vizinhos (ITBI) | 31% | +1% | 17% | 33% |
+| Calibrado nas 20 casas vendidas pela NSP | 16% | +11% | 30% | 55% |
+| (antes: média comparativo + evolutivo antigo, mesmas 20) | 16% | +6% | 35% | 60% |
+Pareceres manuais: Parateca −3%, Renan Basto −3%, Manoel Correia −17% (antes −22/−21/−31%).
+Terreno local passou de valores da carteira (ex.: Vila Guarani R$ 1.296/m²) para o ITBI (R$ 2.051–2.686/m² nos mesmos pontos).
+Anúncios ativos de casa seguem ~46% acima da avaliação: o ITBI de casa = preço de fechamento (razão 1,00 em 427 pares) e as
+casas vendidas pela NSP fecharam 7% abaixo do último pedido → o excesso está nos anúncios de casa que não vendem. Para casa,
+anúncio ativo não é régua; para apartamento é (+4%).
