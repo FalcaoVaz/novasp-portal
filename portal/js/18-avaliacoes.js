@@ -666,8 +666,6 @@ async function avalGeocodificar(){
        if(h&&h.lat) cands.push({label:`${_avCap(h.rua_norm)}${num?', '+num:''} (digitado: ${rua})`,lat:h.lat,lng:h.lng,origem:`vendas registradas · ${h.precisao}`}); }catch(_){}
   // 2) base local de endereços
   try{ const loc=await _avRpc('aval_geocode',{p_q:`${rua} ${num}`}); (loc||[]).forEach(c=>cands.push({label:c.endereco,lat:c.lat,lng:c.lng,origem:'nosso banco',bairro:c.distrito||''})); }catch(_){}
-  // com o cadastro achado, o que cair a mais de 600 m da quadra é outra rua de nome parecido: fora da lista
-  if(pIptu) cands=cands.filter((c,i)=>i===0 || _avDistM(c,pIptu)<=600);
   // 3) OpenStreetMap com o que foi digitado
   if(!cands.length) cands=await _avOsm([rua+(num?', '+num:''),'São Paulo','SP'].join(', '));
   // 4) nome corrigido pelo cadastro do IPTU (ex.: "gaiós" → Alameda dos Guaiós) e nova tentativa no OSM
@@ -684,9 +682,18 @@ async function avalGeocodificar(){
     await _avMostrarMapa(-23.61,-46.66);   // ponto neutro: nada é calculado até o corretor arrastar
     return;
   }
-  res.innerHTML='<div style="font-size:.9em;color:#64748b;margin-bottom:6px">Escolha o endereço certo (arraste o pino se precisar ajustar):</div>'
-    + cands.slice(0,5).map((c,i)=>`<div style="padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:4px;cursor:pointer"
-        onclick="_avEscolher(${c.lat},${c.lng},${i})">📍 ${c.label} <span style="color:#94a3b8;font-size:.82em">· ${c.origem}</span></div>`).join('');
+  // opções que caem praticamente no mesmo ponto (até 150 m da primeira já mantida) não viram escolha: fica a 1ª (a mais confiável)
+  // — a lista só aparece quando as fontes DIVERGEM (Rodrigo, 04/10/2026)
+  const distintos=[]; cands.forEach(c=>{ if(!distintos.some(d=>_avDistM(c,d)<=150)) distintos.push(c); });
+  cands=distintos;
+  if(cands.length===1){
+    const c=cands[0];
+    res.innerHTML=`<div style="font-size:.9em;color:#334155">📍 <b>${c.label}</b> <span style="color:#94a3b8;font-size:.88em">· ${c.origem} · arraste o pino se precisar ajustar</span></div>`;
+  }else{
+    res.innerHTML='<div style="font-size:.9em;color:#b45309;margin-bottom:6px">As fontes apontam lugares diferentes — escolha o endereço certo (arraste o pino se precisar ajustar):</div>'
+      + cands.slice(0,5).map((c,i)=>`<div style="padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:4px;cursor:pointer"
+          onclick="_avEscolher(${c.lat},${c.lng},${i})">📍 ${c.label} <span style="color:#94a3b8;font-size:.82em">· ${c.origem}${i>0?` · a ${n0(_avDistM(c,cands[0]))} m da 1ª`:''}</span></div>`).join('');
+  }
   window._avCands=cands.slice(0,5);
   await _avEscolher(cands[0].lat,cands[0].lng,0);
 }
