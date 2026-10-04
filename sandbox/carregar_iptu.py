@@ -2,9 +2,11 @@
 """Carrega o cadastro do IPTU (GeoSampa: 12_Cadastro / IPTU_INTER / XLS_CSV / IPTU_2026.zip) no projeto Supabase "IPTU".
 Recorte: CEP começando com os prefixos de --ceps (padrão 04 = Zona Sul/Vila Mariana/Ipiranga).
 LGPD: só lê as colunas da lista BRANCA abaixo. Nome e CPF/CNPJ do contribuinte nunca são lidos nem gravados.
-Uso:  python3 carregar_iptu.py ~/Downloads/IPTU_2026.zip  [--ceps 04,05] [--dry]"""
+Uso:  python3 carregar_iptu.py ~/Downloads/IPTU_2026.zip  [--ceps 04,05] [--dry] [--anexar]
+      --anexar: não apaga a tabela; pula os contribuintes (SQL) que já existem. Ex.: --ceps 013,014,015 --anexar
+      (Bela Vista, Jardins, Liberdade/Aclimação/Cambuci — ampliação de 04/10/2026)."""
 import argparse, csv, io, os, re, sys, unicodedata, zipfile
-ap=argparse.ArgumentParser(); ap.add_argument('arquivo'); ap.add_argument('--ceps', default='04'); ap.add_argument('--dry', action='store_true')
+ap=argparse.ArgumentParser(); ap.add_argument('arquivo'); ap.add_argument('--ceps', default='04'); ap.add_argument('--dry', action='store_true'); ap.add_argument('--anexar', action='store_true', help='acrescenta os CEPs do recorte sem apagar o que já está carregado')
 ap.add_argument('--dsn', default=os.path.expanduser('~/.config/novasp/iptu-pooler.dsn')); a=ap.parse_args()
 csv.field_size_limit(10**7)
 norm=lambda s: re.sub(r'\s+',' ',unicodedata.normalize('NFD',str(s or '')).encode('ascii','ignore').decode().upper()).strip()
@@ -66,8 +68,12 @@ import psycopg2
 c=psycopg2.connect(open(a.dsn).read().strip(), connect_timeout=30, keepalives=1, keepalives_idle=30, keepalives_interval=10, keepalives_count=6); cur=c.cursor()
 cur.execute("set statement_timeout=0")
 cur.execute("drop index if exists iptu_end_idx; drop index if exists iptu_lnorm_trgm; drop index if exists iptu_cep_idx; drop index if exists iptu_cond_idx")
-cur.execute("truncate iptu"); c.commit()
-vistos=set(); buf=io.StringIO(); lote=0; tot=0
+vistos=set()
+if a.anexar:
+    cur.execute("select sql from iptu"); vistos={r[0] for r in cur.fetchall()}; print('já carregados (mantidos):', len(vistos))
+else:
+    cur.execute("truncate iptu"); c.commit()
+buf=io.StringIO(); lote=0; tot=0
 def flush():
     global buf, lote, tot
     if not lote: return
