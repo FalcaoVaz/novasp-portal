@@ -713,7 +713,7 @@ async function _avDetectarBairro(){
 
 // Ponto mudou: descarta tudo o que foi calculado para o ponto anterior (incorporação, cache de buscas, dossiê)
 function _avNovoPonto(){
-  ['ctx','dossie','cache','incorp','memoria','lancItbi','lancAnuncio','evolutivo','comaer','entorno','geo','iptu','iptuSel','iptuOculto','iptuVizinho','podeIncorp','incorpMotivo','metodoUnico'].forEach(k=>{ delete _avForm[k]; });
+  ['ctx','dossie','cache','incorp','memoria','lancItbi','lancAnuncio','evolutivo','comaer','entorno','geo','iptu','iptuSel','iptuOculto','iptuVizinho','manuais','podeIncorp','incorpMotivo','metodoUnico'].forEach(k=>{ delete _avForm[k]; });
   const pan=document.getElementById('av-incorp-painel'); if(pan){ pan.style.display='none'; pan.innerHTML=''; }
   const solo=document.getElementById('av-incorp-solo'); if(solo) solo.innerHTML='';
 }
@@ -834,7 +834,12 @@ async function avalCalcular(opts){
   compsItbi.forEach(c=>{ const ac=Number(c.area_constr)||0; c.area_util_est=_ehCasa(tipo)?ac:Math.max(20,(ac-AV_INDICES.iptu_por_vaga)/AV_INDICES.iptu_por_util); c.rs_util=c.area_util_est?Math.round(Number(c.valor)/c.area_util_est):null; });
   // endereços → coordenadas (base local de endereços do portal; o que não resolver fica sem pino)
   const geocodar=async q=>{ try{ const r=await _avRpc('aval_geocode',{p_q:q}); const h=Array.isArray(r)?r[0]:null; return h?{lat:h.lat,lng:h.lng}:null; }catch(_){ return null; } };
-  const amostraTodos=(precos.amostra||[]).slice(0,12);
+  // anúncios do MESMO tipo do imóvel (o motor manda casas primeiro; apartamento não é comparável de casa e vice-versa)
+  const amostraTodos=(precos.amostra||[]).filter(a=>_ehCasa(tipo)?a.tipo==='Casa':a.tipo!=='Casa').slice(0,12);
+  // anúncios INCLUÍDOS pelo corretor (link obrigatório, autoria registrada, no máx. AV_MANUAL_MAX) — 05/10/2026
+  (_avForm.manuais||[]).forEach(m=>amostraTodos.push({tipo:_ehCasa(tipo)?'Casa':'Apartamento', area:m.area, preco:m.preco, rs_m2:Math.round(m.preco/m.area),
+    dorm:m.dorm||null, vaga:m.vaga||null, rua:m.origem==='parecer'?'Anúncio no próprio prédio (achado pelo parecer)':'Anúncio incluído pelo corretor',
+    bairro:m.por?('por '+m.por):'', url:m.url, manual:true, por:m.por||null, origem_manual:m.origem||'corretor'}));
   // distância de cada anúncio (pela rua) até o imóvel: aparece na tabela e ordena a lista; o cálculo não muda
   // (filtrar por distância foi testado em 04/10/2026 e não melhorou o valor: 16% → 20% de erro nos negócios fechados)
   if(!recalc && amostraTodos.length && _avPino){
@@ -853,9 +858,9 @@ async function avalCalcular(opts){
   ]);
   // R$/m² dos anúncios: o motor manda a mediana de toda a página; se o corretor excluiu algum, recalcula pela amostra restante
   const mediana=v=>{ v=v.filter(x=>x>0).sort((a,b)=>a-b); return v.length?(v.length%2?v[(v.length-1)/2]:(v[v.length/2-1]+v[v.length/2])/2):null; };
-  const houveExclAn=amostraTodos.some(a=>a.excluido);
+  const houveExclAn=amostraTodos.some(a=>a.excluido&&!a.manual);
   if(houveExclAn){
-    const pa=amostra.filter(a=>a.tipo!=='Casa').map(a=>a.rs_m2), pc=amostra.filter(a=>a.tipo==='Casa').map(a=>a.rs_m2);
+    const pa=amostra.filter(a=>a.tipo!=='Casa'&&!a.manual).map(a=>a.rs_m2), pc=amostra.filter(a=>a.tipo==='Casa'&&!a.manual).map(a=>a.rs_m2);
     precos={...precos, rs_apto: pa.length?Math.round(mediana(pa)):null, rs_casa: pc.length?Math.round(mediana(pc)):null, n_apto:pa.length, n_casa:pc.length};
   }
   const nExcl=_avForm.excl.size;
@@ -913,12 +918,17 @@ async function avalCalcular(opts){
     if(!area) return null;
     const m={ idx_pedido_fechado:idxPF.idx, idx_origem:idxPF.origem, sub_itbi:AV_INDICES.itbi_subdeclaracao,
               rs_anuncio: rs_tipo||null, n_anuncio: ehcasa?(precos.n_casa||0):(precos.n_apto||0),
-              rs_itbi_util: rsItbiUtil, n_itbi: compsItbiAtivos.filter(c=>c.rs_util>0).length, excluidos:nExcl };
+              rs_itbi_util: rsItbiUtil, n_itbi: compsItbiAtivos.filter(c=>c.rs_util>0).length, excluidos:nExcl,
+              incluidos: amostra.filter(a=>a.manual).length };
     m.rs_anuncio_ajust = m.rs_anuncio ? Math.round(m.rs_anuncio*m.idx_pedido_fechado) : null;     // pedido → fechado esperado
     m.rs_itbi_ajust    = m.rs_itbi_util ? Math.round(m.rs_itbi_util*(1+m.sub_itbi)) : null;         // declarado → negociado
-    const partes=[m.rs_anuncio_ajust, m.rs_itbi_ajust].filter(x=>x>0);
+    // anúncios INCLUÍDOS pelo corretor (ex.: no próprio prédio): 3ª referência, com o mesmo peso das outras duas
+    const inc=amostra.filter(a=>a.manual).map(a=>a.rs_m2).filter(x=>x>0);
+    m.rs_incluidos = inc.length ? Math.round(mediana(inc)) : null;
+    m.rs_incluidos_ajust = m.rs_incluidos ? Math.round(m.rs_incluidos*m.idx_pedido_fechado) : null;
+    const partes=[m.rs_anuncio_ajust, m.rs_itbi_ajust, m.rs_incluidos_ajust].filter(x=>x>0);
     m.rs_final = partes.length ? Math.round(partes.reduce((a,b)=>a+b,0)/partes.length) : null;
-    m.divergencia = partes.length===2 ? Math.round((m.rs_anuncio_ajust/m.rs_itbi_ajust-1)*100) : null;
+    m.divergencia = (m.rs_anuncio_ajust && m.rs_itbi_ajust) ? Math.round((m.rs_anuncio_ajust/m.rs_itbi_ajust-1)*100) : null;
     m.valor_anuncio = m.rs_anuncio_ajust ? Math.round(area*m.rs_anuncio_ajust) : null;
     m.valor_itbi    = m.rs_itbi_ajust ? Math.round(area*m.rs_itbi_ajust) : null;
     m.valor_final   = m.rs_final ? Math.round(area*m.rs_final) : null;
@@ -935,7 +945,7 @@ async function avalCalcular(opts){
     valor_mercado:null, faixa_min:null, faixa_max:null, metodo:null,
     incorp_aplicavel:false, incorp_area_constr:null, incorp_lancamento_rs_m2:null,
     incorp_vgv:null, incorp_valor_terreno:null, incorp_ganho_pct:null,
-    comparaveis: JSON.stringify(amostraTodos.map(a=>({k:a._k,excluido:!!a.excluido,tipo:a.tipo,area:a.area,preco:a.preco,rs_m2:a.rs_m2,dorm:a.dorm,vaga:a.vaga,endereco:[a.rua,a.bairro].filter(Boolean).join(', '),aprox:!!a.aprox,url:a.url,dist_m:a.dist_m!=null?a.dist_m:null,lat:a.lat||null,lng:a.lng||null,origem:a.lancamento?'lançamento':'anúncio'}))
+    comparaveis: JSON.stringify(amostraTodos.map(a=>({k:a._k,excluido:!!a.excluido,tipo:a.tipo,area:a.area,preco:a.preco,rs_m2:a.rs_m2,dorm:a.dorm,vaga:a.vaga,endereco:[a.rua,a.bairro].filter(Boolean).join(', '),aprox:!!a.aprox,url:a.url,dist_m:a.dist_m!=null?a.dist_m:null,manual:!!a.manual,por:a.por||null,lat:a.lat||null,lng:a.lng||null,origem:a.manual?('anúncio · incluído'+(a.por?' por '+a.por:'')):(a.lancamento?'lançamento':'anúncio')}))
                   .concat(compsItbi.map(c=>({k:c._k,excluido:!!c.excluido,tipo:grupo==='com'?'Venda real (ref. residencial)':'Venda real',area:c.area_constr,area_util_est:Math.round(c.area_util_est||0),preco:c.valor,rs_m2:c.rs_m2,rs_util:c.rs_util,endereco:`${c.logradouro||''}${c.numero?', '+c.numero:''}`,data:c.data,lat:c.lat||null,lng:c.lng||null,origem:'Venda real '+(c.data||'')})))),
     lat:_avPino?_avPino.lat:null, lng:_avPino?_avPino.lng:null,
     entorno: Object.assign({}, entorno||{}, {iptu: _avIptuResumo(tipo)}),
@@ -989,7 +999,8 @@ async function avalCalcular(opts){
     dossie.valor_mercado=mu.valor_final; dossie.faixa_min=Math.round(mu.valor_final*0.93); dossie.faixa_max=Math.round(mu.valor_final*1.07);
     dossie.mercado_rs_m2=mu.rs_final;
     dossie.metodo=`${area} m² × R$ ${mu.rs_final.toLocaleString('pt-BR')}/m² = média de [anúncios ${mu.rs_anuncio?mu.rs_anuncio.toLocaleString('pt-BR'):'—'} × ${mu.idx_pedido_fechado} (pedido→fechado, ${mu.idx_origem})`+
-      (mu.rs_itbi_ajust?` ; ITBI ${mu.rs_itbi_util.toLocaleString('pt-BR')}/m² útil est. × ${(1+mu.sub_itbi).toFixed(3)} (subdeclaração)`:'')+`]`+(mu.divergencia!=null?` · fontes divergem ${mu.divergencia}%`:'')+(nExcl?` · ${nExcl} comparável(is) excluído(s) pelo corretor`:'')+(precos.base==='ITBI'?' · modo teste (sem anúncios ao vivo)':'');
+      (mu.rs_itbi_ajust?` ; ITBI ${mu.rs_itbi_util.toLocaleString('pt-BR')}/m² útil est. × ${(1+mu.sub_itbi).toFixed(3)} (subdeclaração)`:'')+
+      (mu.rs_incluidos_ajust?` ; ${mu.incluidos} anúncio(s) incluído(s) pelo corretor ${mu.rs_incluidos.toLocaleString('pt-BR')}/m² × ${mu.idx_pedido_fechado}`:'')+`]`+(mu.divergencia!=null?` · fontes divergem ${mu.divergencia}%`:'')+(nExcl?` · ${nExcl} comparável(is) excluído(s) pelo corretor`:'')+(precos.base==='ITBI'?' · modo teste (sem anúncios ao vivo)':'');
   }else if(evolutivo){
     const vm=evolutivo.total;
     dossie.valor_mercado=vm; dossie.faixa_min=Math.round(vm*0.9); dossie.faixa_max=Math.round(vm*1.1);
@@ -1279,6 +1290,47 @@ function _avMemoriaSalva(x){
   return _avContaIncorp({terreno:Number(x.terreno), ca:Number(x.ca), ca_basico:extra.cab, rs_lanc:Number(x.incorp_lancamento_rs_m2), padrao, qvt:extra.qvt, frente:extra.frente, gabarito:extra.gab, outorga_ref_m2:extra.oref, outorga_ref_n:extra.on||0, fp:extra.fp, categoria:extra.cat||'mercado', fachada_ativa:!!extra.fa, zona:x.zona, comaer:(x.memoria&&x.memoria.incorp&&x.memoria.incorp.comaer)||null});
 }
 // Corretor exclui (ou reinclui) um comparável destoante: recalcula sem refazer as buscas
+// ── Incluir anúncio na conta (05/10/2026): link obrigatório, autoria no dossiê, no máximo 5 ──
+const AV_MANUAL_MAX = 5;
+function _avManualBotaoHTML(){
+  const n=(_avForm.manuais||[]).length;
+  return n>=AV_MANUAL_MAX ? `<span style="font-size:.82em;color:#94a3b8">Limite de ${AV_MANUAL_MAX} anúncios incluídos.</span>`
+    : `<button class="btn btn-o bsm" onclick="_avManualForm()">＋ Incluir anúncio (com link)</button> <span style="font-size:.8em;color:#94a3b8">Ex.: anúncio no próprio prédio que não veio na busca. Fica registrado com seu nome no dossiê.</span>`;
+}
+function _avManualForm(){
+  const box=document.getElementById('av-manual-box'); if(!box) return;
+  const i='style="padding:7px 9px;border:1px solid #e2e8f0;border-radius:8px;font-size:.92em"';
+  box.innerHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:8px;background:#f8fafc;border-radius:8px">
+    <input id="avm-url" placeholder="Link do anúncio (obrigatório)" ${i} style="flex:2 1 260px;padding:7px 9px;border:1px solid #e2e8f0;border-radius:8px">
+    <input id="avm-preco" inputmode="numeric" placeholder="Preço pedido (R$)" ${i} style="flex:1 1 130px;padding:7px 9px;border:1px solid #e2e8f0;border-radius:8px">
+    <input id="avm-area" inputmode="decimal" placeholder="Área útil (m²)" ${i} style="flex:1 1 110px;padding:7px 9px;border:1px solid #e2e8f0;border-radius:8px">
+    <button class="btn btn-p bsm" onclick="_avManualSalvar()">Incluir</button> <button class="btn btn-o bsm" onclick="document.getElementById('av-manual-box').innerHTML=_avManualBotaoHTML()">Cancelar</button>
+    <div id="avm-erro" style="width:100%;font-size:.82em;color:#dc2626"></div></div>`;
+}
+function _avNum(v){ return Number(String(v||'').replace(/[^\d,.]/g,'').replace(/\.(?=\d{3}(\D|$))/g,'').replace(',','.'))||0; }
+async function _avIncluirAnuncio({url, preco, area, origem}){
+  if(!/^https?:\/\/[^\s/]+\.[^\s]{2,}/i.test(String(url||'').trim())) return 'Informe o link do anúncio (começando com http).';
+  if(!(preco>=20000)) return 'Preço inválido.';
+  if(!(area>=10 && area<=5000)) return 'Área inválida.';
+  const rs=preco/area; if(rs<1500 || rs>80000) return `R$ ${Math.round(rs).toLocaleString('pt-BR')}/m² está fora do razoável — confira preço e área.`;
+  _avForm.manuais=_avForm.manuais||[];
+  if(_avForm.manuais.length>=AV_MANUAL_MAX) return `Limite de ${AV_MANUAL_MAX} anúncios incluídos.`;
+  if(_avForm.manuais.some(m=>m.url===url.trim())) return 'Este anúncio já foi incluído.';
+  _avForm.manuais.push({url:url.trim(), preco:Math.round(preco), area:Math.round(area*10)/10, origem:origem||'corretor',
+    por:(typeof CUR!=='undefined'&&CUR&&CUR.nome)?CUR.nome:null, em:new Date().toISOString()});
+  await avalCalcular({recalc:true});
+  return null;
+}
+async function _avManualSalvar(){
+  const g=id=>(document.getElementById(id)||{}).value||'';
+  const err=await _avIncluirAnuncio({url:g('avm-url'), preco:_avNum(g('avm-preco')), area:_avNum(g('avm-area')), origem:'corretor'});
+  const e=document.getElementById('avm-erro'); if(err&&e) e.textContent=err;
+}
+async function _avIncluirDoParecer(i){
+  const a=((_avForm.texto||{}).anuncios_no_predio||[])[i]; if(!a) return;
+  const err=await _avIncluirAnuncio({url:a.url, preco:Number(a.preco), area:Number(a.area_m2), origem:'parecer'});
+  if(err) alert(err); else { a.incluido=true; const tb=document.getElementById('av-texto'); if(tb) tb.innerHTML=_avTextoHTML(); }
+}
 async function _avExcluir(k){
   if(!_avForm.cache) return;
   _avForm.excl=_avForm.excl||new Set();
@@ -1325,6 +1377,7 @@ function _avCompsTabela(comps, opts){
         <td style="padding:4px 8px;text-align:right;white-space:nowrap">${_avR$(c.preco)}</td>
         <td style="padding:4px 8px;text-align:right;white-space:nowrap">${itbi&&c.rs_util?`${_avR$(c.rs_util)} útil${c.rs_m2?`<br><small style="color:#94a3b8">${_avR$(c.rs_m2)} no cadastro</small>`:''}`:_avR$(c.rs_m2)}</td>
         ${podeExcluir?`<td style="padding:4px 4px;text-align:right;white-space:nowrap"><button class="btn btn-o bsm" style="text-decoration:none" title="${c.excluido?'Voltar a usar este comparável':'Excluir este comparável da conta (destoante)'}" onclick="_avExcluir(window._avCompKeys[${ki}])">${c.excluido?'↩︎ incluir':'✕ excluir'}</button></td>`:''}</tr>`; }).join('')}</tbody></table>
+    ${editavel?`<div id="av-manual-box" style="margin-top:8px">${_avManualBotaoHTML()}</div>`:''}
     <div style="font-size:.8em;color:#94a3b8;margin-top:6px"><b>Venda real</b> = transação registrada na Prefeitura (guia de ITBI), preço efetivamente declarado. <b>Anúncio</b> = preço pedido em portal, ajustado pelo índice pedido→fechado. ITBI: área do cadastro (IPTU); área útil estimada por (cadastro − ${AV_INDICES.iptu_por_vaga} m²) ÷ ${AV_INDICES.iptu_por_util} (casas: construída ≈ útil). Anúncio: área útil anunciada.</div>`;
 }
 function _avMetodoHTML(mu, x){
@@ -1405,6 +1458,8 @@ function _avTextoHTML(){
     <p data-t="resposta" ${ed} style="font-weight:600;margin:0 0 10px">${esc(t.resposta)}</p>
     ${(t.secoes||[]).map((sec,i)=>`<div style="margin-top:10px"><div data-t="st${i}" ${ed} style="font-weight:600;color:#1E2D4A">${esc(sec.titulo)}</div><div data-t="sx${i}" ${ed} style="white-space:pre-wrap;color:#334155;margin-top:2px">${esc(sec.texto)}</div></div>`).join('')}
     ${(t.fontes||[]).length?`<div style="margin-top:10px;font-size:.82em;color:#64748b"><b>Fontes consultadas:</b> ${t.fontes.map(f=>`<a href="${esc(f.url)}" target="_blank" rel="noopener" style="color:#2563eb">${esc(f.titulo||f.url)}</a>`).join(' · ')}</div>`:''}
+    ${(t.anuncios_no_predio||[]).length?`<div style="margin-top:10px;font-size:.88em;padding:8px;background:#f8fafc;border-radius:8px"><b>Anúncios no próprio prédio achados pelo parecer</b> <span style="color:#94a3b8">(inclua na conta se forem comparáveis; o valor é recalculado — depois use ↻ Reescrever para o texto acompanhar)</span>
+      ${t.anuncios_no_predio.map((a,i)=>`<div style="margin-top:4px">· <a href="${esc(a.url)}" target="_blank" rel="noopener" style="color:#2563eb">${esc(a.titulo||'anúncio')}</a> — ${_avR$(a.preco)}${a.area_m2?` · ${a.area_m2} m² · ${_avR$(Math.round(a.preco/a.area_m2))}/m²`:''} ${a.incluido||(_avForm.manuais||[]).some(m=>m.url===a.url)?'<span style="color:#047857">✓ incluído</span>':(a.area_m2?`<button class="btn btn-o bsm" onclick="_avIncluirDoParecer(${i})">Incluir na conta</button>`:'')}</div>`).join('')}</div>`:''}
     ${(t.atencao||[]).length?`<div style="margin-top:10px;font-size:.92em"><b>Pontos de atenção</b><ul data-t="atencao" ${ed} style="margin:4px 0 0;padding-left:18px">${t.atencao.map(a=>`<li>${esc(a)}</li>`).join('')}</ul></div>`:''}
   </div></div>`;
 }
@@ -1414,7 +1469,7 @@ function _avTextoColetar(){
   const out={titulo:get('titulo')||t.titulo, resposta:get('resposta')||t.resposta,
     secoes:(t.secoes||[]).map((s,i)=>({titulo:get('st'+i)||s.titulo, texto:get('sx'+i)||s.texto})),
     atencao:(()=>{ const ul=box.querySelector('[data-t="atencao"]'); return ul?[...ul.querySelectorAll('li')].map(li=>li.innerText.trim()).filter(Boolean):(t.atencao||[]); })(),
-    fontes:t.fontes||[], gerado:t.gerado||null};
+    fontes:t.fontes||[], anuncios_no_predio:t.anuncios_no_predio||[], gerado:t.gerado||null};
   _avForm.texto=out; return out;
 }
 // Geração no site do JURÍDICO (falcaovaz.netlify.app), que já tem a chave da Anthropic: o portal dispara a função
@@ -1452,7 +1507,7 @@ async function avalGerarTexto(){
     if(row.status==='pronto'){
       let j=null; try{ j=JSON.parse(row.resultado||'null'); }catch(_){}
       if(!j||!j.titulo){ falhou('resposta inválida do serviço de texto.'); return; }
-      _avForm.texto={titulo:j.titulo,resposta:j.resposta,secoes:j.secoes||[],atencao:j.atencao||[],fontes:j.fontes||[],gerado:{modelo:row.modelo,em:new Date().toISOString()}};
+      _avForm.texto={titulo:j.titulo,resposta:j.resposta,secoes:j.secoes||[],atencao:j.atencao||[],fontes:j.fontes||[],anuncios_no_predio:j.anuncios_no_predio||[],gerado:{modelo:row.modelo,em:new Date().toISOString()}};
       box.innerHTML=_avTextoHTML(); return;
     }
     const seg=Math.round((Date.now()-t0)/1000); msg(`✍️ Escrevendo o parecer… ${seg} s`);

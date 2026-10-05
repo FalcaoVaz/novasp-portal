@@ -115,7 +115,7 @@ def precos(bairro: str, authorization: str = Header(None), apikey: str = Header(
         if n_lanc >= 3:
             rs_lanc = round(statistics.median([a['rs_m2'] for a in pl]))
         # amostra com endereço (rua + bairro) e link, para a lista de comparáveis e o mapa do dossiê
-        for a in (pc + pa)[:16]:
+        for a in pa[:12] + pc[:12]:          # até 12 de cada tipo (antes: 16 misturados, casas primeiro — 05/10/2026)
             amostra.append({'tipo': a.get('tipo'), 'area': a.get('area'),
                             'preco': a.get('preco'), 'rs_m2': round(a['rs_m2']),
                             'dorm': a.get('dorm'), 'vaga': a.get('vaga'),

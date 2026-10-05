@@ -37,6 +37,7 @@ Estrutura (texto inteiro com no máximo 380 palavras):
 - "resposta": 2 a 3 frases: o valor e o achado principal sobre este imóvel (de preferência, o que o próprio prédio indica).
 - "secoes": 3 a 5 seções curtas, 1 parágrafo cada, cada uma com um achado específico deste imóvel. Ex.: "O edifício", "O que o prédio pede e vendeu", "A região", "Como anunciar".
 - "atencao": até 3 itens a confirmar (andar, vagas, estado, documentação). Lista vazia se não houver.
+- "anuncios_no_predio": os anúncios ATUAIS no próprio edifício que a pesquisa viu nas páginas (um por unidade): título curto (portal + planta), URL do anúncio ou da página do condomínio onde ele aparece, preço pedido em reais e área útil em m² como a página informa. Só o que estiver escrito na página — nunca estime nem invente; sem área informada, não inclua. Lista vazia se não houver.
 - "fontes": as páginas usadas no texto (título curto e URL). Lista vazia se nenhuma.`;
 
 const ESQUEMA = {
@@ -54,6 +55,15 @@ const ESQUEMA = {
       }
     },
     atencao: { type: 'array', items: { type: 'string' } },
+    anuncios_no_predio: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: { titulo: { type: 'string' }, url: { type: 'string' }, preco: { type: 'number' }, area_m2: { type: 'number' } },
+        required: ['titulo', 'url', 'preco', 'area_m2'],
+        additionalProperties: false
+      }
+    },
     fontes: {
       type: 'array',
       items: {
@@ -64,7 +74,7 @@ const ESQUEMA = {
       }
     }
   },
-  required: ['titulo', 'resposta', 'secoes', 'atencao', 'fontes'],
+  required: ['titulo', 'resposta', 'secoes', 'atencao', 'anuncios_no_predio', 'fontes'],
   additionalProperties: false
 };
 
@@ -152,7 +162,7 @@ TAREFA 1 — a mais importante, use nela as primeiras buscas: identificar o edif
 - Sua PRIMEIRA busca deve ser o endereço exatamente como uma pessoa digitaria no Google: "${rua}${num ? ' ' + num[1] : ''}"${viz ? ` e, em seguida, "${rua} ${viz.numero}"` : ''}. Depois, se preciso, acrescente "condomínio" ou "edifício".
 - Sites de imóveis (QuintoAndar, Loft, Lopes, ZAP, Imovelweb, VivaReal) têm páginas de condomínio por endereço; o número pode diferir alguns números do digitado (ex.: 150 x 154). Confira pelo tamanho das unidades (o imóvel avaliado tem ${im.area_util || '?'} m² úteis).
 - Do edifício: nome, número oficial, ano de construção/entrega, incorporadora e construtora, andares, unidades, plantas (m², dormitórios, vagas), lazer.
-- Abra (web_fetch) a página do condomínio no QuintoAndar ou na Loft e traga os anúncios atuais NESTE prédio: preço, área, andar quando houver, R$/m²; e histórico de vendas se a página mostrar.
+- Abra (web_fetch) a página do condomínio no QuintoAndar ou na Loft e traga os anúncios atuais NESTE prédio, um por linha: preço pedido, área útil, andar quando houver e o LINK do anúncio (ou da página onde ele aparece); e histórico de vendas se a página mostrar.
 TAREFA 2 — OBRIGATÓRIA, faça mesmo que o edifício já esteja resolvido: no mínimo DUAS buscas sobre a região a pé do endereço:
   (a) o que há de destaque perto: restaurantes, cafés, padarias, mercados, parques, hospitais, escolas e serviços citados em guias, listas ou matérias (Veja Comer & Beber, Guia Michelin, TripAdvisor, jornais, blogs do bairro); traga nomes, o que os destaca e a distância aproximada quando der; nota só com 30+ avaliações;
   (b) o que está mudando ou marca o entorno: obras, metrô, parques, grandes empreendimentos, revitalizações, perfil do bairro em matérias recentes.
