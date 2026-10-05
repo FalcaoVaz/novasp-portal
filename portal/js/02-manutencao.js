@@ -592,6 +592,29 @@ function ehFotografo(){
 }
 // Gerentes podem fazer peneira (aprovar/reprovar) na seleção
 const VENDAS_GERENTES = ['Renata','Felippe','Christiane','Emilia'];
+// ── PERFIL CORRETOR (Rodrigo, 05/10/2026) ──
+// Corretor = está abaixo de um gerente de vendas no módulo Gestão (gestao_liderados) e não é assistente, gerente,
+// líder, admin, acesso total nem tem acesso a Jurídico/Interno/Calendar. Vê só a Avaliação de Imóveis (as próprias
+// avaliações), o feedback do líder, as Regras de Vendas e — se for representante da equipe — o Fórum.
+// Os líderes vêm do banco no login (RPC meus_lideres), antes de montar a tela.
+let _LIDERES_DO_USUARIO = null;
+async function carregarLideresDoUsuario(){
+  try { const r = await fetch(SBU + '/rest/v1/rpc/meus_lideres', { method:'POST', headers: hdr(), body: '{}' });
+        if (r.ok) _LIDERES_DO_USUARIO = await r.json(); } catch(_) {}
+  return _LIDERES_DO_USUARIO;
+}
+function ehCorretor(){
+  if (!CUR || CUR.admin) return false;
+  if (typeof ehAcessoTotal === 'function' && ehAcessoTotal()) return false;
+  if (CUR.acesso_juridico || CUR.acesso_interno || CUR.acesso_calendar) return false;
+  if (/assistente/i.test(CUR.dept || '')) return false;
+  if (typeof ehLiderGestao === 'function' && ehLiderGestao()) return false;
+  if (typeof ehGerenteVendas === 'function' && ehGerenteVendas()) return false;
+  const nome = _vendasNormaliza(CUR.nome||''), email = _vendasNormaliza((CUR.email||'').split('@')[0]);
+  if (VENDAS_USUARIOS.some(p => { const a=_vendasNormaliza(p); return nome.includes(a) || email.includes(a); })) return false;   // assistentes
+  const lid = (_LIDERES_DO_USUARIO || []).map(_vendasNormaliza);
+  return VENDAS_GERENTES.some(g => lid.some(l => l.includes(_vendasNormaliza(g))));
+}
 function ehGerenteVendas(){
   if (!CUR) return false;
   if (CUR.admin) return true;

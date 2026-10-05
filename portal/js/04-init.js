@@ -1,5 +1,12 @@
 ﻿
+// Carrega os líderes do usuário (perfil corretor) antes de montar a tela
 function initApp(){
+  if (typeof carregarLideresDoUsuario === 'function' && _LIDERES_DO_USUARIO === null) {
+    carregarLideresDoUsuario().finally(_initAppTela); return;
+  }
+  _initAppTela();
+}
+function _initAppTela(){
   const ini=CUR.nome.split(' ').slice(0,2).map(n=>n[0]).join('');
   document.getElementById('sbav').textContent=ini;
   document.getElementById('sbav').style.background=CUR.cor_avatar||'#1E2D4A';
@@ -33,6 +40,12 @@ function initApp(){
   });
   const tVnd = document.getElementById('t-vnd');
   if (tVnd) tVnd.classList.toggle('off', !(typeof podeAcessarVendas === 'function' && podeAcessarVendas()));
+  // Perfil corretor: só Avaliação, feedback do líder, Regras de Vendas e (representante) Fórum
+  const ehCor = (typeof ehCorretor === 'function') && ehCorretor();
+  if (ehCor) {
+    ['jur','int','cal','acv'].forEach(k=>{ const el=document.getElementById('t-'+k); if(el) el.classList.add('off'); });
+    if (tVnd) tVnd.classList.toggle('off', !(typeof podeAcessarForumVendas === 'function' && podeAcessarForumVendas()));
+  }
 
   // Cibele (telefonista): vai direto para abertura de chamado
   if(CUR.dept==='Telefonista'){
@@ -49,6 +62,13 @@ function initApp(){
     return;
   }
 
+  // Corretor: abre direto na Avaliação (os outros módulos permitidos ficam na lateral e na tela inicial)
+  if (ehCor) {
+    renderHome();
+    if (typeof resolverIcones === 'function') resolverIcones();
+    setMod('avaliacao');
+    return;
+  }
   // Representante puro (corretor rep, nao gerente/admin/assistente):
   // vai direto pro Forum. Sem home, sem outros modulos.
   if (typeof ehRepresentantePuro === 'function' && ehRepresentantePuro()) {
@@ -68,6 +88,7 @@ function renderHome(){
   const podeGestao = (typeof podeAcessarGestao === 'function') && podeAcessarGestao();
   const soFeedback = (typeof ehColaboradorGestao === 'function') && ehColaboradorGestao();
   const ehRepPuro = (typeof ehRepresentantePuro === 'function') && ehRepresentantePuro();
+  const ehCor = (typeof ehCorretor === 'function') && ehCorretor();
   const cards=[
     {id:'jur',tone:'blue',   ic:'scale',    ti:'Sistema Jurídico', ds:'Processos, prazos, petições IA, documentos extrajudiciais, financeiro e chamados.', ac:CUR.acesso_juridico && !ehRepPuro, mod:'juridico', fn:'abrirJuridico()'},
     {id:'int',tone:'emerald',ic:'building', ti:'Sistema Interno',  ds:'Manutenção predial, requisições internas e entrega de chaves.',                        ac:(!ehRepPuro && (CUR.acesso_interno || ((typeof podeAcessarVendas==='function') && podeAcessarVendas()))),  mod:'interno'},
@@ -78,6 +99,12 @@ function renderHome(){
     {id:'avl',tone:'emerald',ic:'target',   ti:'Avaliação de Imóveis', ds:'Avaliação por endereço em minutos: mercado, ITBI, zoneamento, potencial de incorporação e dossiê em PDF.', ac:true, mod:'avaliacao'},
     {id:'acv',tone:'slate',  ic:'archive',  ti:'Acervo',             ds:'Histórico dos sistemas antigos, só consulta: Nido (vendas e locação até 2026) e Guess (locação).', ac:(typeof podeAcessarAcervo==='function') && podeAcessarAcervo() && !ehRepPuro, mod:'acervo'}
   ];
+  if (ehCor) {   // corretor: Avaliação, feedback do líder, Regras (só Vendas) e Fórum se for representante
+    const ok = {avl:true, ges:podeGestao, reg:true, vnd:(typeof podeAcessarForumVendas==='function') && podeAcessarForumVendas()};
+    cards.forEach(c => { c.ac = !!ok[c.id]; });
+    const r = cards.find(c=>c.id==='reg'); if (r) r.ds = 'Diretrizes de Vendas.';
+    const v = cards.find(c=>c.id==='vnd'); if (v) { v.ti = 'Fórum de Vendas'; v.ds = 'Fórum trimestral dos representantes das equipes.'; }
+  }
   const ic = (typeof icon==='function') ? icon : (n=>n);
   document.getElementById('pgrid').innerHTML=cards.map(c=>`
     <div class="pc ${!c.ac?'lk':''}" data-tone="${c.tone}" onclick="${c.ac?(c.fn?c.fn:`setMod('${c.mod}')`):''}">
@@ -100,8 +127,14 @@ function voltarInicio(){
   if (window.innerWidth<=768 && typeof closeSB==='function') closeSB();
 }
 function setMod(mod){
+  // Corretor: só os módulos do perfil (prevalece sobre a regra de representante)
+  const ehCorM = (typeof ehCorretor === 'function') && ehCorretor();
+  if (ehCorM) {
+    const vnd = (typeof podeAcessarForumVendas==='function') && podeAcessarForumVendas();
+    if (!['avaliacao','gestao','regras'].includes(mod) && !(mod==='vendas' && vnd)) return;
+  }
   // Representante puro so acessa Vendas (e dentro dela, so o Forum)
-  const ehRepPuro = (typeof ehRepresentantePuro === 'function') && ehRepresentantePuro();
+  const ehRepPuro = !ehCorM && (typeof ehRepresentantePuro === 'function') && ehRepresentantePuro();
   if (ehRepPuro && mod !== 'vendas' && mod !== 'avaliacao') return;   // representante do fórum também avalia
   if(mod==='juridico'&&!CUR.acesso_juridico)return;
   // Interno: tambem libera p/ pessoal de Vendas (chamados TI/Manutencao), mas nao rep puro
@@ -123,7 +156,8 @@ function setMod(mod){
   if(tabEl) tabEl.classList.add('active');
   const itens = (mod==='gestao' && typeof menuGestaoItens==='function') ? menuGestaoItens()
               : (mod==='vendas' && typeof menuVendasItens==='function') ? menuVendasItens()
-              : (MENUS[mod]||[]).filter(i=>!i.soAdmin || (typeof CUR!=='undefined' && CUR && CUR.admin));
+              : (MENUS[mod]||[]).filter(i=>!i.soAdmin || (typeof CUR!=='undefined' && CUR && CUR.admin))
+                  .filter(i=> !(typeof ehCorretor==='function' && ehCorretor() && mod==='regras' && i.pg!=='reg-vendas'));
   const nav=document.getElementById('nav');
   if(tabEl && nav && tabEl.nextElementSibling!==nav) tabEl.after(nav);   // páginas do módulo logo abaixo dele (menu vertical)
   const tHome=document.getElementById('t-home'); if(tHome) tHome.classList.remove('active');

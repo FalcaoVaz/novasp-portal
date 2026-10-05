@@ -500,7 +500,8 @@ async function carregarAvalImoveis(opts){
       +'status,aprovado_por,token,gerado_em,comparaveis,faixa_min,faixa_max,mercado_rs_m2,'
       +'anuncios_usados,metodo,incorp_area_constr,incorp_lancamento_rs_m2,incorp_vgv,edificio,dorm,suite,vaga,observacao,lat,lng,entorno,memoria,frente,'
       +'corretor_nome,corretor_creci,lat,lng,entorno,memoria'
-      +'&fonte=eq.ondemand&order=gerado_em.desc&limit=300';
+      +'&fonte=eq.ondemand&order=gerado_em.desc&limit=300'
+      +((typeof ehCorretor==='function' && ehCorretor() && CUR && CUR.nome) ? '&corretor_nome=eq.'+encodeURIComponent(CUR.nome) : '');   // corretor: só as próprias
     _avImoveis = await db.get('aval_resultado', q);
     if(!Array.isArray(_avImoveis)) _avImoveis=[];
     renderAvalLista();

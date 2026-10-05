@@ -284,6 +284,7 @@ function doLogout(){
   _limparAuthPersistente();
   if (typeof encerrarSessaoSupabase === 'function') encerrarSessaoSupabase();
   CUR=null;
+  if (typeof _LIDERES_DO_USUARIO !== 'undefined') _LIDERES_DO_USUARIO = null;   // perfil corretor: recarrega no próximo login
   document.getElementById('app').style.display='none';
   document.getElementById('ls').style.display='flex';
   ['lemail','lsen','lsen-nova','lsen-conf'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
