@@ -1395,12 +1395,12 @@ function _avMetodoHTML(mu, x){
       ? (grupo==='com' ? 'Para imóvel comercial o valor adotado é terreno a preço de lote + construção (quadro abaixo); as vendas e anúncios por perto são residenciais e ficam só como conferência.'
                        : 'Para casa o valor adotado é terreno + construção (quadro abaixo); a comparação com vendas e anúncios de casas por perto fica como conferência.')
       : `Anúncios do bairro, já descontada a negociação típica, e vendas reais registradas na Prefeitura perto do imóvel, em área útil${mu.rs_incluidos_ajust?', mais os anúncios incluídos pelo corretor':''}. O preço por m² é a média ${nRef>1?`das ${nRef} referências`:'da referência disponível'}.`}</div>
-    ${mu.rs_anuncio?li(`Anúncios do bairro: ${_avR$(mu.rs_anuncio)}/m² pedido × ${mu.idx_pedido_fechado}`, _avR$(mu.rs_anuncio_ajust)+'/m²', `${mu.n_anuncio} anúncios · desconto típico entre pedido e fechado: ${mu.idx_origem}`):''}
-    ${mu.rs_itbi_ajust?li(`Vendas reais (ITBI): ${_avR$(mu.rs_itbi_util)}/m² útil estimado × ${(1+mu.sub_itbi).toFixed(3)}`, _avR$(mu.rs_itbi_ajust)+'/m²', `${mu.n_itbi} vendas · ajuste de ${Math.round(mu.sub_itbi*100)}% porque o valor declarado na guia costuma ficar um pouco abaixo do negociado`):''}
+    ${mu.rs_anuncio?li(`Anúncios do bairro: ${_avR$(mu.rs_anuncio)}/m² pedido × ${mu.idx_pedido_fechado}`, _avR$(mu.rs_anuncio_ajust)+'/m²', `${mu.n_anuncio} anúncios · desconto típico entre pedido e fechado ${/^média/i.test(mu.idx_origem||'')?'na média da Nova São Paulo':'em '+_avCap(String(mu.idx_origem||'').replace(/\s*\(NIDO\)/i,'').toLowerCase())}`):''}
+    ${mu.rs_itbi_ajust?li(`Vendas reais (ITBI): ${_avR$(mu.rs_itbi_util)}/m² útil estimado × ${(1+mu.sub_itbi).toFixed(3)}`, _avR$(mu.rs_itbi_ajust)+'/m²', `${mu.n_itbi} vendas · ajuste de ${(mu.sub_itbi*100).toLocaleString('pt-BR',{maximumFractionDigits:1})}% porque o valor declarado na guia costuma ficar um pouco abaixo do negociado`):''}
     ${mu.rs_incluidos_ajust?li(`Anúncios incluídos pelo corretor: ${_avR$(mu.rs_incluidos)}/m² × ${mu.idx_pedido_fechado}`, _avR$(mu.rs_incluidos_ajust)+'/m²', `${mu.incluidos} anúncio(s), com link na tabela de comparáveis`):''}
     ${li(`<b>${referencia?'R$/m² de referência':'R$/m² adotado'}</b>${mu.divergencia!=null?` <small style="color:#94a3b8">(anúncios e vendas diferem ${mu.divergencia>0?'+':''}${mu.divergencia}%)</small>`:''}`, _avR$(mu.rs_final)+'/m²')}
     ${mu.aviso&&!referencia?`<div style="font-size:.85em;color:#b45309;margin-top:6px">⚠️ ${mu.aviso}</div>`:''}
-    <div style="font-size:.78em;color:#94a3b8;margin-top:8px">Fontes dos índices: ${AV_INDICES.fonte}.</div>
+    <div style="font-size:.78em;color:#94a3b8;margin-top:8px">Os ajustes vêm do histórico de negócios da Nova São Paulo (2019–2026: diferença entre preço pedido e fechado) e da comparação entre guias de ITBI e negócios fechados.</div>
   </div></div>`;
 }
 async function _avDesenharMapaComps(comps, centro){
