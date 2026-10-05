@@ -27,7 +27,7 @@ Proibido:
 - Falar do cadastro da Prefeitura quando o edifício foi identificado; nesse caso, no máximo um item em "atencao".
 - Mencionar "JSON", "dados", "sistema", "modelo", "IA", "pesquisa", "busca", "não encontramos" ou equivalente; escreva como o corretor escreveria.
 - Inventar fatos. Fato externo só com fonte. Notas de comércio só com 30 avaliações ou mais.
-- Citar nomes de pessoas, clientes, comunidades ou favelas, ou empresas e projetos usados internamente para calibrar parâmetros. Pode citar edifício e incorporadora vindos da pesquisa, EXCETO a incorporadora do grupo (Nova SP Inc., NovaSP Incorporadora ou qualquer "Nova São Paulo" incorporadora): se o prédio for dela, cite só o nome do edifício, nunca a incorporadora.
+- Citar nomes de pessoas, clientes, comunidades ou favelas, ou empresas e projetos usados internamente para calibrar parâmetros. Pode citar edifício e incorporadora vindos da pesquisa.
 - Chamar o documento de laudo ou repetir o aviso legal (já está no rodapé).
 
 Forma: português do Brasil, frases curtas, tom sóbrio, sem adjetivos de venda. Valores arredondados ("R$ 1,45 milhão", "cerca de R$ 11,6 mil por m² útil"). R$/m² sempre em área útil; mediana, não média.
@@ -156,7 +156,7 @@ TAREFA 1 — a mais importante, use nela as primeiras buscas: identificar o edif
 TAREFA 2 — OBRIGATÓRIA, faça mesmo que o edifício já esteja resolvido: no mínimo DUAS buscas sobre a região a pé do endereço:
   (a) o que há de destaque perto: restaurantes, cafés, padarias, mercados, parques, hospitais, escolas e serviços citados em guias, listas ou matérias (Veja Comer & Beber, Guia Michelin, TripAdvisor, jornais, blogs do bairro); traga nomes, o que os destaca e a distância aproximada quando der; nota só com 30+ avaliações;
   (b) o que está mudando ou marca o entorno: obras, metrô, parques, grandes empreendimentos, revitalizações, perfil do bairro em matérias recentes.
-TAREFA 3 — só se sobrar busca: a incorporadora do edifício (tempo de mercado, reputação pública com fonte). Se a incorporadora for a Nova SP Inc. / NovaSP Incorporadora (empresa do grupo), não pesquise nem relate nada sobre ela.
+TAREFA 3 — só se sobrar busca: a incorporadora do edifício (tempo de mercado, reputação pública com fonte).
 Responda em tópicos curtos, cada fato com a URL. Comece pelo edifício: nome e grau de certeza.`;
   const messages = [{ role: 'user', content: pedido }];
   const corpo = {
@@ -181,21 +181,6 @@ Responda em tópicos curtos, cada fato com a URL. Comece pelo edifício: nome e 
   if (!resp || resp.stop_reason === 'refusal') return { notas: null, buscas, tokens, uso };
   const notas = acumulado.filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
   return { notas: notas || null, buscas, tokens, uso };
-}
-
-// Filtro final: a incorporadora do grupo nunca aparece no texto entregue ao cliente (pedido do Rodrigo, 01/10/2026)
-const RE_GRUPO = /,?\s*(?:(?:da|pela|de|do grupo)\s+)?(?:incorporadora\s+)?(?:Nova\s*S(?:ã|a)o\s*Paulo|Nova\s*SP|NovaSP|NSP)\s*(?:Inc(?:orporadora)?\.?|Incorpora(?:ções|cao|ção)?)/gi;
-function limpaGrupo(t) {
-  if (typeof t !== 'string') return t;
-  return t.replace(RE_GRUPO, (m, off, str) => (m.endsWith('.') && /^\s+[A-ZÀ-Ú]/.test(str.slice(off + m.length))) ? '.' : '').replace(/\s+([,.;:])/g, '$1').replace(/\s{2,}/g, ' ').replace(/,\s*\./g, '.').trim();
-}
-function limpaTexto(x) {
-  if (!x) return x;
-  x.titulo = limpaGrupo(x.titulo); x.resposta = limpaGrupo(x.resposta);
-  (x.secoes || []).forEach(s => { s.titulo = limpaGrupo(s.titulo); s.texto = limpaGrupo(s.texto); });
-  x.atencao = (x.atencao || []).map(limpaGrupo);
-  x.fontes = (x.fontes || []).filter(f => !/nova\s*s(ã|a)o\s*paulo\s*inc|nova\s*sp\s*inc|novaspinc|novasp\s*incorp/i.test(`${f.titulo || ''} ${f.url || ''}`));
-  return x;
 }
 
 async function chamarClaude(apiKey, dados) {
@@ -234,7 +219,7 @@ async function chamarClaude(apiKey, dados) {
     if (resp.stop_reason === 'max_tokens') throw new Error('O texto ficou longo demais e foi cortado. Tente de novo.');
     const bloco = (resp.content || []).find(b => b.type === 'text');
     if (!bloco || !bloco.text) throw new Error('Resposta sem texto. Tente de novo.');
-    const texto = limpaTexto(JSON.parse(bloco.text));
+    const texto = JSON.parse(bloco.text);
     const u = resp.usage || {};
     const uso = novoUso(); somarUso(uso, u);
     return { texto, modelo: resp.model, tokens: (u.input_tokens || 0) + (u.output_tokens || 0), uso };
