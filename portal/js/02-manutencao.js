@@ -497,7 +497,8 @@ const MENUS={
   ],
   // Avaliação de Imóveis — módulo próprio (card na home); o mais usado do portal (centenas/mês)
   avaliacao:[
-    {ic:'target',    lb:'Avaliação de Imóveis', pg:'aval-imoveis'}
+    {ic:'target',    lb:'Avaliação de Imóveis', pg:'aval-imoveis'},
+    {ic:'clipboard', lb:'Cotas de parecer',     pg:'aval-cotas', soAdmin:true}
   ],
   // Acervo — histórico dos sistemas antigos, só consulta (gerentes). Acesso real = banco (guess_acesso).
   acervo:[

@@ -255,6 +255,20 @@ exports.handler = async (event) => {
   if (!(await loginValido(supabaseUrl, anonKey, token))) { await falha('Sessão do portal inválida ou vencida. Saia e entre de novo.'); return { statusCode: 202 }; }
   if (!apiKey) { await falha('ANTHROPIC_API_KEY não configurada no Netlify do jurídico.'); return { statusCode: 202 }; }
   if (!dados || typeof dados !== 'object' || JSON.stringify(dados).length > 60000) { await falha('Resumo da avaliação ausente ou grande demais.'); return { statusCode: 202 }; }
+  // COTA MENSAL (05/10/2026): reserva 1 parecer com o login do corretor ANTES de gastar com a IA; estorna se falhar.
+  const rpcUser = async (fn, args) => {
+    const r = await fetch(`${supabaseUrl}/rest/v1/rpc/${fn}`, { method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: anonKey, Authorization: 'Bearer ' + token }, body: JSON.stringify(args || {}) });
+    if (r.status >= 400) throw new Error(`${fn} HTTP ${r.status}`);
+    return r.json();
+  };
+  let reservou = false;
+  try {
+    const q = await rpcUser('aval_cota_reservar', { p_job: job_id }); const c = Array.isArray(q) ? q[0] : q;
+    if (c && c.ok === false) { await falha(`Cota do mês atingida: ${c.usados} de ${c.limite} pareceres em texto. Fale com seu gestor para liberar mais.`); return { statusCode: 202 }; }
+    reservou = !!(c && c.ok);
+  } catch (e) { console.error('[parecer] cota indisponível (segue sem cota):', e.message); }
+  const estorna = () => reservou ? rpcUser('aval_cota_estornar', { p_job: job_id }).catch(() => {}) : Promise.resolve();
 
   try {
     await gravarJob(supabaseUrl, supabaseKey, job_id, { status: 'processando' });
@@ -270,6 +284,7 @@ exports.handler = async (event) => {
     console.log('[parecer] pronto', job_id, r.modelo, r.tokens, 'US$', uso.custo_usd);
   } catch (e) {
     console.error('[parecer] erro', job_id, e.message);
+    await estorna();
     await falha(e.name === 'AbortError' ? 'O serviço de texto demorou demais. Tente de novo.' : e.message);
   }
   return { statusCode: 202 };

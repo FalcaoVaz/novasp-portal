@@ -123,7 +123,7 @@ function setMod(mod){
   if(tabEl) tabEl.classList.add('active');
   const itens = (mod==='gestao' && typeof menuGestaoItens==='function') ? menuGestaoItens()
               : (mod==='vendas' && typeof menuVendasItens==='function') ? menuVendasItens()
-              : (MENUS[mod]||[]);
+              : (MENUS[mod]||[]).filter(i=>!i.soAdmin || (typeof CUR!=='undefined' && CUR && CUR.admin));
   const nav=document.getElementById('nav');
   if(tabEl && nav && tabEl.nextElementSibling!==nav) tabEl.after(nav);   // páginas do módulo logo abaixo dele (menu vertical)
   const tHome=document.getElementById('t-home'); if(tHome) tHome.classList.remove('active');
@@ -181,6 +181,7 @@ function goTo(pg){
   if(pg==='acervo-guess')  window.AcervoGuess?.abrir();                        // Acervo (frente 11)
   if(pg==='acervo-nido')   window.AcervoNido?.abrir();
   if(pg==='auditoria')     window.Auditoria?.abrir();
+  if(pg==='aval-cotas')    window.AvalCotas?.abrir();
   if(pg==='vnd-fotografo') carregarAgendaFotografo?.();
   if(pg==='vnd-foto-disp') carregarFotoDisp?.();
   if(pg==='vnd-forum')     carregarForum?.();

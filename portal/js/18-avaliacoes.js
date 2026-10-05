@@ -1447,8 +1447,10 @@ function _avResumoParaTexto(){
 function _avTextoHTML(){
   const t=_avForm&&_avForm.texto;
   const esc=v=>String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  if(!t) setTimeout(()=>_avCotaInfo(),0);   // preenche o contador da cota depois de desenhar
   if(!t) return `<div class="card" style="margin-bottom:12px"><div class="cb" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <button class="btn btn-o" onclick="avalGerarTexto()">✍️ Escrever o parecer em texto</button>
+      <span id="av-cota" style="font-size:.82em;color:#64748b"></span>
       <span id="av-texto-st" style="color:#64748b;font-size:.88em">O que não aparece na tela: como idade do prédio, tamanho e andar mexem no preço por aqui, o que já foi vendido no prédio e na rua, e o que se sabe do edifício e do entorno. Leva um a dois minutos; você pode editar antes de salvar.</span></div></div>`;
   const ed='contenteditable="true" spellcheck="true" style="outline:none;border-radius:6px;padding:2px 4px;margin:-2px -4px"';
   return `<div class="card" style="margin-bottom:12px;border-left:3px solid #1E2D4A"><div class="cb">
@@ -1462,6 +1464,14 @@ function _avTextoHTML(){
       ${t.anuncios_no_predio.map((a,i)=>`<div style="margin-top:4px">· <a href="${esc(a.url)}" target="_blank" rel="noopener" style="color:#2563eb">${esc(a.titulo||'anúncio')}</a> — ${_avR$(a.preco)}${a.area_m2?` · ${a.area_m2} m² · ${_avR$(Math.round(a.preco/a.area_m2))}/m²`:''} ${a.incluido||(_avForm.manuais||[]).some(m=>m.url===a.url)?'<span style="color:#047857">✓ incluído</span>':(a.area_m2?`<button class="btn btn-o bsm" onclick="_avIncluirDoParecer(${i})">Incluir na conta</button>`:'')}</div>`).join('')}</div>`:''}
     ${(t.atencao||[]).length?`<div style="margin-top:10px;font-size:.92em"><b>Pontos de atenção</b><ul data-t="atencao" ${ed} style="margin:4px 0 0;padding-left:18px">${t.atencao.map(a=>`<li>${esc(a)}</li>`).join('')}</ul></div>`:''}
   </div></div>`;
+}
+// cota mensal de pareceres em texto (05/10/2026): mostra quanto o corretor já usou; o bloqueio de verdade é no servidor
+async function _avCotaInfo(){
+  try{ const r=await _avRpc('aval_cota_parecer',{}); const c=Array.isArray(r)?r[0]:r; _avForm.cota=c||null;
+    const el=document.getElementById('av-cota');
+    if(el&&c) el.innerHTML = c.sem_limite ? `Pareceres em texto em ${c.mes}: ${c.usados} (sem limite)` :
+      (c.usados>=c.limite ? `<span style="color:#b91c1c">Cota do mês atingida: ${c.usados} de ${c.limite}. Fale com seu gestor para liberar mais.</span>` : `Pareceres em texto em ${c.mes}: ${c.usados} de ${c.limite}`);
+    return c; }catch(_){ return null; }
 }
 function _avTextoColetar(){
   const t=_avForm.texto, box=document.getElementById('av-texto'); if(!t||!box) return t||null;
@@ -1482,6 +1492,8 @@ async function avalGerarTexto(){
   try{ if(typeof _authRenovarSePerto==='function') await _authRenovarSePerto(); }catch(_){}
   const sess=(typeof _authCarregarSessao==='function')?_authCarregarSessao():null;
   if(!sess||!sess.access_token){ falhou('sessão do portal não encontrada — saia e entre de novo.'); return; }
+  const cota=await _avCotaInfo();
+  if(cota && !cota.sem_limite && cota.usados>=cota.limite){ falhou(`cota do mês atingida (${cota.usados} de ${cota.limite} pareceres em texto). Fale com seu gestor para liberar mais.`); return; }
   const job='par-'+(crypto&&crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2));
   const origem=(typeof JURIDICO_ORIGIN!=='undefined'&&JURIDICO_ORIGIN)||'https://falcaovaz.netlify.app';
   // achados do mercado local (idade do prédio, tamanho, andar, tendência, mesmo prédio e mesma rua) — o que a tela não mostra
