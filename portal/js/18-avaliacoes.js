@@ -1384,14 +1384,22 @@ function _avCompsTabela(comps, opts){
 function _avMetodoHTML(mu, x){
   if(!mu || !mu.rs_final) return '';
   const li=(t,v,sub)=>`<div style="padding:6px 0;border-top:1px solid #f1f5f9;display:flex;justify-content:space-between;gap:10px"><span>${t}${sub?`<br><small style="color:#94a3b8">${sub}</small>`:''}</span><b style="white-space:nowrap">${v}</b></div>`;
+  // casa (terreno + construção) e comercial: esta comparação é só conferência; apartamento: é o valor
+  const grupo=(typeof _avTipoGrupo==='function')?_avTipoGrupo((x&&x.tipo)||''):'';
+  const ev=(x&&x.memoria&&x.memoria.evolutivo)||(_avForm&&_avForm.evolutivo)||null;
+  const referencia = grupo==='com' || (grupo==='casa' && ev && ev.calibrado);
+  const nRef=[mu.rs_anuncio_ajust, mu.rs_itbi_ajust, mu.rs_incluidos_ajust].filter(v=>v>0).length;
   return `<div class="card" style="margin-bottom:12px"><div class="cb">
-    <div style="color:#64748b;font-size:.85em;text-transform:uppercase;letter-spacing:.04em">Método único · macro → micro</div>
-    <div style="font-size:.85em;color:#64748b;margin:4px 0 8px">Índices do bairro (macro) aplicados a este imóvel (micro): anúncios trazidos ao preço que fecha; ITBI trazido ao valor negociado e à área útil.</div>
-    ${mu.rs_anuncio?li(`Anúncios ao vivo: ${_avR$(mu.rs_anuncio)}/m² pedido × ${mu.idx_pedido_fechado}`, _avR$(mu.rs_anuncio_ajust)+'/m²', `pedido → fechado: ${mu.idx_origem}, ${mu.n_anuncio} anúncios`):''}
-    ${mu.rs_itbi_ajust?li(`Fechamentos ITBI: ${_avR$(mu.rs_itbi_util)}/m² útil est. × ${(1+mu.sub_itbi).toFixed(3)}`, _avR$(mu.rs_itbi_ajust)+'/m²', `subdeclaração média das guias: ${Math.round(mu.sub_itbi*100)}% · ${mu.n_itbi} fechamentos`):''}
-    ${li(`<b>R$/m² adotado</b> (média das fontes${mu.divergencia!=null?`; divergem ${mu.divergencia}%`:''})`, _avR$(mu.rs_final)+'/m²')}
-    ${mu.aviso?`<div style="font-size:.85em;color:#b45309;margin-top:6px">⚠️ ${mu.aviso}</div>`:''}
-    ${mu.valor_anuncio&&mu.valor_itbi?li('Valor por anúncios × valor por ITBI', `${_avR$(mu.valor_anuncio)} × ${_avR$(mu.valor_itbi)}`):''}
+    <div style="color:#64748b;font-size:.85em;text-transform:uppercase;letter-spacing:.04em">${referencia?'Comparação com vendas e anúncios · referência':'Como o preço por m² foi calculado'}</div>
+    <div style="font-size:.85em;color:#64748b;margin:4px 0 8px">${referencia
+      ? (grupo==='com' ? 'Para imóvel comercial o valor adotado é terreno a preço de lote + construção (quadro abaixo); as vendas e anúncios por perto são residenciais e ficam só como conferência.'
+                       : 'Para casa o valor adotado é terreno + construção (quadro abaixo); a comparação com vendas e anúncios de casas por perto fica como conferência.')
+      : `Anúncios do bairro, já descontada a negociação típica, e vendas reais registradas na Prefeitura perto do imóvel, em área útil${mu.rs_incluidos_ajust?', mais os anúncios incluídos pelo corretor':''}. O preço por m² é a média ${nRef>1?`das ${nRef} referências`:'da referência disponível'}.`}</div>
+    ${mu.rs_anuncio?li(`Anúncios do bairro: ${_avR$(mu.rs_anuncio)}/m² pedido × ${mu.idx_pedido_fechado}`, _avR$(mu.rs_anuncio_ajust)+'/m²', `${mu.n_anuncio} anúncios · desconto típico entre pedido e fechado: ${mu.idx_origem}`):''}
+    ${mu.rs_itbi_ajust?li(`Vendas reais (ITBI): ${_avR$(mu.rs_itbi_util)}/m² útil estimado × ${(1+mu.sub_itbi).toFixed(3)}`, _avR$(mu.rs_itbi_ajust)+'/m²', `${mu.n_itbi} vendas · ajuste de ${Math.round(mu.sub_itbi*100)}% porque o valor declarado na guia costuma ficar um pouco abaixo do negociado`):''}
+    ${mu.rs_incluidos_ajust?li(`Anúncios incluídos pelo corretor: ${_avR$(mu.rs_incluidos)}/m² × ${mu.idx_pedido_fechado}`, _avR$(mu.rs_incluidos_ajust)+'/m²', `${mu.incluidos} anúncio(s), com link na tabela de comparáveis`):''}
+    ${li(`<b>${referencia?'R$/m² de referência':'R$/m² adotado'}</b>${mu.divergencia!=null?` <small style="color:#94a3b8">(anúncios e vendas diferem ${mu.divergencia>0?'+':''}${mu.divergencia}%)</small>`:''}`, _avR$(mu.rs_final)+'/m²')}
+    ${mu.aviso&&!referencia?`<div style="font-size:.85em;color:#b45309;margin-top:6px">⚠️ ${mu.aviso}</div>`:''}
     <div style="font-size:.78em;color:#94a3b8;margin-top:8px">Fontes dos índices: ${AV_INDICES.fonte}.</div>
   </div></div>`;
 }
