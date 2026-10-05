@@ -260,10 +260,10 @@ function _avCamposTipo(){
   if(ar && !ar.value && ip && /^(casa|com)$/.test(gr) && Number(ip.area_construida)>0) ar.value=Math.round(Number(ip.area_construida));
   const a=document.getElementById('av-area'); if(a) a.placeholder = '';
   const al=document.getElementById('av-area-lb'); if(al) al.textContent = gr==='apto' ? 'Área útil (m²)' : 'Área construída (m²)';
-  const h=document.getElementById('av-tipo-hint'); if(h) h.textContent = {apto:'Apartamento: a conta usa a área útil (anúncios e ITBI do bairro).',
-    casa:'Casa: duas contas — comparativo pela área construída e evolutivo (terreno + construção depreciada). O valor adotado é a média.',
-    terreno:'Terreno: valor como lote (R$/m² de terreno) e, se a zona permitir, a conta para incorporadora.',
-    com:'Comercial: comparativo pela área construída (referência residencial, ordem de grandeza) e, com terreno, a conta para incorporadora.'}[gr];
+  const h=document.getElementById('av-tipo-hint'); if(h) h.textContent = {apto:'Apartamento: preço por m² de área útil pelos anúncios do bairro e pelas vendas reais registradas perto do imóvel.',
+    casa:'Casa: terreno + construção. O terreno pelo preço das vendas de casas por perto; a construção pelo padrão, idade e estado. A comparação com vendas e anúncios fica como referência.',
+    terreno:'Terreno: valor como lote para construir e, se a zona permitir, a conta para incorporadora.',
+    com:'Comercial: terreno a preço de lote + construção depreciada (as vendas e anúncios por perto são residenciais e ficam como referência).'}[gr];
 }
 // Método evolutivo: V = (terreno × R$/m² terreno + construída × custo de reposição × (1 − depreciação)) × Fc. Depreciação Ross-Heidecke.
 function _avTerrenoBairro(bairro){ const k=_avNorm(bairro).split('(')[0].replace(/\s+/g,' ').trim(); return AV_TERRENO[k]||null; }
@@ -714,7 +714,7 @@ async function _avDetectarBairro(){
 
 // Ponto mudou: descarta tudo o que foi calculado para o ponto anterior (incorporação, cache de buscas, dossiê)
 function _avNovoPonto(){
-  ['ctx','dossie','cache','incorp','memoria','lancItbi','lancAnuncio','evolutivo','comaer','entorno','geo','iptu','iptuSel','iptuOculto','iptuVizinho','manuais','podeIncorp','incorpMotivo','metodoUnico'].forEach(k=>{ delete _avForm[k]; });
+  ['ctx','dossie','cache','incorp','memoria','lancItbi','lancAnuncio','evolutivo','comaer','entorno','geo','iptu','iptuSel','iptuOculto','iptuVizinho','manuais','usarPredio','podeIncorp','incorpMotivo','metodoUnico'].forEach(k=>{ delete _avForm[k]; });
   const pan=document.getElementById('av-incorp-painel'); if(pan){ pan.style.display='none'; pan.innerHTML=''; }
   const solo=document.getElementById('av-incorp-solo'); if(solo) solo.innerHTML='';
 }
@@ -859,9 +859,9 @@ async function avalCalcular(opts){
   ]);
   // R$/m² dos anúncios: o motor manda a mediana de toda a página; se o corretor excluiu algum, recalcula pela amostra restante
   const mediana=v=>{ v=v.filter(x=>x>0).sort((a,b)=>a-b); return v.length?(v.length%2?v[(v.length-1)/2]:(v[v.length/2-1]+v[v.length/2])/2):null; };
-  const houveExclAn=amostraTodos.some(a=>a.excluido&&!a.manual);
+  const houveExclAn=amostraTodos.some(a=>a.excluido) || amostraTodos.some(a=>a.manual);
   if(houveExclAn){
-    const pa=amostra.filter(a=>a.tipo!=='Casa'&&!a.manual).map(a=>a.rs_m2), pc=amostra.filter(a=>a.tipo==='Casa'&&!a.manual).map(a=>a.rs_m2);
+    const pa=amostra.filter(a=>a.tipo!=='Casa').map(a=>a.rs_m2), pc=amostra.filter(a=>a.tipo==='Casa').map(a=>a.rs_m2);   // anúncios incluídos pelo corretor entram aqui, como anúncios
     precos={...precos, rs_apto: pa.length?Math.round(mediana(pa)):null, rs_casa: pc.length?Math.round(mediana(pc)):null, n_apto:pa.length, n_casa:pc.length};
   }
   const nExcl=_avForm.excl.size;
@@ -896,7 +896,7 @@ async function avalCalcular(opts){
   const tb=_avTerrenoBairro(bairro), idxPF0=_avIdxPedidoFechado(bairro);
   const rsTerrenoInf=+gt('av-rs-terreno')||null;
   const rs_terreno = rsTerrenoInf || (tb&&tb.terreno) || (rs_casa ? Math.round(rs_casa*AV_PARAM.terreno_sobre_casa) : null);
-  const rsTerrenoOrigem = rsTerrenoInf ? 'informado pelo corretor' : (tb&&tb.terreno ? `modelo conjunto da carteira NSP: ${tb.n} casas anunciadas em ${bairro}, preços de ${tb.per||'2018–2026'}, custo de construção único de R$ ${(tb.constr||0).toLocaleString('pt-BR')}/m² (terreno = ${Math.round(tb.share*100)}% do valor)` : (rs_casa ? `estimado: ${Math.round(AV_PARAM.terreno_sobre_casa*100)}% do R$/m² de casa do bairro (${casaEstimada?'casa ≈ apto × '+AV_PARAM.casa_sobre_apto:'anúncios de casas'})` : null));
+  const rsTerrenoOrigem = rsTerrenoInf ? 'informado pelo corretor' : (tb&&tb.terreno ? `modelo dos anúncios de casas da Nova São Paulo: ${tb.n} casas em ${bairro}, preços de ${tb.per||'2018–2026'}, custo de construção único de R$ ${(tb.constr||0).toLocaleString('pt-BR')}/m² (terreno = ${Math.round(tb.share*100)}% do valor)` : (rs_casa ? `estimado: ${Math.round(AV_PARAM.terreno_sobre_casa*100)}% do R$/m² de casa do bairro (${casaEstimada?'casa ≈ apto × '+AV_PARAM.casa_sobre_apto:'anúncios de casas'})` : null));
   const rs_lote = rsTerrenoInf || (tb&&tb.lote ? Math.round(tb.lote*idxPF0.idx) : null) || (rs_casa ? Math.round(rs_casa*AV_PARAM.lote_sobre_casa) : null);
   const loteOrigem = rsTerrenoInf ? 'informado pelo corretor' : (tb&&tb.lote ? `mediana de ${tb.lote_n} lotes anunciados pela NSP em ${bairro}, ${tb.lote_per||'2018–2026'} (R$ ${tb.lote.toLocaleString('pt-BR')}/m² pedido × ${idxPF0.idx} pedido→fechado)` : (rs_casa ? `estimado: ${Math.round(AV_PARAM.lote_sobre_casa*100)}% do R$/m² de casa do bairro` : null));
   const padrao=(_avForm.incorp&&_avForm.incorp.padrao)||_avPadraoSugerido(bairro);
@@ -922,12 +922,20 @@ async function avalCalcular(opts){
               rs_itbi_util: rsItbiUtil, n_itbi: compsItbiAtivos.filter(c=>c.rs_util>0).length, excluidos:nExcl,
               incluidos: amostra.filter(a=>a.manual).length };
     m.rs_anuncio_ajust = m.rs_anuncio ? Math.round(m.rs_anuncio*m.idx_pedido_fechado) : null;     // pedido → fechado esperado
+    // VENDAS NO PRÓPRIO PRÉDIO (05/10/2026): com 3+ vendas registradas no mesmo endereço, o corretor pode usar o preço delas
+    // (mesma planta) — a área útil estimada pelo cadastro erra em prédio novo (Aracoiaba 30: 64 m² úteis = 134 m² no cadastro)
+    const ruaKey=t=>{ const w=_avNorm(t).toUpperCase().replace(/[^A-Z0-9 ]/g,' ').trim().split(/\s+/).filter(x=>x.length>=3); return w[w.length-1]||''; };
+    const nums=[String(_avForm.num||''), _avForm.iptuVizinho?String(_avForm.iptuVizinho.numero):''].map(n=>n.replace(/\D/g,'').replace(/^0+/,'')).filter(Boolean);
+    const rk=ruaKey(_avForm.rua);
+    const mp=(grupo==='apto' && rk && nums.length) ? compsItbiAtivos.filter(c=>ruaKey(c.logradouro)===rk && nums.includes(String(c.numero||'').replace(/\D/g,'').replace(/^0+/,''))) : [];
+    if(mp.length>=3){
+      const pv=mp.map(c=>Number(c.valor)).filter(v=>v>0).sort((a,b)=>a-b), ult=[...mp].sort((a,b)=>String(b.data).localeCompare(String(a.data)))[0];
+      m.mesmo_predio={ n:pv.length, min:pv[0], max:pv[pv.length-1], mediana:Math.round(mediana(pv)), ultima:{valor:Number(ult.valor), data:ult.data, unidade:ult.complemento||null},
+                       valor_ajust:Math.round(mediana(pv)*(1+AV_INDICES.itbi_subdeclaracao)), endereco:`${mp[0].logradouro}, ${mp[0].numero}` };
+      m.usar_predio=!!_avForm.usarPredio;
+    }
     m.rs_itbi_ajust    = m.rs_itbi_util ? Math.round(m.rs_itbi_util*(1+m.sub_itbi)) : null;         // declarado → negociado
-    // anúncios INCLUÍDOS pelo corretor (ex.: no próprio prédio): 3ª referência, com o mesmo peso das outras duas
-    const inc=amostra.filter(a=>a.manual).map(a=>a.rs_m2).filter(x=>x>0);
-    m.rs_incluidos = inc.length ? Math.round(mediana(inc)) : null;
-    m.rs_incluidos_ajust = m.rs_incluidos ? Math.round(m.rs_incluidos*m.idx_pedido_fechado) : null;
-    const partes=[m.rs_anuncio_ajust, m.rs_itbi_ajust, m.rs_incluidos_ajust].filter(x=>x>0);
+    const partes=[m.rs_anuncio_ajust, m.rs_itbi_ajust].filter(x=>x>0);
     m.rs_final = partes.length ? Math.round(partes.reduce((a,b)=>a+b,0)/partes.length) : null;
     m.divergencia = (m.rs_anuncio_ajust && m.rs_itbi_ajust) ? Math.round((m.rs_anuncio_ajust/m.rs_itbi_ajust-1)*100) : null;
     m.valor_anuncio = m.rs_anuncio_ajust ? Math.round(area*m.rs_anuncio_ajust) : null;
@@ -993,19 +1001,24 @@ async function avalCalcular(opts){
   }else if(metodoUnico && metodoUnico.valor_final && evolutivo){
     const mu=metodoUnico, vm=Math.round((mu.valor_final+evolutivo.total)/2);
     dossie.valor_mercado=vm; dossie.faixa_min=Math.round(vm*0.93); dossie.faixa_max=Math.round(vm*1.07); dossie.mercado_rs_m2=mu.rs_final;
-    dossie.metodo=`média de [comparativo ${area} m² × R$ ${mu.rs_final.toLocaleString('pt-BR')}/m² = ${_avR$(mu.valor_final)} ; evolutivo terreno ${terreno} m² × R$ ${evolutivo.rs_terreno.toLocaleString('pt-BR')} + construção ${area} m² depreciada ${Math.round(evolutivo.dep*100)}% = ${_avR$(evolutivo.total)}]`+
+    dossie.metodo=`média de [comparação ${area} m² × R$ ${mu.rs_final.toLocaleString('pt-BR')}/m² = ${_avR$(mu.valor_final)} ; terreno ${terreno} m² × R$ ${evolutivo.rs_terreno.toLocaleString('pt-BR')} + construção ${area} m² depreciada ${Math.round(evolutivo.dep*100)}% = ${_avR$(evolutivo.total)}]`+
       (evolutivo.divergencia!=null?` · métodos divergem ${evolutivo.divergencia}%`:'')+(nExcl?` · ${nExcl} comparável(is) excluído(s)`:'');
+  }else if(grupo==='apto' && metodoUnico && metodoUnico.usar_predio && metodoUnico.mesmo_predio){
+    const mp=metodoUnico.mesmo_predio, vm=mp.valor_ajust;
+    dossie.valor_mercado=vm; dossie.faixa_min=Math.round(vm*0.95); dossie.faixa_max=Math.round(vm*1.05); dossie.mercado_rs_m2=Math.round(vm/area);
+    dossie.metodo=`vendas no próprio prédio (mesma planta, confirmado pelo corretor): mediana de ${mp.n} vendas ${_avR$(mp.mediana)} × ${(1+AV_INDICES.itbi_subdeclaracao).toFixed(3)} = ${_avR$(vm)}`+
+      (metodoUnico.valor_final?` · referência pelo m² do bairro: ${_avR$(metodoUnico.valor_final)}`:'');
   }else if(metodoUnico && metodoUnico.valor_final){
     const mu=metodoUnico;
     dossie.valor_mercado=mu.valor_final; dossie.faixa_min=Math.round(mu.valor_final*0.93); dossie.faixa_max=Math.round(mu.valor_final*1.07);
     dossie.mercado_rs_m2=mu.rs_final;
     dossie.metodo=`${area} m² × R$ ${mu.rs_final.toLocaleString('pt-BR')}/m² = média de [anúncios ${mu.rs_anuncio?mu.rs_anuncio.toLocaleString('pt-BR'):'—'} × ${mu.idx_pedido_fechado} (pedido→fechado, ${mu.idx_origem})`+
       (mu.rs_itbi_ajust?` ; ITBI ${mu.rs_itbi_util.toLocaleString('pt-BR')}/m² útil est. × ${(1+mu.sub_itbi).toFixed(3)} (subdeclaração)`:'')+
-      (mu.rs_incluidos_ajust?` ; ${mu.incluidos} anúncio(s) incluído(s) pelo corretor ${mu.rs_incluidos.toLocaleString('pt-BR')}/m² × ${mu.idx_pedido_fechado}`:'')+`]`+(mu.divergencia!=null?` · fontes divergem ${mu.divergencia}%`:'')+(nExcl?` · ${nExcl} comparável(is) excluído(s) pelo corretor`:'')+(precos.base==='ITBI'?' · modo teste (sem anúncios ao vivo)':'');
+`]`+(mu.divergencia!=null?` · fontes divergem ${mu.divergencia}%`:'')+(nExcl?` · ${nExcl} comparável(is) excluído(s) pelo corretor`:'')+(precos.base==='ITBI'?' · sem anúncios ao vivo nesta avaliação (só vendas reais)':'');
   }else if(evolutivo){
     const vm=evolutivo.total;
     dossie.valor_mercado=vm; dossie.faixa_min=Math.round(vm*0.9); dossie.faixa_max=Math.round(vm*1.1);
-    dossie.metodo=`evolutivo: terreno ${terreno} m² × R$ ${evolutivo.rs_terreno.toLocaleString('pt-BR')} + construção ${area} m² depreciada ${Math.round(evolutivo.dep*100)}% (sem comparativo suficiente no bairro)`;
+    dossie.metodo=`terreno ${terreno} m² × R$ ${evolutivo.rs_terreno.toLocaleString('pt-BR')} + construção ${area} m² depreciada ${Math.round(evolutivo.dep*100)}% (sem vendas e anúncios suficientes por perto para comparar)`;
   }else if(rs_tipo && area){
     const vm=area*rs_tipo;
     dossie.valor_mercado=Math.round(vm); dossie.faixa_min=Math.round(vm*0.9); dossie.faixa_max=Math.round(vm*1.1);
@@ -1215,6 +1228,7 @@ function renderAvalPreview(x, precos){
       ${x.preco_pedido?`<div style="margin-top:8px;font-size:.9em">Pretendido: <b>${_avR$(x.preco_pedido)}</b> ${_avCompara(x.preco_pedido,x.valor_mercado)}</div>`:''}
     </div></div>`:`<div class="card" style="margin-bottom:12px"><div class="cb" style="color:#b45309">Sem preço de mercado (faltou área útil ou anúncios do bairro).</div></div>`}
     ${AV_TEXTO_ATIVO?`<div id="av-texto">${_avTextoHTML()}</div>`:''}
+    ${_avMesmoPredioHTML(_avForm.metodoUnico)}
     ${_avMetodoHTML(_avForm.metodoUnico, x)}
     ${_avEvolutivoHTML((x.memoria&&x.memoria.evolutivo)||_avForm.evolutivo)}
     ${_avIptuCaixaHTML(x.entorno&&x.entorno.iptu)}
@@ -1381,6 +1395,18 @@ function _avCompsTabela(comps, opts){
     ${editavel?`<div id="av-manual-box" style="margin-top:8px">${_avManualBotaoHTML()}</div>`:''}
     <div style="font-size:.8em;color:#94a3b8;margin-top:6px"><b>Venda real</b> = transação registrada na Prefeitura (guia de ITBI), preço efetivamente declarado. <b>Anúncio</b> = preço pedido em portal, ajustado pelo índice pedido→fechado. ITBI: área do cadastro (IPTU); área útil estimada por (cadastro − ${AV_INDICES.iptu_por_vaga} m²) ÷ ${AV_INDICES.iptu_por_util} (casas: construída ≈ útil). Anúncio: área útil anunciada.</div>`;
 }
+function _avMesmoPredioHTML(mu){
+  const mp=mu&&mu.mesmo_predio; if(!mp) return '';
+  const dt=d=>{ const s=String(d||''); return s.length>=7?`${s.slice(5,7)}/${s.slice(0,4)}`:s; };
+  return `<div class="card" style="margin-bottom:12px;border-left:3px solid #0f6b5e"><div class="cb">
+    <div style="color:#0f6b5e;font-size:.85em;text-transform:uppercase;letter-spacing:.04em;font-weight:600">🏢 Vendas registradas no próprio prédio</div>
+    <div style="margin:6px 0 4px">${mp.n} vendas em ${mp.endereco}: de ${_avR$(mp.min)} a ${_avR$(mp.max)}, mediana <b>${_avR$(mp.mediana)}</b>; a mais recente ${_avR$(mp.ultima.valor)} em ${dt(mp.ultima.data)}${mp.ultima.unidade?` (${mp.ultima.unidade})`:''}.</div>
+    ${mu.usar_predio
+      ? `<div style="font-size:.9em;color:#0f6b5e">✓ O valor está usando as vendas do prédio (mediana × 1,035 = <b>${_avR$(mp.valor_ajust)}</b>), porque o imóvel tem a mesma planta. <button class="btn btn-o bsm" onclick="_avUsarPredio(false)">Voltar ao cálculo pelo m² do bairro</button></div>`
+      : `<div style="font-size:.9em;color:#475569">Se o imóvel tem a <b>mesma planta</b> dessas unidades, o preço do próprio prédio é a melhor referência: <b>${_avR$(mp.valor_ajust)}</b> (mediana × 1,035, ajuste do valor declarado na guia). <button class="btn btn-p bsm" onclick="_avUsarPredio(true)">Usar as vendas do prédio</button></div>`}
+  </div></div>`;
+}
+async function _avUsarPredio(v){ _avForm.usarPredio=!!v; await avalCalcular({recalc:true}); }
 function _avMetodoHTML(mu, x){
   if(!mu || !mu.rs_final) return '';
   const li=(t,v,sub)=>`<div style="padding:6px 0;border-top:1px solid #f1f5f9;display:flex;justify-content:space-between;gap:10px"><span>${t}${sub?`<br><small style="color:#94a3b8">${sub}</small>`:''}</span><b style="white-space:nowrap">${v}</b></div>`;
@@ -1388,16 +1414,15 @@ function _avMetodoHTML(mu, x){
   const grupo=(typeof _avTipoGrupo==='function')?_avTipoGrupo((x&&x.tipo)||''):'';
   const ev=(x&&x.memoria&&x.memoria.evolutivo)||(_avForm&&_avForm.evolutivo)||null;
   const referencia = grupo==='com' || (grupo==='casa' && ev && ev.calibrado);
-  const nRef=[mu.rs_anuncio_ajust, mu.rs_itbi_ajust, mu.rs_incluidos_ajust].filter(v=>v>0).length;
+  const nRef=[mu.rs_anuncio_ajust, mu.rs_itbi_ajust].filter(v=>v>0).length;
   return `<div class="card" style="margin-bottom:12px"><div class="cb">
     <div style="color:#64748b;font-size:.85em;text-transform:uppercase;letter-spacing:.04em">${referencia?'Comparação com vendas e anúncios · referência':'Como o preço por m² foi calculado'}</div>
     <div style="font-size:.85em;color:#64748b;margin:4px 0 8px">${referencia
       ? (grupo==='com' ? 'Para imóvel comercial o valor adotado é terreno a preço de lote + construção (quadro abaixo); as vendas e anúncios por perto são residenciais e ficam só como conferência.'
                        : 'Para casa o valor adotado é terreno + construção (quadro abaixo); a comparação com vendas e anúncios de casas por perto fica como conferência.')
-      : `Anúncios do bairro, já descontada a negociação típica, e vendas reais registradas na Prefeitura perto do imóvel, em área útil${mu.rs_incluidos_ajust?', mais os anúncios incluídos pelo corretor':''}. O preço por m² é a média ${nRef>1?`das ${nRef} referências`:'da referência disponível'}.`}</div>
+      : `Anúncios do bairro, já descontada a negociação típica, e vendas reais registradas na Prefeitura perto do imóvel, em área útil. O preço por m² é a média ${nRef>1?'das duas':'da referência disponível'}.`}</div>
     ${mu.rs_anuncio?li(`Anúncios do bairro: ${_avR$(mu.rs_anuncio)}/m² pedido × ${mu.idx_pedido_fechado}`, _avR$(mu.rs_anuncio_ajust)+'/m²', `${mu.n_anuncio} anúncios · desconto típico entre pedido e fechado ${/^média/i.test(mu.idx_origem||'')?'na média da Nova São Paulo':'em '+_avCap(String(mu.idx_origem||'').replace(/\s*\(NIDO\)/i,'').toLowerCase())}`):''}
     ${mu.rs_itbi_ajust?li(`Vendas reais (ITBI): ${_avR$(mu.rs_itbi_util)}/m² útil estimado × ${(1+mu.sub_itbi).toFixed(3)}`, _avR$(mu.rs_itbi_ajust)+'/m²', `${mu.n_itbi} vendas · ajuste de ${(mu.sub_itbi*100).toLocaleString('pt-BR',{maximumFractionDigits:1})}% porque o valor declarado na guia costuma ficar um pouco abaixo do negociado`):''}
-    ${mu.rs_incluidos_ajust?li(`Anúncios incluídos pelo corretor: ${_avR$(mu.rs_incluidos)}/m² × ${mu.idx_pedido_fechado}`, _avR$(mu.rs_incluidos_ajust)+'/m²', `${mu.incluidos} anúncio(s), com link na tabela de comparáveis`):''}
     ${li(`<b>${referencia?'R$/m² de referência':'R$/m² adotado'}</b>${mu.divergencia!=null?` <small style="color:#94a3b8">(anúncios e vendas diferem ${mu.divergencia>0?'+':''}${mu.divergencia}%)</small>`:''}`, _avR$(mu.rs_final)+'/m²')}
     ${mu.aviso&&!referencia?`<div style="font-size:.85em;color:#b45309;margin-top:6px">⚠️ ${mu.aviso}</div>`:''}
     <div style="font-size:.78em;color:#94a3b8;margin-top:8px">Os ajustes vêm do histórico de negócios da Nova São Paulo (2019–2026: diferença entre preço pedido e fechado) e da comparação entre guias de ITBI e negócios fechados.</div>

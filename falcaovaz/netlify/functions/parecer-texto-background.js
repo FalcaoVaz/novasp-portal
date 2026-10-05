@@ -17,13 +17,14 @@ O cliente já vê na tela o valor, a faixa, o R$/m², as vendas e anúncios comp
 
 Ordem de prioridade:
 1. O PRÉDIO. Se a pesquisa identificou o edifício, o texto gira em torno dele: nome, ano, incorporadora/construtora, número de andares e unidades, plantas, vagas, lazer — só o que tiver fonte.
-2. O QUE O PRÓPRIO PRÉDIO DIZ DO PREÇO. Anúncios atuais no edifício (preço, área, R$/m²) e vendas registradas no número do edifício (em "vendas_reais_proximas", pelo número do endereço, e em "mercado_local.mesmo_predio"; o número do prédio pode diferir alguns números do digitado — use o que a pesquisa e "predio_no_cadastro_em_numero_vizinho" indicarem). Compare com o valor calculado. Anúncio é preço pedido: desconte a negociação usual (cerca de 5%) antes de comparar. Se a evidência do próprio prédio aponta para um valor diferente do calculado em mais de 10%, diga isso já na "resposta", com o número, e explique a provável razão (andar, reforma, planta, vagas).
+2. O QUE O PRÓPRIO PRÉDIO DIZ DO PREÇO. Anúncios atuais no edifício (preço, área, R$/m²) e vendas registradas no número do edifício (em "vendas_reais_proximas", pelo número do endereço, e em "mercado_local.mesmo_predio"; o número do prédio pode diferir alguns números do digitado — use o que a pesquisa e "predio_no_cadastro_em_numero_vizinho" indicarem). Compare com o valor calculado. Anúncio é preço pedido: desconte a negociação usual (cerca de 5%) antes de comparar. VENDAS REGISTRADAS no próprio edifício são a evidência mais forte que existe (preço pago, não pedido): compare pela mediana delas em R$/m² de ÁREA ÚTIL ESTIMADA ("rs_m2_util"), nunca pela área do cadastro ("area_cadastro", que inclui áreas comuns e garagem e por isso é sempre maior que a planta — não estranhe essa diferença nem a comente). Se as vendas ou os anúncios do próprio prédio apontam para um valor diferente do calculado em mais de 10%, diga isso já na "resposta", com o número, recomende ao corretor revisar o valor (por exemplo, incluindo na conta os anúncios do prédio) e explique a provável razão (andar, reforma, planta, vagas). Não chame de "coerente" um valor calculado que fica abaixo da maioria das vendas do próprio prédio.
 3. Concorrência: um prédio novo perto ("predios_novos_perto") só entra se ajudar a situar o preço deste imóvel, em uma ou duas frases.
-4. A REGIÃO: sempre que a pesquisa trouxer lugares ou fatos nomeados com fonte, uma seção "A região" de um parágrafo: 3 a 5 destaques a pé (comércio, serviços, parques, o que está mudando) e o que isso diz sobre o perfil de quem mora ali. Nada de lugar-comum ("bairro bem servido", "ótima localização"): só nomes e fatos.
+4. A REGIÃO: sempre que a pesquisa trouxer lugares ou fatos nomeados com fonte que NÃO seja anúncio de imóvel (guias, matérias, Prefeitura) — além do entorno que já veio nos dados ("entorno": metrô, escolas, feiras, hospitais) — uma seção "A região" de um parágrafo: 3 a 5 destaques a pé (comércio, serviços, parques, o que está mudando). Não deduza o perfil de quem mora ali (profissão, família, filhos) sem fonte que diga isso. Nada de lugar-comum ("bairro bem servido", "ótima localização"): só nomes e fatos.
 
 Proibido:
 - Seções ou parágrafos genéricos sobre como tamanho, idade do prédio ou andar mexem no preço da região. Os números de "mercado_local" (por_idade_do_predio, por_tamanho_util, por_andar, por_semestre) só podem aparecer em UMA frase, e só para justificar um ajuste deste imóvel cuja idade ou tamanho é conhecido.
-- Hipóteses do tipo "se o seu prédio for novo..."; quando um fato não foi apurado, não fale dele.
+- Hipóteses do tipo "se o seu prédio for novo..."; quando um fato não foi apurado, não fale dele — nada de "não foi confirmado", "não foi possível identificar", "não há informação".
+- Números que não fecham. A faixa ("valor.faixa_min" a "valor.faixa_max") é o valor de FECHAMENTO esperado. Preço de ANÚNCIO fica acima dela, de propósito: use a faixa de anúncio já calculada em "preco_anuncio_sugerido" e nunca diga que um preço de anúncio está "dentro da faixa" de valor. Confira cada conta antes de escrever (desconto, diferença percentual, R$/m²).
 - Falar do cadastro da Prefeitura quando o edifício foi identificado; nesse caso, no máximo um item em "atencao".
 - Mencionar "JSON", "dados", "sistema", "modelo", "IA", "pesquisa", "busca", "não encontramos" ou equivalente; escreva como o corretor escreveria.
 - Inventar fatos. Fato externo só com fonte. Notas de comércio só com 30 avaliações ou mais.
@@ -164,7 +165,7 @@ TAREFA 1 — a mais importante, use nela as primeiras buscas: identificar o edif
 - Do edifício: nome, número oficial, ano de construção/entrega, incorporadora e construtora, andares, unidades, plantas (m², dormitórios, vagas), lazer.
 - Abra (web_fetch) a página do condomínio no QuintoAndar ou na Loft e traga os anúncios atuais NESTE prédio, um por linha: preço pedido, área útil, andar quando houver e o LINK do anúncio (ou da página onde ele aparece); e histórico de vendas se a página mostrar.
 TAREFA 2 — OBRIGATÓRIA, faça mesmo que o edifício já esteja resolvido: no mínimo DUAS buscas sobre a região a pé do endereço:
-  (a) o que há de destaque perto: restaurantes, cafés, padarias, mercados, parques, hospitais, escolas e serviços citados em guias, listas ou matérias (Veja Comer & Beber, Guia Michelin, TripAdvisor, jornais, blogs do bairro); traga nomes, o que os destaca e a distância aproximada quando der; nota só com 30+ avaliações;
+  (a) o que há de destaque perto: restaurantes, cafés, padarias, mercados, parques, hospitais, escolas e serviços citados em guias, listas ou matérias (Veja Comer & Beber, Guia Michelin, TripAdvisor, jornais, blogs do bairro, Prefeitura); traga nomes, o que os destaca e a distância aproximada quando der; nota só com 30+ avaliações. NÃO use páginas de anúncio de imóvel (QuintoAndar, Loft, Lopes, ZAP, Imovelweb, VivaReal etc.) como fonte sobre a região: o texto de anúncio é propaganda;
   (b) o que está mudando ou marca o entorno: obras, metrô, parques, grandes empreendimentos, revitalizações, perfil do bairro em matérias recentes.
 TAREFA 3 — só se sobrar busca: a incorporadora do edifício (tempo de mercado, reputação pública com fonte).
 Responda em tópicos curtos, cada fato com a URL. Comece pelo edifício: nome e grau de certeza.`;
@@ -274,6 +275,9 @@ exports.handler = async (event) => {
     await gravarJob(supabaseUrl, supabaseKey, job_id, { status: 'processando' });
     let pesq = { notas: null, buscas: 0, tokens: 0, uso: novoUso() };
     try { pesq = await pesquisar(apiKey, dados); } catch (e) { console.error('[parecer] pesquisa falhou', e.message); }
+    // preço de anúncio sugerido = faixa de fechamento ÷ desconto típico pedido→fechado do bairro (evita contas incoerentes no texto)
+    const v = dados.valor || {}, idx = Number((dados.metodo || {}).indice_pedido_fechado) || 0.952;
+    if (v.faixa_min && v.faixa_max) dados.preco_anuncio_sugerido = { min: Math.round(v.faixa_min / idx / 1000) * 1000, max: Math.round(v.faixa_max / idx / 1000) * 1000, desconto_tipico: Math.round((1 - idx) * 1000) / 10 };
     const r = await chamarClaude(apiKey, Object.assign({}, dados, { __pesquisa: pesq.notas }));
     const uso = { pesquisa: fecharUso(pesq.uso), texto: fecharUso(r.uso) };
     uso.custo_usd = +(uso.pesquisa.custo_usd + uso.texto.custo_usd).toFixed(4);
