@@ -119,7 +119,7 @@ function render(x){
   const ehCom = /comercial|galp|loja|sala/i.test(x.tipo||'');
   const metodoAdotado = (mu && mu.usar_predio && mu.mesmo_predio) ? 'predio' : ev && ev.so_terreno ? 'terreno' : (ev && ev.calibrado ? 'casa' : (ehCom && ev ? 'com' : (ev ? 'casa_media' : 'apto')));
   const frase = { predio:'Calculado pelas vendas registradas no próprio prédio, de unidades com a mesma planta.',
-    apto:'Calculado pelo preço por m² de área útil: anúncios do bairro e vendas reais registradas perto do imóvel.',
+    apto:'Calculado pelo preço por m² de área útil: anúncios à venda e vendas reais registradas perto do imóvel.',
     casa:'Calculado como terreno + construção: o terreno pelo preço das vendas de casas por perto; a construção pelo padrão, idade e estado.',
     casa_media:'Média entre a comparação com casas por perto e a soma de terreno + construção.',
     com:'Calculado como terreno a preço de lote + construção depreciada.',
@@ -207,13 +207,13 @@ function render(x){
       <p style="margin:0 0 4px;font-size:.92em">${nVendas?`${nVendas} venda(s) real(is) registrada(s) na Prefeitura perto do imóvel`:''}${nVendas&&nAn?' e ':''}${nAn?`${nAn} anúncio(s) de venda`:''}${metodoAdotado==='casa'||metodoAdotado==='com'?' — usados como conferência do valor.':' — base do preço por m².'}</p>
       <table><thead><tr><th>Origem</th><th>Endereço</th><th class="r">Área</th><th class="r">Preço</th><th class="r">R$/m²</th></tr></thead>
       <tbody>${usados.map(c=>{ const itbi=/ITBI|Fechamento|Venda real/i.test(c.origem||c.tipo||''); const end=itbi?(c.endereco||'—'):String(c.endereco||'').replace(/^Anúncio (incluído pelo corretor|no próprio prédio \(achado pelo parecer\))(, por [^,]*)?/,'Anúncio no mesmo prédio ou entorno'); return `<tr>
-        <td>${itbi?'<b style="color:#047857">Venda real</b>':'Anúncio'}${c.data?'<br><span class="sub">'+String(c.data).slice(0,7)+'</span>':''}</td>
+        <td>${itbi?'<b style="color:#047857">Venda real</b>':'Anúncio'}${c.nsp?'<br><span class="sub">carteira Nova SP</span>':''}${c.data?'<br><span class="sub">'+String(c.data).slice(0,7)+'</span>':''}</td>
         <td>${end||'—'}${c.dorm?` <span class="sub">${c.dorm} dorm${c.vaga?' · '+c.vaga+' vg':''}</span>`:''}</td>
         <td class="r">${itbi&&c.area_util_est?`≈ ${c.area_util_est} m² útil${c.area?`<br><span class="sub">${Math.round(c.area)} m² no cadastro</span>`:''}`:(c.area?Math.round(c.area)+' m²':'—')}</td>
         <td class="r">${R$(c.preco)}</td>
         <td class="r">${itbi&&c.rs_util?`${R$(c.rs_util)} útil${c.rs_m2?`<br><span class="sub">${R$(c.rs_m2)} no cadastro</span>`:''}`:R$(c.rs_m2)}</td></tr>`; }).join('')}</tbody></table>
       ${excluidos.length?`<div class="foot">Deixadas de fora por destoarem do imóvel: ${excluidos.map(c=>c.endereco||c.tipo).join('; ')}.</div>`:''}
-      <div class="foot"><b>Venda real</b> = transação registrada na Prefeitura de São Paulo (guia de ITBI), com o preço declarado na venda; área útil estimada a partir da área do cadastro. <b>Anúncio</b> = preço pedido em portal imobiliário, que costuma fechar um pouco abaixo.</div>
+      <div class="foot"><b>Venda real</b> = transação registrada na Prefeitura de São Paulo (guia de ITBI), com o preço declarado na venda; área útil estimada a partir da área do cadastro. <b>Anúncio</b> = preço pedido, da carteira da Nova São Paulo ou de portal imobiliário; costuma fechar um pouco abaixo.</div>
     </div>` : '';
 
   // ── como chegamos ao valor: um texto por método ──
@@ -221,7 +221,7 @@ function render(x){
   const dec = v => (Number(v||0)*100).toLocaleString('pt-BR',{maximumFractionDigits:1});
   const bairroIdx = mu&&mu.idx_origem ? (/^média/i.test(mu.idx_origem)?'na média da Nova São Paulo':'em '+cap(String(mu.idx_origem).replace(/\s*\(NIDO\)/i,''))) : '';
   const blocoComparacao = (titulo) => mu ? `
-      ${mu.rs_anuncio?`<div class="passo"><b class="t">${titulo?titulo+' · ':''}Anúncios</b>Mediana de ${mu.n_anuncio||'—'} anúncios de venda de imóveis semelhantes no bairro, coletados no dia da avaliação: ${R$(mu.rs_anuncio)}/m² pedido. Como o preço pedido costuma fechar abaixo, aplicamos o desconto típico medido nos negócios da Nova São Paulo (${bairroIdx}): × ${pf(mu.idx_pedido_fechado)} = <b>${R$(mu.rs_anuncio_ajust)}/m²</b>.</div>`:''}
+      ${mu.rs_anuncio?`<div class="passo"><b class="t">${titulo?titulo+' · ':''}Anúncios</b>Mediana de ${mu.n_anuncio||'—'} anúncios de venda de imóveis semelhantes perto do imóvel${mu.n_nsp?` (${mu.n_nsp===mu.n_anuncio?'todos':mu.n_nsp} da carteira da Nova São Paulo)`:''}, coletados no dia da avaliação: ${R$(mu.rs_anuncio)}/m² pedido. Como o preço pedido costuma fechar abaixo, aplicamos o desconto típico medido nos negócios da Nova São Paulo (${bairroIdx}): × ${pf(mu.idx_pedido_fechado)} = <b>${R$(mu.rs_anuncio_ajust)}/m²</b>.</div>`:''}
       ${mu.rs_itbi_ajust?`<div class="passo"><b class="t">${titulo?titulo+' · ':''}Vendas reais</b>Mediana de ${mu.n_itbi||'—'} vendas registradas na Prefeitura perto do imóvel (guias de ITBI), por m² de área útil estimada: ${R$(mu.rs_itbi_util)}/m². A guia costuma declarar cerca de ${dec(mu.sub_itbi)}% abaixo do valor negociado: × ${pf(1+(mu.sub_itbi||0))} = <b>${R$(mu.rs_itbi_ajust)}/m²</b>.</div>`:''}` : '';
   let calculo = '';
   if(metodoAdotado==='predio'){

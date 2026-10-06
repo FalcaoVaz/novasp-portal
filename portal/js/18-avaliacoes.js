@@ -260,7 +260,7 @@ function _avCamposTipo(){
   if(ar && !ar.value && ip && /^(casa|com)$/.test(gr) && Number(ip.area_construida)>0) ar.value=Math.round(Number(ip.area_construida));
   const a=document.getElementById('av-area'); if(a) a.placeholder = '';
   const al=document.getElementById('av-area-lb'); if(al) al.textContent = gr==='apto' ? 'Área útil (m²)' : 'Área construída (m²)';
-  const h=document.getElementById('av-tipo-hint'); if(h) h.textContent = {apto:'Apartamento: preço por m² de área útil pelos anúncios do bairro e pelas vendas reais registradas perto do imóvel.',
+  const h=document.getElementById('av-tipo-hint'); if(h) h.textContent = {apto:'Apartamento: preço por m² de área útil pelos anúncios perto do imóvel (primeiro os da Nova São Paulo) e pelas vendas reais registradas por perto.',
     casa:'Casa: terreno + construção. O terreno pelo preço das vendas de casas por perto; a construção pelo padrão, idade e estado. A comparação com vendas e anúncios fica como referência.',
     terreno:'Terreno: valor como lote para construir e, se a zona permitir, a conta para incorporadora.',
     com:'Comercial: terreno a preço de lote + construção depreciada (as vendas e anúncios por perto são residenciais e ficam como referência).'}[gr];
@@ -816,6 +816,22 @@ async function avalCalcular(opts){
   else try{
     precos=await _avBuscarPrecos(bairro); if(!precos) throw new Error('motor indisponível');
   }catch(e){ semMotor=true; }
+  // anúncios da NOVA SP perto do imóvel (cópia diária do Imoview, pelo raio — não depende do nome do bairro):
+  // entram PRIMEIRO; o QuintoAndar só completa até 12 (Rodrigo, 06/10/2026)
+  let nsp=[];
+  if(recalc) nsp=_avForm.cache.nsp||[];
+  else if(grupo!=='terreno' && _avPino){ try{ nsp=await _avRpc('aval_anuncios_nsp_perto',{p_lat:_avPino.lat,p_lng:_avPino.lng,p_grupo:_ehCasa(tipo)?'casa':'apto',p_lim:12})||[]; }catch(_){ nsp=[]; } }
+  // o nome que o mapa dá às vezes é um sub-bairro e o portal traz poucos anúncios (no Planalto Paulista o mapa diz
+  // "Indianópolis" ou "Mirandópolis" em várias ruas): completa com o bairro mais comum entre os anúncios da Nova SP por perto
+  if(!recalc && nsp.length < 12 && nsp.length){
+    const nTipo=((precos&&precos.amostra)||[]).filter(a=>_ehCasa(tipo)?a.tipo==='Casa':a.tipo!=='Casa').length;
+    const cont={}; nsp.forEach(n=>{ const b=_avCap(String(n.bairro||'').replace(/\(.*?\)/g,'').trim().toLowerCase()); if(b) cont[b]=(cont[b]||0)+1; });
+    const b2=Object.keys(cont).sort((x,y)=>cont[y]-cont[x])[0];
+    if(nTipo<6 && b2 && _avNorm(b2).toUpperCase()!==_avNorm(bairro).toUpperCase()){
+      const p2=await _avBuscarPrecos(b2);
+      if(p2&&p2.amostra&&p2.amostra.length){ const vist=new Set(((precos&&precos.amostra)||[]).map(a=>a.url)); precos={...(precos||{}), amostra:[...((precos&&precos.amostra)||[]), ...p2.amostra.filter(a=>!vist.has(a.url))]}; }
+    }
+  }
 
   // comparáveis de fechamento (ITBI) — do banco, via RPC
   let compsItbi=[];
@@ -829,26 +845,31 @@ async function avalCalcular(opts){
   compsItbi=(compsItbi||[]).filter(c=>!/GARAGEM|VAGA|DEP[OÓ]SITO/i.test(c.uso||'') && (_ehCasa(tipo) ? /RESID|CASA|SOBRADO/i.test(c.uso||'') : /APART/i.test(c.uso||'')));
   // exclusões feitas pelo corretor (comparável destoante) — chave estável por origem
   _avForm.excl=_avForm.excl||new Set();
-  const kAn=a=>'a:'+(a.url||a.rua+'|'+a.preco); const kIt=c=>'i:'+(c.logradouro||'')+'|'+(c.numero||'')+'|'+(c.data||'')+'|'+c.valor;
+  const kAn=a=>a.nsp?'n:'+(a.ref||a.rua+'|'+a.preco):'a:'+(a.url||a.rua+'|'+a.preco); const kIt=c=>'i:'+(c.logradouro||'')+'|'+(c.numero||'')+'|'+(c.data||'')+'|'+c.valor;
   compsItbi.forEach(c=>{ c._k=kIt(c); c.excluido=_avForm.excl.has(c._k); });
   // R$/m² do ITBI em base de ÁREA ÚTIL (cadastro ≈ 1,35 × útil + 29 m²/vaga; casa: área construída ≈ útil)
   compsItbi.forEach(c=>{ const ac=Number(c.area_constr)||0; c.area_util_est=_ehCasa(tipo)?ac:Math.max(20,(ac-AV_INDICES.iptu_por_vaga)/AV_INDICES.iptu_por_util); c.rs_util=c.area_util_est?Math.round(Number(c.valor)/c.area_util_est):null; });
   // endereços → coordenadas (base local de endereços do portal; o que não resolver fica sem pino)
   const geocodar=async q=>{ try{ const r=await _avRpc('aval_geocode',{p_q:q}); const h=Array.isArray(r)?r[0]:null; return h?{lat:h.lat,lng:h.lng}:null; }catch(_){ return null; } };
   // anúncios do MESMO tipo do imóvel (o motor manda casas primeiro; apartamento não é comparável de casa e vice-versa)
-  const amostraTodos=(precos.amostra||[]).filter(a=>_ehCasa(tipo)?a.tipo==='Casa':a.tipo!=='Casa').slice(0,12);
+  // primeiro os da Nova SP (mais perto primeiro), depois o QuintoAndar completa até 12
+  const amostraNsp=(nsp||[]).map(n=>({tipo:_ehCasa(tipo)?'Casa':'Apartamento', area:Number(n.area), preco:Number(n.valor), rs_m2:Number(n.rs_m2),
+    dorm:n.dorm||null, vaga:n.vaga||null, rua:n.rua||'', bairro:/[a-zà-ú]/.test(n.bairro||'')?n.bairro:_avCap(n.bairro||''), ref:n.ref||null, nsp:true, dist_m:n.dist_m!=null?Number(n.dist_m):null}));
+  const amostraTodos=[...amostraNsp, ...(precos.amostra||[]).filter(a=>_ehCasa(tipo)?a.tipo==='Casa':a.tipo!=='Casa')].slice(0,12);
   // anúncios INCLUÍDOS pelo corretor (link obrigatório, autoria registrada, no máx. AV_MANUAL_MAX) — 05/10/2026
   (_avForm.manuais||[]).forEach(m=>amostraTodos.push({tipo:_ehCasa(tipo)?'Casa':'Apartamento', area:m.area, preco:m.preco, rs_m2:Math.round(m.preco/m.area),
     dorm:m.dorm||null, vaga:m.vaga||null, rua:m.origem==='parecer'?'Anúncio no próprio prédio (achado pelo parecer)':'Anúncio incluído pelo corretor',
     bairro:m.por?('por '+m.por):'', url:m.url, manual:true, por:m.por||null, origem_manual:m.origem||'corretor'}));
   // distância de cada anúncio (pela rua) até o imóvel: aparece na tabela e ordena a lista; o cálculo não muda
   // (filtrar por distância foi testado em 04/10/2026 e não melhorou o valor: 16% → 20% de erro nos negócios fechados)
-  if(!recalc && amostraTodos.length && _avPino){
-    try{ const ruas=[...new Set(amostraTodos.map(a=>a.rua).filter(Boolean))]; const dist={};
+  // (os da Nova SP já vêm com a distância pela coordenada do Imoview)
+  const semDist=amostraTodos.filter(a=>!a.nsp);
+  if(!recalc && semDist.length && _avPino){
+    try{ const ruas=[...new Set(semDist.map(a=>a.rua).filter(Boolean))]; const dist={};
          (await _avRpc('aval_ruas_distancia',{p_lat:_avPino.lat,p_lng:_avPino.lng,p_ruas:ruas})||[]).forEach(x=>{ dist[x.rua]=x.dist_m; });
-         amostraTodos.forEach(a=>{ a.dist_m=(dist[a.rua]!=null)?dist[a.rua]:null; }); }catch(_){}
+         semDist.forEach(a=>{ a.dist_m=(dist[a.rua]!=null)?dist[a.rua]:null; }); }catch(_){}
   }
-  if(amostraTodos.some(a=>a.dist_m!=null)) amostraTodos.sort((x,y)=>(x.dist_m==null)-(y.dist_m==null) || (x.dist_m||0)-(y.dist_m||0));
+  amostraTodos.sort((x,y)=>(!!y.nsp-!!x.nsp) || (x.dist_m==null)-(y.dist_m==null) || (x.dist_m||0)-(y.dist_m||0));
   amostraTodos.forEach(a=>{ a._k=kAn(a); a.excluido=_avForm.excl.has(a._k); });
   const amostra=amostraTodos.filter(a=>!a.excluido);
   const compsItbiAtivos=compsItbi.filter(c=>!c.excluido);
@@ -859,7 +880,8 @@ async function avalCalcular(opts){
   ]);
   // R$/m² dos anúncios: o motor manda a mediana de toda a página; se o corretor excluiu algum, recalcula pela amostra restante
   const mediana=v=>{ v=v.filter(x=>x>0).sort((a,b)=>a-b); return v.length?(v.length%2?v[(v.length-1)/2]:(v[v.length/2-1]+v[v.length/2])/2):null; };
-  const houveExclAn=amostraTodos.some(a=>a.excluido) || amostraTodos.some(a=>a.manual);
+  // com anúncio da Nova SP, excluído ou incluído, o R$/m² sai da amostra (e não da mediana da página inteira do portal)
+  const houveExclAn=amostraTodos.some(a=>a.excluido) || amostraTodos.some(a=>a.manual) || amostraTodos.some(a=>a.nsp);
   if(houveExclAn){
     const pa=amostra.filter(a=>a.tipo!=='Casa').map(a=>a.rs_m2), pc=amostra.filter(a=>a.tipo==='Casa').map(a=>a.rs_m2);   // anúncios incluídos pelo corretor entram aqui, como anúncios
     precos={...precos, rs_apto: pa.length?Math.round(mediana(pa)):null, rs_casa: pc.length?Math.round(mediana(pc)):null, n_apto:pa.length, n_casa:pc.length};
@@ -869,7 +891,7 @@ async function avalCalcular(opts){
   // MODO TESTE (motor de anúncios ao vivo ainda não hospedado): usa a mediana do R$/m²
   // dos fechamentos ITBI do bairro como preço de mercado, e avisa. Quando o motor entrar
   // no ar (AVAL_MOTOR_URL), o fluxo volta ao normal sem mexer aqui.
-  if(semMotor){
+  if(semMotor && !amostra.length){
     const rs=(compsItbi||[]).map(c=>Number(c.rs_m2)).filter(v=>v>0);
     if(rs.length || grupo==='terreno'){
       // sem anúncios: a conta usa só as vendas reais (em área útil, no método único); nada de "anúncio" derivado do ITBI
@@ -910,7 +932,7 @@ async function avalCalcular(opts){
   if(recalc) entorno=_avForm.cache.entorno;
   else { try{ entorno=await _avRpc('aval_entorno',{p_lat:_avPino.lat,p_lng:_avPino.lng}); if(Array.isArray(entorno)) entorno=entorno[0]; }catch(_){} }
   _avForm.entorno=entorno;
-  _avForm.cache={precos:(recalc?_avForm.cache.precos:precos), semMotor, compsItbi, entorno, refs:recalc?_avForm.cache.refs:undefined, fpInfo:recalc?_avForm.cache.fpInfo:undefined};
+  _avForm.cache={precos:(recalc?_avForm.cache.precos:precos), semMotor, compsItbi, nsp, entorno, refs:recalc?_avForm.cache.refs:undefined, fpInfo:recalc?_avForm.cache.fpInfo:undefined};
 
   // ── MÉTODO ÚNICO: macro (índices do bairro) aplicado no micro (este imóvel) ──
   const idxPF=_avIdxPedidoFechado(bairro);
@@ -920,7 +942,7 @@ async function avalCalcular(opts){
     const m={ idx_pedido_fechado:idxPF.idx, idx_origem:idxPF.origem, sub_itbi:AV_INDICES.itbi_subdeclaracao,
               rs_anuncio: rs_tipo||null, n_anuncio: ehcasa?(precos.n_casa||0):(precos.n_apto||0),
               rs_itbi_util: rsItbiUtil, n_itbi: compsItbiAtivos.filter(c=>c.rs_util>0).length, excluidos:nExcl,
-              incluidos: amostra.filter(a=>a.manual).length };
+              incluidos: amostra.filter(a=>a.manual).length, n_nsp: amostra.filter(a=>a.nsp).length };
     m.rs_anuncio_ajust = m.rs_anuncio ? Math.round(m.rs_anuncio*m.idx_pedido_fechado) : null;     // pedido → fechado esperado
     // VENDAS NO PRÓPRIO PRÉDIO (05/10/2026): com 3+ vendas registradas no mesmo endereço, o corretor pode usar o preço delas
     // (mesma planta) — a área útil estimada pelo cadastro erra em prédio novo (Aracoiaba 30: 64 m² úteis = 134 m² no cadastro)
@@ -954,7 +976,7 @@ async function avalCalcular(opts){
     valor_mercado:null, faixa_min:null, faixa_max:null, metodo:null,
     incorp_aplicavel:false, incorp_area_constr:null, incorp_lancamento_rs_m2:null,
     incorp_vgv:null, incorp_valor_terreno:null, incorp_ganho_pct:null,
-    comparaveis: JSON.stringify(amostraTodos.map(a=>({k:a._k,excluido:!!a.excluido,tipo:a.tipo,area:a.area,preco:a.preco,rs_m2:a.rs_m2,dorm:a.dorm,vaga:a.vaga,endereco:[a.rua,a.bairro].filter(Boolean).join(', '),aprox:!!a.aprox,url:a.url,dist_m:a.dist_m!=null?a.dist_m:null,manual:!!a.manual,por:a.por||null,lat:a.lat||null,lng:a.lng||null,origem:a.manual?('anúncio · incluído'+(a.por?' por '+a.por:'')):(a.lancamento?'lançamento':'anúncio')}))
+    comparaveis: JSON.stringify(amostraTodos.map(a=>({k:a._k,excluido:!!a.excluido,tipo:a.tipo,area:a.area,preco:a.preco,rs_m2:a.rs_m2,dorm:a.dorm,vaga:a.vaga,endereco:[a.rua,a.bairro].filter(Boolean).join(', '),aprox:!!a.aprox,url:a.manual?a.url:null,dist_m:a.dist_m!=null?a.dist_m:null,manual:!!a.manual,por:a.por||null,nsp:!!a.nsp,ref:a.ref||null,lat:a.lat||null,lng:a.lng||null,origem:a.manual?('anúncio · incluído'+(a.por?' por '+a.por:'')):a.nsp?('anúncio Nova SP'+(a.ref?' · '+a.ref:'')):(a.lancamento?'lançamento':'anúncio')}))
                   .concat(compsItbi.map(c=>({k:c._k,excluido:!!c.excluido,tipo:grupo==='com'?'Venda real (ref. residencial)':'Venda real',area:c.area_constr,area_util_est:Math.round(c.area_util_est||0),preco:c.valor,rs_m2:c.rs_m2,rs_util:c.rs_util,endereco:`${c.logradouro||''}${c.numero?', '+c.numero:''}`,data:c.data,lat:c.lat||null,lng:c.lng||null,origem:'Venda real '+(c.data||'')})))),
     lat:_avPino?_avPino.lat:null, lng:_avPino?_avPino.lng:null,
     entorno: Object.assign({}, entorno||{}, {iptu: _avIptuResumo(tipo)}),
@@ -1387,7 +1409,7 @@ function _avCompsTabela(comps, opts){
     <tbody>${comps.slice(0,24).map(c=>{ const itbi=/ITBI|Fechamento|Venda real/i.test(c.origem||c.tipo||''); const podeExcluir=editavel&&!!c.k; const ki=window._avCompKeys.push(c.k)-1;
       return `<tr style="border-top:1px solid #f1f5f9${c.excluido?';opacity:.45;text-decoration:line-through':''}">
         <td style="padding:4px 8px;white-space:nowrap">${itbi?'<span style="color:#047857">●</span> ':'<span style="color:#2563eb">●</span> '}${c.origem||c.tipo||'—'}</td>
-        <td style="padding:4px 8px">${c.url?`<a href="${c.url}" target="_blank" style="color:#2563eb">${c.endereco||'anúncio'}</a>`:(c.endereco||'—')}${c.dorm?` <small style="color:#94a3b8">${c.dorm} dorm${c.vaga?' · '+c.vaga+' vg':''}</small>`:''}${c.dist_m!=null?` <small style="color:#94a3b8">· a ${n0(c.dist_m)} m</small>`:''}</td>
+        <td style="padding:4px 8px">${c.url&&c.manual?`<a href="${c.url}" target="_blank" style="color:#2563eb">${c.endereco||'anúncio'}</a>`:(c.endereco||'—')}${c.dorm?` <small style="color:#94a3b8">${c.dorm} dorm${c.vaga?' · '+c.vaga+' vg':''}</small>`:''}${c.dist_m!=null?` <small style="color:#94a3b8">· a ${n0(c.dist_m)} m</small>`:''}</td>
         <td style="padding:4px 8px;text-align:right;white-space:nowrap">${itbi&&c.area_util_est?`≈ ${c.area_util_est} m² útil${c.area?`<br><small style="color:#94a3b8">${Math.round(c.area)} m² no cadastro</small>`:''}`:(c.area?Math.round(c.area)+' m²':'—')}</td>
         <td style="padding:4px 8px;text-align:right;white-space:nowrap">${_avR$(c.preco)}</td>
         <td style="padding:4px 8px;text-align:right;white-space:nowrap">${itbi&&c.rs_util?`${_avR$(c.rs_util)} útil${c.rs_m2?`<br><small style="color:#94a3b8">${_avR$(c.rs_m2)} no cadastro</small>`:''}`:_avR$(c.rs_m2)}</td>
@@ -1420,8 +1442,8 @@ function _avMetodoHTML(mu, x){
     <div style="font-size:.85em;color:#64748b;margin:4px 0 8px">${referencia
       ? (grupo==='com' ? 'Para imóvel comercial o valor adotado é terreno a preço de lote + construção (quadro abaixo); as vendas e anúncios por perto são residenciais e ficam só como conferência.'
                        : 'Para casa o valor adotado é terreno + construção (quadro abaixo); a comparação com vendas e anúncios de casas por perto fica como conferência.')
-      : `Anúncios do bairro, já descontada a negociação típica, e vendas reais registradas na Prefeitura perto do imóvel, em área útil. O preço por m² é a média ${nRef>1?'das duas':'da referência disponível'}.`}</div>
-    ${mu.rs_anuncio?li(`Anúncios do bairro: ${_avR$(mu.rs_anuncio)}/m² pedido × ${mu.idx_pedido_fechado}`, _avR$(mu.rs_anuncio_ajust)+'/m²', `${mu.n_anuncio} anúncios · desconto típico entre pedido e fechado ${/^média/i.test(mu.idx_origem||'')?'na média da Nova São Paulo':'em '+_avCap(String(mu.idx_origem||'').replace(/\s*\(NIDO\)/i,'').toLowerCase())}`):''}
+      : `Anúncios à venda perto do imóvel (primeiro os da Nova São Paulo), já descontada a negociação típica, e vendas reais registradas na Prefeitura perto do imóvel, em área útil. O preço por m² é a média ${nRef>1?'das duas':'da referência disponível'}.`}</div>
+    ${mu.rs_anuncio?li(`Anúncios perto do imóvel: ${_avR$(mu.rs_anuncio)}/m² pedido × ${mu.idx_pedido_fechado}`, _avR$(mu.rs_anuncio_ajust)+'/m²', `${mu.n_anuncio} anúncios${mu.n_nsp?` (${mu.n_nsp===mu.n_anuncio?'todos':mu.n_nsp} da Nova São Paulo)`:''} · desconto típico entre pedido e fechado ${/^média/i.test(mu.idx_origem||'')?'na média da Nova São Paulo':'em '+_avCap(String(mu.idx_origem||'').replace(/\s*\(NIDO\)/i,'').toLowerCase())}`):''}
     ${mu.rs_itbi_ajust?li(`Vendas reais (ITBI): ${_avR$(mu.rs_itbi_util)}/m² útil estimado × ${(1+mu.sub_itbi).toFixed(3)}`, _avR$(mu.rs_itbi_ajust)+'/m²', `${mu.n_itbi} vendas · ajuste de ${(mu.sub_itbi*100).toLocaleString('pt-BR',{maximumFractionDigits:1})}% porque o valor declarado na guia costuma ficar um pouco abaixo do negociado`):''}
     ${li(`<b>${referencia?'R$/m² de referência':'R$/m² adotado'}</b>${mu.divergencia!=null?` <small style="color:#94a3b8">(anúncios e vendas diferem ${mu.divergencia>0?'+':''}${mu.divergencia}%)</small>`:''}`, _avR$(mu.rs_final)+'/m²')}
     ${mu.aviso&&!referencia?`<div style="font-size:.85em;color:#b45309;margin-top:6px">⚠️ ${mu.aviso}</div>`:''}
@@ -1441,7 +1463,7 @@ async function _avDesenharMapaComps(comps, centro){
   if(_c){ L.circleMarker([_c.lat,_c.lng],{radius:18,color:'#dc2626',weight:2,fillColor:'#dc2626',fillOpacity:.15}).addTo(map);
     L.circleMarker([_c.lat,_c.lng],{radius:9,color:'#fff',weight:3,fillColor:'#dc2626',fillOpacity:1}).addTo(map).bindTooltip('Imóvel avaliado',{permanent:true,direction:'top',offset:[0,-10],className:'av-tt'}); b.push([_c.lat,_c.lng]); }
   pts.forEach(c=>{ const itbi=/ITBI|Fechamento|Venda real/i.test(c.origem||''); L.circleMarker([c.lat,c.lng],{radius:7,color:itbi?'#047857':'#2563eb',fillColor:itbi?'#34d399':'#60a5fa',fillOpacity:.8,weight:2}).addTo(map)
-      .bindPopup(`<b>${c.origem||''}</b><br>${c.endereco||''}${c.aprox?' <i>(posição aproximada na rua)</i>':''}<br>${c.area?Math.round(c.area)+' m² · ':''}${_avR$(c.preco)} · ${_avR$(c.rs_m2)}/m²${c.url?`<br><a href="${c.url}" target="_blank">abrir anúncio</a>`:''}`); b.push([c.lat,c.lng]); });
+      .bindPopup(`<b>${c.origem||''}</b><br>${c.endereco||''}${c.aprox?' <i>(posição aproximada na rua)</i>':''}<br>${c.area?Math.round(c.area)+' m² · ':''}${_avR$(c.preco)} · ${_avR$(c.rs_m2)}/m²${c.url&&c.manual?`<br><a href="${c.url}" target="_blank">abrir anúncio</a>`:''}`); b.push([c.lat,c.lng]); });
   if(b.length>1) map.fitBounds(b,{padding:[20,20]});
   setTimeout(()=>map.invalidateSize(),200);
 }

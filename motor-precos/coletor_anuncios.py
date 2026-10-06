@@ -48,7 +48,7 @@ def busca_quintoandar(regiao_slug, so_venda=True):
         vistos.add(iid)
         out.append({
             'portal': 'quintoandar',
-            'url': f'https://www.quintoandar.com.br/imovel/{iid}',
+            'url': f'https://www.quintoandar.com.br/imovel/{iid}/comprar',   # sem /comprar cai na página de aluguel (404)
             'preco': preco, 'area': area,
             'rs_m2': round(preco / area),
             'dorm': it.get('bedrooms'), 'banho': it.get('bathrooms'),
