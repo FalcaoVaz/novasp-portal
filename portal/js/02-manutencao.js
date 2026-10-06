@@ -683,8 +683,9 @@ function ehRepresentantePuro(){
 // ago/2026; antes qualquer usuario de vendas podia apagar/inserir.
 const GESTAO_CORRETORES_EXTRA = ['Camille','Thais'];
 // Quem importa/exclui a Planilha Mensal por EQUIPE: quem gerencia corretores
-// (admin, acesso total, gerentes de vendas, GESTAO_CORRETORES_EXTRA) + marketing.
-const PLANILHA_VENDAS_IMPORTADORES = ['Anderson','Gabriela','Thais'];
+// (admin, acesso total, gerentes de vendas, GESTAO_CORRETORES_EXTRA) + marketing
+// + as assistentes de vendas (Rodrigo liberou em 06/10/2026: cada uma grava a planilha da sua equipe).
+const PLANILHA_VENDAS_IMPORTADORES = ['Anderson','Gabriela','Thais','Camille','Leticia','Amanda','Karina','Jean'];
 function podeImportarPlanilhaVendas(){
   if (!CUR) return false;
   if (podeGerenciarCorretores()) return true;
