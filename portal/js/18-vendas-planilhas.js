@@ -154,12 +154,19 @@
   }
 
   /* ---------- Banco --------------------------------------------------- */
-  async function salvarImportacao(mesRef, arquivoNome, parsed) {
+  // Várias equipes por mês (Anderson, 06/10/2026): cada assistente grava a planilha da SUA equipe.
+  // Vale a importação mais recente de cada (mês, equipe); o sub-módulo junta todas.
+  // Requer a coluna equipe (sql/2026-10-06-vendas-planilhas-equipes.sql).
+  const normEquipe = s => norm(s).replace(/^EQUIPE\s+/, '');
+
+  async function salvarImportacao(mesRef, equipe, arquivoNome, parsed) {
+    equipe = normEquipe(equipe);
+    if (!equipe) throw new Error('Informe a equipe desta planilha.');
     const contagem = {};
     SUBMODULOS.forEach(s => { contagem[s.key] = parsed.linhas.filter(l => l.submodulo === s.key).length; });
     const cur = (typeof CUR !== 'undefined' && CUR) ? CUR : null;
     const [imp] = await api.post(T_IMP, {
-      mes_ref: mesRef + '-01', arquivo_nome: arquivoNome,
+      mes_ref: mesRef + '-01', equipe, arquivo_nome: arquivoNome,
       importado_por: cur ? cur.id : null, importado_por_nome: cur ? (cur.nome || null) : null,
       limites: parsed.limites, contagem, avisos: parsed.avisos,
     });
@@ -167,16 +174,20 @@
     // têm referência/tipo_anuncio; captação tem equipe/captacoes/placas). Normaliza tudo com null.
     // (bug achado pelo Anderson em 30/09: gravava a importação e recusava as linhas)
     const VAZIA = { linha_excel: null, referencia: null, corretor: null, equipe: null, tipo_anuncio: null, captacoes: null, placas: null };
-    if (parsed.linhas.length) await api.post(T_LIN, parsed.linhas.map(l => ({ ...VAZIA, ...l, importacao_id: imp.id, mes_ref: mesRef + '-01' })));
+    // abas de cota não têm coluna Equipe: herdam a equipe da planilha
+    if (parsed.linhas.length) await api.post(T_LIN, parsed.linhas.map(l => ({ ...VAZIA, ...l, equipe: l.equipe ? normEquipe(l.equipe) : equipe, importacao_id: imp.id, mes_ref: mesRef + '-01' })));
     return imp;
   }
-  // Última importação do mês = a que vale (histórico fica guardado)
-  async function ultimaImportacao(mesRef) {
-    const r = await api.get(T_IMP, `select=*&mes_ref=eq.${mesRef}-01&order=importado_em.desc&limit=1`);
-    return r && r[0];
+  // Importações que valem no mês: a mais recente de cada equipe (histórico fica guardado)
+  async function importacoesVigentes(mesRef) {
+    const r = await api.get(T_IMP, `select=*&mes_ref=eq.${mesRef}-01&order=importado_em.desc`) || [];
+    const porEquipe = new Map();
+    r.forEach(i => { const k = i.equipe || '(SEM EQUIPE)'; if (!porEquipe.has(k)) porEquipe.set(k, { ...i, equipe: k }); });
+    return [...porEquipe.values()].sort((a, b) => a.equipe.localeCompare(b.equipe));
   }
-  const linhasDe = (impId, key) =>
-    api.get(T_LIN, `select=*&importacao_id=eq.${impId}&submodulo=eq.${key}&order=linha_excel.asc`);
+  const linhasDe = (impIds, key) => impIds.length
+    ? api.get(T_LIN, `select=*&importacao_id=in.(${impIds.join(',')})&submodulo=eq.${key}&order=equipe.asc,linha_excel.asc`)
+    : Promise.resolve([]);
 
   /* ---------- UI: página de um sub-módulo ----------------------------- */
   function abrirPagina(key) {
@@ -185,11 +196,12 @@
     render(key, el);
   }
 
-  async function render(key, el, mesRef) {
+  async function render(key, el, mesRef, filtroEquipe) {
     const sm = SUBMODULOS.find(s => s.key === key);
     if (!sm) return;
     mesRef = mesRef || el.dataset.vpMes || mesAtual();
     el.dataset.vpMes = mesRef;
+    filtroEquipe = filtroEquipe || '';
     const pode = podeImportar();
     el.innerHTML = `
       <div class="ph">
@@ -201,7 +213,10 @@
           <label style="font-size:13px;color:var(--muted)">Mês de referência
             <input type="month" class="vp-mes" value="${mesRef}" style="margin-left:6px;padding:7px 10px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px">
           </label>
-          ${pode ? `<button class="btn btn-p vp-importar">📤 Importar planilha do mês</button>` : ''}
+          <label style="font-size:13px;color:var(--muted)">Equipe
+            <select class="vp-eq" style="margin-left:6px;padding:7px 10px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px"><option value="">Todas</option></select>
+          </label>
+          ${pode ? `<button class="btn btn-p vp-importar">📤 Importar planilha da equipe</button>` : ''}
         </div>
       </div>
       <div class="card vp-carimbo" style="padding:10px 14px;margin-bottom:14px;font-size:13px;border-left:4px solid var(--pri,#0088CC)">Carregando…</div>
@@ -210,35 +225,42 @@
     const btn = el.querySelector('.vp-importar');
     if (btn) btn.onclick = () => abrirImportacao(el.querySelector('.vp-mes').value, () => render(key, el));
 
-    let imp;
-    try { imp = await ultimaImportacao(mesRef); }
+    let imps;
+    try { imps = await importacoesVigentes(mesRef); }
     catch (e) { el.querySelector('.vp-carimbo').innerHTML = `<span style="color:#dc2626">Erro ao ler dados: ${esc(e.message)}</span><br><small>A tabela já foi criada no Supabase? (sql/2026-09-29-vendas-planilhas.sql)</small>`; return; }
 
     const carimbo = el.querySelector('.vp-carimbo');
     const linkHist = sm.historico ? ` · <a href="#" onclick="event.preventDefault();goTo('${sm.historico}')" style="color:var(--pri,#0088CC)">ver histórico (tabela antiga)</a>` : '';
-    if (!imp) {
+    if (!imps.length) {
       carimbo.style.color = 'var(--muted)';
-      carimbo.innerHTML = `Nenhuma planilha inserida para <strong>${fmtMes(mesRef)}</strong>.${pode ? ' Use "Importar planilha do mês".' : ''}${linkHist}`;
+      carimbo.innerHTML = `Nenhuma planilha inserida para <strong>${fmtMes(mesRef)}</strong>.${pode ? ' Use "Importar planilha da equipe".' : ''}${linkHist}`;
       el.querySelector('.vp-corpo').innerHTML = '';
       return;
     }
-    // >>> Data em que o Excel foi inserido no sistema (pedido do módulo)
-    carimbo.innerHTML = `Planilha inserida no sistema em <strong>${fmtData(imp.importado_em)}</strong>` +
-      (imp.importado_por_nome ? ` por ${esc(imp.importado_por_nome)}` : '') +
-      ` · arquivo <em>${esc(imp.arquivo_nome)}</em> · referência ${fmtMes(mesRef)}` + linkHist +
-      (pode ? ` · <a href="#" class="vp-excluir" style="color:#dc2626">excluir esta importação</a>` : '');
-    const ex = carimbo.querySelector('.vp-excluir');
-    if (ex) ex.onclick = async e => {
-      e.preventDefault();
-      if (!confirm(`Excluir a importação de ${fmtMes(mesRef)} (${imp.arquivo_nome})?\nTodas as 6 abas dessa importação saem do sistema. Se houver uma importação anterior do mesmo mês, ela volta a valer.`)) return;
-      try { await api.del(T_IMP, imp.id); aviso('Importação excluída.', 'ok'); render(key, el, mesRef); }
-      catch (err) { aviso('Erro ao excluir: ' + (err.message || err), 'err'); }
-    };
+    if (filtroEquipe && !imps.some(i => i.equipe === filtroEquipe)) filtroEquipe = '';
+    const sel = el.querySelector('.vp-eq');
+    imps.forEach(i => sel.insertAdjacentHTML('beforeend', `<option value="${esc(i.equipe)}" ${i.equipe === filtroEquipe ? 'selected' : ''}>${esc(i.equipe)}</option>`));
+    sel.onchange = e => render(key, el, mesRef, e.target.value);
 
+    // >>> Data em que cada Excel foi inserido no sistema (uma linha por equipe)
+    carimbo.innerHTML = `<strong>${imps.length} planilha${imps.length > 1 ? 's' : ''} em ${fmtMes(mesRef)}</strong>${linkHist}` +
+      `<ul style="margin:6px 0 0;padding-left:18px">` + imps.map((i, n) =>
+        `<li><b>Equipe ${esc(i.equipe)}</b>: inserida em <strong>${fmtData(i.importado_em)}</strong>` +
+        (i.importado_por_nome ? ` por ${esc(i.importado_por_nome)}` : '') + ` · <em>${esc(i.arquivo_nome)}</em>` +
+        (pode ? ` · <a href="#" class="vp-excluir" data-n="${n}" style="color:#dc2626">excluir</a>` : '') + `</li>`).join('') + `</ul>`;
+    carimbo.querySelectorAll('.vp-excluir').forEach(a => a.onclick = async e => {
+      e.preventDefault();
+      const imp = imps[+a.dataset.n];
+      if (!confirm(`Excluir a planilha da equipe ${imp.equipe} de ${fmtMes(mesRef)} (${imp.arquivo_nome})?\nAs 6 abas dessa planilha saem do sistema; as outras equipes continuam. Se a equipe tiver uma planilha anterior no mesmo mês, ela volta a valer.`)) return;
+      try { await api.del(T_IMP, imp.id); aviso('Importação excluída.', 'ok'); render(key, el, mesRef, filtroEquipe); }
+      catch (err) { aviso('Erro ao excluir: ' + (err.message || err), 'err'); }
+    });
+
+    const ativos = filtroEquipe ? imps.filter(i => i.equipe === filtroEquipe) : imps;
     let linhas;
-    try { linhas = await linhasDe(imp.id, key); }
+    try { linhas = await linhasDe(ativos.map(i => i.id), key); }
     catch (e) { el.querySelector('.vp-corpo').innerHTML = `<div class="card cb" style="color:#dc2626">Erro ao ler linhas: ${esc(e.message)}</div>`; return; }
-    el.querySelector('.vp-corpo').innerHTML = corpoHTML(sm, linhas || [], imp);
+    el.querySelector('.vp-corpo').innerHTML = corpoHTML(sm, linhas || [], ativos);
   }
 
   function kpi(rot, v, max, cor) {
@@ -251,23 +273,35 @@
   const nota = t => `<div style="font-size:12px;color:var(--muted);margin:6px 0 12px">${t}</div>`;
   const h3 = t => `<div style="font-weight:700;font-size:14px;margin:16px 0 8px">${t}</div>`;
 
-  function corpoHTML(sm, linhas, imp) {
-    if (!linhas.length) return `<div class="card cb" style="color:var(--muted)">A aba "${esc(sm.aba)}" veio vazia nesta planilha.</div>`;
+  function corpoHTML(sm, linhas, imps) {
+    const varias = imps.length > 1;
+    if (!linhas.length) return `<div class="card cb" style="color:var(--muted)">A aba "${esc(sm.aba)}" veio vazia ${varias ? 'nas planilhas' : 'nesta planilha'}.</div>`;
 
     if (sm.tipo === 'cota') {
-      const lim = (imp.limites || {})[sm.key];
-      const s = linhas.filter(l => l.tipo_anuncio === 'SUPER DESTAQUE').length;
-      const d = linhas.filter(l => l.tipo_anuncio === 'DESTAQUE').length;
+      const ehSuper = l => l.tipo_anuncio === 'SUPER DESTAQUE';
+      // Cada equipe traz o seu limite na própria planilha; o total é a soma das equipes
+      const porEq = imps.map(i => {
+        const ls = linhas.filter(l => l.importacao_id === i.id);
+        return { equipe: i.equipe, s: ls.filter(ehSuper).length, d: ls.filter(l => l.tipo_anuncio === 'DESTAQUE').length, lim: (i.limites || {})[sm.key] };
+      });
+      const temLim = porEq.every(e => e.lim);
+      const soma = f => porEq.reduce((a, e) => a + f(e), 0);
+      const s = soma(e => e.s), d = soma(e => e.d);
+      const limS = temLim ? soma(e => e.lim.super) : null, limD = temLim ? soma(e => e.lim.destaque) : null;
       const porCor = {};
-      linhas.forEach(l => { const c = l.corretor || '(sem corretor)'; porCor[c] = porCor[c] || { s: 0, d: 0 }; l.tipo_anuncio === 'SUPER DESTAQUE' ? porCor[c].s++ : porCor[c].d++; });
+      linhas.forEach(l => { const k = (l.corretor || '(sem corretor)') + '|' + (l.equipe || ''); porCor[k] = porCor[k] || { s: 0, d: 0 }; ehSuper(l) ? porCor[k].s++ : porCor[k].d++; });
       const resumo = Object.entries(porCor).sort((a, b) => (b[1].s + b[1].d) - (a[1].s + a[1].d));
-      return `<div class="sg" style="grid-template-columns:repeat(3,1fr)">${kpi('Super Destaque', s, lim && lim.super, '#3b82f6')}${kpi('Destaque', d, lim && lim.destaque, '#10b981')}${kpi('Corretores', resumo.length, null, '#8b5cf6')}</div>
-        ${lim ? nota(`Limite lido da própria planilha: "${esc(lim.fonte)}"`) : nota('A planilha não trouxe o texto "Quantia das Cotas" — sem limite para comparar.')}
+      const cel = (v, m) => `<td style="text-align:center;${m != null && v > m ? 'color:#dc2626;font-weight:700' : ''}">${v}${m != null ? ` / ${m}` : ''}</td>`;
+      return `<div class="sg" style="grid-template-columns:repeat(3,1fr)">${kpi('Super Destaque', s, limS, '#3b82f6')}${kpi('Destaque', d, limD, '#10b981')}${kpi('Corretores', resumo.length, null, '#8b5cf6')}</div>
+        ${varias
+          ? nota(temLim ? 'Total = soma das equipes; cada equipe tem o limite lido da sua própria planilha.' : 'Total = soma das equipes. Alguma planilha não trouxe o texto "Quantia das Cotas", então o total fica sem limite.') +
+            h3('Por equipe') + tabela(['Equipe', 'Super Destaque', 'Destaque'], porEq, e => `<tr><td style="font-weight:600">${esc(e.equipe)}</td>${cel(e.s, e.lim && e.lim.super)}${cel(e.d, e.lim && e.lim.destaque)}</tr>`)
+          : (porEq[0].lim ? nota(`Limite lido da própria planilha: "${esc(porEq[0].lim.fonte)}"`) : nota('A planilha não trouxe o texto "Quantia das Cotas" — sem limite para comparar.'))}
         ${sm.extra ? nota(`Critério: mínimo de ${META_CAPTACAO} captações ativas no mês (não contam recaptações/recadastros nem captações fora da área).`) : ''}
         ${h3('Por corretor')}
-        ${tabela(['Corretor', 'Super Destaque', 'Destaque', 'Total'], resumo, ([c, v]) => `<tr><td style="font-weight:600">${esc(c)}</td><td style="text-align:center">${v.s}</td><td style="text-align:center">${v.d}</td><td style="text-align:center;font-weight:700">${v.s + v.d}</td></tr>`)}
+        ${tabela(['Corretor', ...(varias ? ['Equipe'] : []), 'Super Destaque', 'Destaque', 'Total'], resumo, ([k, v]) => { const [c, e] = k.split('|'); return `<tr><td style="font-weight:600">${esc(c)}</td>${varias ? `<td>${esc(e)}</td>` : ''}<td style="text-align:center">${v.s}</td><td style="text-align:center">${v.d}</td><td style="text-align:center;font-weight:700">${v.s + v.d}</td></tr>`; })}
         ${h3('Anúncios lançados')}
-        ${tabela(['Referência', 'Corretor', 'Tipo de Anúncio'], linhas, l => `<tr><td style="font-family:monospace">${esc(l.referencia) || '<span style="color:#dc2626">—</span>'}</td><td>${esc(l.corretor)}</td><td>${esc(l.tipo_anuncio)}</td></tr>`)}`;
+        ${tabela(['Referência', 'Corretor', ...(varias ? ['Equipe'] : []), 'Tipo de Anúncio'], linhas, l => `<tr><td style="font-family:monospace">${esc(l.referencia) || '<span style="color:#dc2626">—</span>'}</td><td>${esc(l.corretor)}</td>${varias ? `<td>${esc(l.equipe)}</td>` : ''}<td>${esc(l.tipo_anuncio)}</td></tr>`)}`;
     }
     if (sm.tipo === 'capt') {
       const tc = linhas.reduce((a, l) => a + (l.captacoes || 0), 0), tp = linhas.reduce((a, l) => a + (l.placas || 0), 0);
@@ -288,21 +322,40 @@
     const ov = document.createElement('div');
     ov.className = 'mo open'; ov.id = 'm-vp-import';
     ov.innerHTML = `<div class="modal" style="width:720px;max-width:96vw">
-      <div class="mh"><div class="mt">📤 Importar planilha mensal por equipe</div><button class="mc vp-cancel">×</button></div>
+      <div class="mh"><div class="mt">📤 Importar planilha mensal da equipe</div><button class="mc vp-cancel">×</button></div>
       <div class="mb">
         <div class="flex" style="gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
           <label style="font-size:13px;color:var(--muted)">Mês de referência<br><input type="month" class="vp-m" value="${mesRef || mesAtual()}" style="margin-top:4px;padding:7px 10px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px"></label>
           <label style="font-size:13px;color:var(--muted)">Arquivo (modelo oficial .xlsx)<br><input type="file" accept=".xlsx,.xls" class="vp-f" style="margin-top:4px;font-size:13px"></label>
+          <label style="font-size:13px;color:var(--muted)">Equipe desta planilha<br><input type="text" class="vp-equipe" list="vp-equipes" placeholder="ex.: Felippe" autocomplete="off" style="margin-top:4px;padding:7px 10px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px;width:160px"><datalist id="vp-equipes"></datalist></label>
         </div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">As 6 abas do modelo viram os 6 sub-módulos. Reimportar o mesmo mês não apaga nada: grava uma importação nova, que passa a valer.</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">As 6 abas do modelo viram os 6 sub-módulos. Cada equipe grava a sua planilha e a tela junta todas. Reenviar a planilha de uma equipe substitui só a dela (a anterior fica no histórico).</div>
+        <div class="vp-ja"></div>
         <div class="vp-prev"></div>
       </div>
       <div class="mf"><button class="btn btn-o vp-cancel">Cancelar</button><button class="btn btn-p vp-ok" disabled>Gravar no sistema</button></div>
     </div>`;
     document.body.appendChild(ov);
     const $ = s => ov.querySelector(s);
-    let parsed = null, nomeArq = '';
+    let parsed = null, nomeArq = '', vigentes = [];
     ov.querySelectorAll('.vp-cancel').forEach(b => b.onclick = () => ov.remove());
+
+    const podeGravar = () => !!parsed && parsed.linhas.length > 0 && parsed.bloqueios.length === 0 && !!normEquipe($('.vp-equipe').value);
+    // Mostra as equipes que já têm planilha no mês e avisa quando a digitada vai ser substituída
+    const atualizarJa = () => {
+      const eq = normEquipe($('.vp-equipe').value), mesma = vigentes.find(i => i.equipe === eq);
+      $('.vp-ja').innerHTML = (vigentes.length ? nota(`Já inseridas em ${fmtMes($('.vp-m').value)}: ${vigentes.map(i => esc(i.equipe)).join(', ')}.`) : '') +
+        (mesma ? `<p style="color:#b45309;font-size:13px;margin:0 0 10px">A equipe ${esc(eq)} já tem planilha neste mês (${fmtData(mesma.importado_em)}${mesma.importado_por_nome ? ' por ' + esc(mesma.importado_por_nome) : ''}). Gravar substitui só a dela; as outras equipes continuam.</p>` : '');
+      $('.vp-ok').disabled = !podeGravar();
+    };
+    const carregarVigentes = async () => {
+      try { vigentes = $('.vp-m').value ? await importacoesVigentes($('.vp-m').value) : []; } catch (e) { vigentes = []; }
+      $('#vp-equipes').innerHTML = vigentes.map(i => `<option value="${esc(i.equipe)}">`).join('');
+      atualizarJa();
+    };
+    $('.vp-m').onchange = carregarVigentes;
+    $('.vp-equipe').oninput = atualizarJa;
+    carregarVigentes();
 
     $('.vp-f').onchange = async e => {
       const f = e.target.files[0]; if (!f) return;
@@ -311,22 +364,27 @@
         const XLSX = await carregarSheetJS();
         const wb = XLSX.read(await f.arrayBuffer(), { type: 'array' });
         parsed = parseWorkbook(wb, XLSX);
+        // Sugere a equipe pela coluna Equipe das abas CAPTAÇÃO E PLACAS / VENDIDOS SELEÇÃO
+        const eqs = [...new Set(parsed.linhas.map(l => l.equipe).filter(Boolean).map(normEquipe))];
+        if (!$('.vp-equipe').value && eqs.length === 1) $('.vp-equipe').value = eqs[0];
+        if (eqs.length > 1) parsed.avisos.unshift(`A planilha tem mais de uma equipe na coluna Equipe (${eqs.join(', ')}). Confira o campo "Equipe desta planilha".`);
         $('.vp-prev').innerHTML = previaHTML(parsed);
-        $('.vp-ok').disabled = parsed.linhas.length === 0 || parsed.bloqueios.length > 0;
+        atualizarJa();
       } catch (err) { $('.vp-prev').innerHTML = `<p style="color:#dc2626">${esc(err.message)}</p>`; }
     };
 
     $('.vp-ok').onclick = async () => {
-      const m = $('.vp-m').value;
+      const m = $('.vp-m').value, eq = normEquipe($('.vp-equipe').value);
       if (!m) { aviso('Escolha o mês de referência.', 'err'); return; }
+      if (!eq) { aviso('Informe a equipe desta planilha.', 'err'); return; }
       $('.vp-ok').disabled = true; $('.vp-ok').textContent = 'Gravando…';
       try {
-        await salvarImportacao(m, nomeArq, parsed);
-        aviso(`✅ Planilha de ${fmtMes(m)} gravada: ${parsed.linhas.length} linhas.`, 'ok');
+        await salvarImportacao(m, eq, nomeArq, parsed);
+        aviso(`✅ Planilha da equipe ${eq} (${fmtMes(m)}) gravada: ${parsed.linhas.length} linhas.`, 'ok');
         ov.remove(); aoConcluir && aoConcluir();
       } catch (err) {
         $('.vp-prev').insertAdjacentHTML('beforeend', `<p style="color:#dc2626">Erro ao gravar: ${esc(err.message)}</p>`);
-        $('.vp-ok').textContent = 'Gravar no sistema'; $('.vp-ok').disabled = false;
+        $('.vp-ok').textContent = 'Gravar no sistema'; $('.vp-ok').disabled = !podeGravar();
       }
     };
   }
@@ -344,7 +402,7 @@
       (parsed.linhas.length === 0 ? `<p style="color:#dc2626;margin-top:6px">Nenhuma linha preenchida — nada para gravar.</p>` : '');
   }
 
-  const mod = { SUBMODULOS, parseWorkbook, render, abrirPagina, abrirImportacao, ultimaImportacao, linhasDe };
+  const mod = { SUBMODULOS, parseWorkbook, render, abrirPagina, abrirImportacao, importacoesVigentes, linhasDe };
   if (typeof window !== 'undefined') window.VendasPlanilhas = mod;
   if (typeof module !== 'undefined') module.exports = mod;   // para teste em Node
 })();
