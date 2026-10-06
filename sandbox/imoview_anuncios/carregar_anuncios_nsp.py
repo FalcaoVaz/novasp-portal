@@ -35,10 +35,32 @@ def chamar(pagina):
         try:
             with urllib.request.urlopen(req, timeout=60) as r:
                 return json.loads(r.read().decode('utf-8', 'replace'))
+        except urllib.error.HTTPError as e:          # a API devolve o motivo no corpo (ex.: chave inválida)
+            try:
+                return json.loads(e.read().decode('utf-8', 'replace'))
+            except ValueError:
+                return {'status': e.code, 'resposta': {}}
         except (urllib.error.URLError, TimeoutError) as e:
             if tentativa == 2:
                 raise
             time.sleep(3)
+
+
+def corpo(r):
+    """A API devolve {quantidade, lista, ...} direto (os arquivos da sonda guardavam dentro de {status, resposta})."""
+    return (r.get('resposta') if isinstance(r, dict) and 'resposta' in r else r) or {}
+
+
+def links_do_site():
+    """ref (BI33265, MO19404…) → URL da ficha no site, pelo sitemap. Só quem está publicado ganha link."""
+    try:
+        req = urllib.request.Request('https://www.novasaopaulo.com.br/sitemap-properties.xml', headers={'User-Agent': 'Mozilla/5.0 (novasp-avaliacao)'})
+        with urllib.request.urlopen(req, timeout=60) as r:
+            xml = r.read().decode('utf-8', 'replace')
+    except Exception as e:
+        print(f'Aviso: não li o sitemap do site ({e}); os anúncios ficam sem link desta vez.')
+        return {}
+    return {m.group(2).upper(): m.group(1) for m in re.finditer(r'<loc>(https://www\.novasaopaulo\.com\.br/imovel/[^<]*/([A-Za-z]{2}\d+))</loc>', xml)}
 
 
 def sem_acento(s):
@@ -96,13 +118,15 @@ def linha(it):
 def main():
     gravar = '--gravar' in sys.argv
     primeira = chamar(1)
-    resp = primeira.get('resposta') or {}
+    resp = corpo(primeira)
     total = int(resp.get('quantidade') or 0)
+    if not total:
+        sys.exit('A API não devolveu imóveis. Resposta do Imoview: ' + json.dumps(primeira, ensure_ascii=False)[:300])
     paginas = (total + POR_PAGINA - 1) // POR_PAGINA
     print(f'Imoview: {total} imóveis disponíveis à venda · {paginas} páginas')
     brutos, vistos = list(resp.get('lista') or []), set()
     for p in range(2, paginas + 1):
-        r = (chamar(p).get('resposta') or {}).get('lista') or []
+        r = corpo(chamar(p)).get('lista') or []
         brutos.extend(r)
         if p % 50 == 0:
             print(f'  página {p}/{paginas} · {len(brutos)} lidos')
@@ -115,7 +139,10 @@ def main():
         l = linha(it)
         if l:
             linhas.append(l)
-    print(f'Lidos {len(vistos)} · com coordenada, área e valor: {len(linhas)}')
+    links = links_do_site()
+    for l in linhas:
+        l['url'] = links.get(str(l['ref'] or '').upper())
+    print(f'Lidos {len(vistos)} · com coordenada, área e valor: {len(linhas)} · com ficha no site: {sum(1 for l in linhas if l["url"])}')
     print('Por grupo:', dict(Counter(l['grupo'] for l in linhas)))
     print('Bairros com mais anúncios:', Counter(l['bairro'] for l in linhas).most_common(8))
     if not gravar:
@@ -129,9 +156,9 @@ def main():
     with con, con.cursor() as cur:
         cur.execute('delete from aval_anuncios_nsp')
         psycopg2.extras.execute_values(cur, """
-            insert into aval_anuncios_nsp (codigo, ref, tipo, grupo, bairro, rua, area, terreno, valor, dorm, vaga, lat, lng, alterado_em)
+            insert into aval_anuncios_nsp (codigo, ref, tipo, grupo, bairro, rua, area, terreno, valor, dorm, vaga, lat, lng, alterado_em, url)
             values %s""", [(l['codigo'], l['ref'], l['tipo'], l['grupo'], l['bairro'], l['rua'], l['area'], l['terreno'], l['valor'],
-                            l['dorm'], l['vaga'], l['lat'], l['lng'], l['alterado_em']) for l in linhas], page_size=500)
+                            l['dorm'], l['vaga'], l['lat'], l['lng'], l['alterado_em'], l['url']) for l in linhas], page_size=500)
         cur.execute('select count(*), max(carregado_em) from aval_anuncios_nsp')
         n, quando = cur.fetchone()
     print(f'Gravado: {n} anúncios em aval_anuncios_nsp ({quando:%d/%m/%Y %H:%M}).')

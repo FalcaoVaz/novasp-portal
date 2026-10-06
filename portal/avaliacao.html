@@ -208,7 +208,7 @@ function render(x){
       <table><thead><tr><th>Origem</th><th>Endereço</th><th class="r">Área</th><th class="r">Preço</th><th class="r">R$/m²</th></tr></thead>
       <tbody>${usados.map(c=>{ const itbi=/ITBI|Fechamento|Venda real/i.test(c.origem||c.tipo||''); const end=itbi?(c.endereco||'—'):String(c.endereco||'').replace(/^Anúncio (incluído pelo corretor|no próprio prédio \(achado pelo parecer\))(, por [^,]*)?/,'Anúncio no mesmo prédio ou entorno'); return `<tr>
         <td>${itbi?'<b style="color:#047857">Venda real</b>':'Anúncio'}${c.nsp?'<br><span class="sub">carteira Nova SP</span>':''}${c.data?'<br><span class="sub">'+String(c.data).slice(0,7)+'</span>':''}</td>
-        <td>${end||'—'}${c.dorm?` <span class="sub">${c.dorm} dorm${c.vaga?' · '+c.vaga+' vg':''}</span>`:''}</td>
+        <td>${c.nsp&&c.url&&/^https:\/\/www\.novasaopaulo\.com\.br\//.test(c.url)?`<a href="${c.url}" target="_blank" rel="noopener">${end||'ver anúncio'}</a>`:(end||'—')}${c.dorm?` <span class="sub">${c.dorm} dorm${c.vaga?' · '+c.vaga+' vg':''}</span>`:''}</td>
         <td class="r">${itbi&&c.area_util_est?`≈ ${c.area_util_est} m² útil${c.area?`<br><span class="sub">${Math.round(c.area)} m² no cadastro</span>`:''}`:(c.area?Math.round(c.area)+' m²':'—')}</td>
         <td class="r">${R$(c.preco)}</td>
         <td class="r">${itbi&&c.rs_util?`${R$(c.rs_util)} útil${c.rs_m2?`<br><span class="sub">${R$(c.rs_m2)} no cadastro</span>`:''}`:R$(c.rs_m2)}</td></tr>`; }).join('')}</tbody></table>
