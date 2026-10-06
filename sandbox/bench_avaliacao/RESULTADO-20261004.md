@@ -57,3 +57,15 @@ Busca no bairro do mapa + distrito oficial, distância de cada rua ao pino (`ava
 | 30 vendidos NSP — dentro de 20% | 60% | 50% |
 | 70 anúncios — desvio mediano da marca de +7% | 23% | 22% |
 Adotado só para a TELA: cada anúncio mostra "a X m" do imóvel e a lista vem em ordem de distância; o cálculo não muda.
+
+## 5. Anúncios da Nova SP (Imoview) primeiro, QuintoAndar completando — 06/10/2026 (adotado, v94)
+Mesmos 50 negócios fechados pela NSP. Cada caso roda sem o próprio anúncio (mesma ref). Os nossos são os mais próximos
+num raio de 2 km, do mesmo grupo (apto/casa), com repetidos removidos (mesma rua, área e valor). Em média entraram 11,5 dos nossos por caso.
+| | erro abs mediano | viés | ≤10% | ≤20% |
+|---|---|---|---|---|
+| Apartamentos — só QuintoAndar (antes) | 18% | +14% | 23% | 57% |
+| **Apartamentos — Nova SP primeiro** | **12%** | **+1%** | **33%** | **70%** |
+| Só o lado dos anúncios (apto, × 0,952) | 22% → 14% | +14% → +3% | | |
+| Casas (valor = terreno + construção; anúncios só de referência) | 16% → 16% | +11% → +11% | 30% | 55% |
+Leitura: o desconto pedido→fechado foi medido nos NOSSOS anúncios, então usar os nossos casa a escala; o QuintoAndar
+puxava o valor para cima (+14%). Ressalva: se um imóvel vendido continuar como "disponível" no Imoview com outro código, ele pode vazar para a conta.

@@ -853,7 +853,9 @@ async function avalCalcular(opts){
   const geocodar=async q=>{ try{ const r=await _avRpc('aval_geocode',{p_q:q}); const h=Array.isArray(r)?r[0]:null; return h?{lat:h.lat,lng:h.lng}:null; }catch(_){ return null; } };
   // anúncios do MESMO tipo do imóvel (o motor manda casas primeiro; apartamento não é comparável de casa e vice-versa)
   // primeiro os da Nova SP (mais perto primeiro), depois o QuintoAndar completa até 12
-  const amostraNsp=(nsp||[]).map(n=>({tipo:_ehCasa(tipo)?'Casa':'Apartamento', area:Number(n.area), preco:Number(n.valor), rs_m2:Number(n.rs_m2),
+  // o mesmo imóvel pode estar na carteira com mais de um código (BI/JA/MO, das antigas unidades): conta uma vez só
+  const vistoNsp=new Set();
+  const amostraNsp=(nsp||[]).filter(n=>{ const k=_avNorm(n.rua||'')+'|'+Math.round(Number(n.area))+'|'+Math.round(Number(n.valor)); if(vistoNsp.has(k)) return false; vistoNsp.add(k); return true; }).map(n=>({tipo:_ehCasa(tipo)?'Casa':'Apartamento', area:Number(n.area), preco:Number(n.valor), rs_m2:Number(n.rs_m2),
     dorm:n.dorm||null, vaga:n.vaga||null, rua:n.rua||'', bairro:/[a-zà-ú]/.test(n.bairro||'')?n.bairro:_avCap(n.bairro||''), ref:n.ref||null, url:n.url||null, nsp:true, dist_m:n.dist_m!=null?Number(n.dist_m):null}));
   const amostraTodos=[...amostraNsp, ...(precos.amostra||[]).filter(a=>_ehCasa(tipo)?a.tipo==='Casa':a.tipo!=='Casa')].slice(0,12);
   // anúncios INCLUÍDOS pelo corretor (link obrigatório, autoria registrada, no máx. AV_MANUAL_MAX) — 05/10/2026
