@@ -1,0 +1,30 @@
+# Anúncios da Nova SP para a Avaliação de Imóveis (Rodrigo, 06/10/2026).
+# Toda segunda às 7h (Brasília) baixa do Imoview os imóveis à venda, troca o conteúdo de aval_anuncios_nsp
+# e guarda a planilha da semana no Skybox. Roda na nuvem do GitHub: não depende de Mac ligado.
+# Segredos (Settings → Secrets and variables → Actions): IMOVIEW_KEY, NOVASP_DSN_ANUNCIOS (usuário carga_anuncios_nsp,
+# que só mexe nesta tabela) e SKYBOX_TOKEN (opcional). Para rodar fora de hora: aba Actions → "Run workflow".
+name: Anúncios da Nova SP (Imoview → avaliação)
+on:
+  schedule:
+    - cron: '0 10 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  carga:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: sandbox/imoview_anuncios
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install psycopg2-binary==2.9.10
+      - name: Carga
+        run: python3 sandbox/imoview_anuncios/carregar_anuncios_nsp.py --gravar
+        env:
+          IMOVIEW_KEY: ${{ secrets.IMOVIEW_KEY }}
+          NOVASP_DSN: ${{ secrets.NOVASP_DSN_ANUNCIOS }}
+          SKYBOX_TOKEN: ${{ secrets.SKYBOX_TOKEN }}

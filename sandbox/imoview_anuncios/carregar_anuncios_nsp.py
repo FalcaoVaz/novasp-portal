@@ -5,19 +5,21 @@ Lê os imóveis DISPONÍVEIS À VENDA no Imoview (Imovel/RetornarImoveisDisponiv
 grava em aval_anuncios_nsp (sql/2026-10-06-aval-anuncios-nsp.sql) só o que a avaliação usa: tipo,
 bairro, rua, área, valor, dormitórios, vagas e coordenadas. Proprietário, número e complemento NÃO saem daqui.
 
-Uso (Rodrigo, no terminal dele):
+Roda sozinho toda segunda às 7h no GitHub (.github/workflows/anuncios-nsp.yml), sem depender de nenhum Mac.
+À mão:
     python3 carregar_anuncios_nsp.py            # só baixa e mostra os totais (não grava)
     python3 carregar_anuncios_nsp.py --gravar   # baixa e troca o conteúdo da tabela (uma transação)
 
-Chave do Imoview: variável IMOVIEW_KEY ou Chaveiro do macOS (serviço imoview, conta nsp), igual à sonda do site.
-Banco: ~/.config/novasp/prod-pooler.dsn.
+Chave do Imoview: variável IMOVIEW_KEY ou, no Mac, Chaveiro (serviço imoview, conta nsp).
+Banco: variável NOVASP_DSN (no GitHub, o usuário carga_anuncios_nsp, que só mexe nesta tabela) ou ~/.config/novasp/prod-pooler.dsn.
+Skybox: com SKYBOX_TOKEN (link público da pasta), guarda uma planilha por semana em historico-anuncios-nsp/ (histórico de preço pedido).
 Trava: se vierem menos de 70% dos anúncios que a API diz ter, não grava (a tabela antiga fica).
 """
-import json, os, re, sys, time, unicodedata, urllib.request, urllib.error, subprocess
+import base64, csv, io, json, os, re, shutil, sys, time, unicodedata, urllib.parse, urllib.request, urllib.error, subprocess
 from collections import Counter
 
 KEY = os.environ.get('IMOVIEW_KEY', '').strip()
-if not KEY:
+if not KEY and shutil.which('security'):
     KEY = subprocess.run(['security', 'find-generic-password', '-s', 'imoview', '-a', 'nsp', '-w'],
                          capture_output=True, text=True).stdout.strip()
 if not KEY:
@@ -115,6 +117,33 @@ def linha(it):
             'alterado_em': data_br(it.get('datahoraultimaalteracao'))}
 
 
+def guarda_no_skybox(linhas):
+    """Planilha da semana na pasta pública do Skybox (Nextcloud), para o histórico de preço pedido por bairro.
+    Só os campos da avaliação: sem proprietário, número ou complemento."""
+    token = os.environ['SKYBOX_TOKEN'].strip()
+    pasta = os.environ.get('SKYBOX_PASTA', 'arquivos fotos nido').strip()
+    base = 'https://skybox.skymail.net.br/public.php/webdav/' + urllib.parse.quote(pasta)
+    auth = 'Basic ' + base64.b64encode((token + ':').encode()).decode()
+    def dav(metodo, caminho, dados=None):
+        req = urllib.request.Request(base + '/' + urllib.parse.quote(caminho), data=dados, method=metodo,
+                                     headers={'Authorization': auth, 'User-Agent': 'NovaSP-anuncios'})
+        try:
+            with urllib.request.urlopen(req, timeout=120) as r:
+                return r.status
+        except urllib.error.HTTPError as e:
+            return e.code
+    buf = io.StringIO()
+    cols = ['ref', 'tipo', 'grupo', 'bairro', 'rua', 'area', 'terreno', 'valor', 'dorm', 'vaga', 'lat', 'lng', 'alterado_em', 'url']
+    w = csv.writer(buf, delimiter=';')
+    w.writerow(['data'] + cols)
+    hoje = time.strftime('%Y-%m-%d')
+    for l in linhas:
+        w.writerow([hoje] + [l.get(c) if l.get(c) is not None else '' for c in cols])
+    dav('MKCOL', 'historico-anuncios-nsp')                       # já existe = 405, tudo bem
+    st = dav('PUT', f'historico-anuncios-nsp/anuncios-nsp-{hoje}.csv', buf.getvalue().encode('utf-8-sig'))
+    print(f'Skybox: historico-anuncios-nsp/anuncios-nsp-{hoje}.csv ' + ('gravado' if st in (200, 201, 204) else f'FALHOU (HTTP {st})'))
+
+
 def main():
     gravar = '--gravar' in sys.argv
     primeira = chamar(1)
@@ -152,7 +181,8 @@ def main():
         sys.exit(f'NÃO GRAVEI: vieram {len(vistos)} de {total}. A tabela antiga continua.')
 
     import psycopg2, psycopg2.extras
-    con = psycopg2.connect(open(os.path.expanduser('~/.config/novasp/prod-pooler.dsn')).read().strip())
+    dsn = os.environ.get('NOVASP_DSN', '').strip() or open(os.path.expanduser('~/.config/novasp/prod-pooler.dsn')).read().strip()
+    con = psycopg2.connect(dsn)
     with con, con.cursor() as cur:
         cur.execute('delete from aval_anuncios_nsp')
         psycopg2.extras.execute_values(cur, """
@@ -162,6 +192,8 @@ def main():
         cur.execute('select count(*), max(carregado_em) from aval_anuncios_nsp')
         n, quando = cur.fetchone()
     print(f'Gravado: {n} anúncios em aval_anuncios_nsp ({quando:%d/%m/%Y %H:%M}).')
+    if os.environ.get('SKYBOX_TOKEN', '').strip():
+        guarda_no_skybox(linhas)
 
 
 if __name__ == '__main__':
