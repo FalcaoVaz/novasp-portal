@@ -26,6 +26,12 @@ def main():
     m = re.search(r"^TOKEN\s*=\s*'([^']+)'", open(fotos).read(), re.M) if os.path.exists(fotos) else None
     token_skybox = m.group(1) if m else ''
 
+    if '--so-imoview' in sys.argv:   # só copia a chave do Imoview (sem mexer no banco), sem perguntas
+        copia(chave)
+        subprocess.run(['open', REPO_SECRETS.rsplit('/new', 1)[0]])
+        print(f'✓ Chave do Imoview copiada ({len(chave)} caracteres). No GitHub, clique no lápis de IMOVIEW_KEY,')
+        print('  apague o valor antigo, cole (Cmd+V) e clique em "Update secret". Não copie mais nada antes de colar.')
+        return
     import psycopg2
     from psycopg2 import sql
     senha = secrets.token_hex(24)
