@@ -549,6 +549,9 @@ function menuVendasItens(){
   if (typeof podeAcessarForumVendas === 'function' && podeAcessarForumVendas()) {
     itens.push({ic:'users', lb:'Fórum Representantes', pg:'vnd-forum'});
   }
+  if (typeof ehParticipantePiloto === 'function' && ehParticipantePiloto()) {
+    itens.push({ic:'scale', lb:'Pré-análise (piloto)', pg:'vnd-preanalise'});
+  }
   return itens;
 }
 
@@ -686,6 +689,16 @@ const GESTAO_CORRETORES_EXTRA = ['Camille','Thais'];
 // (admin, acesso total, gerentes de vendas, GESTAO_CORRETORES_EXTRA) + marketing
 // + as assistentes de vendas (Rodrigo liberou em 06/10/2026: cada uma grava a planilha da sua equipe).
 const PLANILHA_VENDAS_IMPORTADORES = ['Anderson','Gabriela','Thais','Camille','Leticia','Amanda','Karina','Jean'];
+// Piloto Claude (16/09 a 14/10/2026): os 8 participantes, por e-mail (mesma lista do sandbox, 02-piloto-acessos.sql).
+// Abre o card "Pré-análise de certidões e matrícula" (frente da Renata), ainda em construção.
+const PILOTO_CLAUDE_EMAILS = ['rodrigo@novasaopaulo.com.br','anderson.lucchi@novasaopaulo.com.br','cpd@novasaopaulo.com.br',
+  'thais.barbosa@novasaopaulo.com.br','financeiro@novasaopaulo.com.br','ti@novasaopaulo.com.br',
+  'fernanda.araujo@novasaopaulo.com.br','renata@novasaopaulo.com.br'];
+function ehParticipantePiloto(){
+  if (!CUR) return false;
+  if (CUR.admin) return true;
+  return PILOTO_CLAUDE_EMAILS.includes(String(CUR.email||'').trim().toLowerCase());
+}
 function podeImportarPlanilhaVendas(){
   if (!CUR) return false;
   if (podeGerenciarCorretores()) return true;
@@ -831,6 +844,7 @@ const TITLES={
   'vp-captacao_placas':'Captação e Placas Mensal','vp-vendidos_selecao':'Vendidos Seleção',
   'vnd-foto-disp':'Minha Disponibilidade',
   'vnd-forum':'Fórum dos Representantes',
+  'vnd-preanalise':'Pré-análise de certidões e matrícula',
   tarefas:'Tarefas',agenda:'Agenda',horarios:'Horários Livres',
   'ativ-semanais':'Atividades Semanais',
   'pauta-terca':'Pauta Mkt','pauta-quarta':'Pauta Adm','pauta-juridico':'Pauta Jurídico',

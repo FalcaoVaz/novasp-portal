@@ -416,6 +416,13 @@
             <div class="pcd">Pauta trimestral — propor tópicos, comentar e priorizar. Restrito aos 5 representantes + gerentes.</div>
             <div class="pcb">Disponível</div>
           </div>
+          <!-- Pré-análise de certidões e matrícula — frente da Renata no piloto Claude (06/10/2026: em construção, só participantes do piloto) -->
+          <div class="pc" data-tone="slate" id="card-vnd-preanalise" onclick="goTo('vnd-preanalise')" style="display:none">
+            <div class="pci"><i data-icon="scale" data-size="32"></i></div>
+            <div class="pct">Pré-análise de certidões</div>
+            <div class="pcd">Matrícula e certidões de cada venda lidas por checklist: Liberado, Com ressalvas, Bloqueado ou Incompleto. Piloto Moema.</div>
+            <div class="pcb" style="background:#fef3c7;color:#92400e">Em construção</div>
+          </div>
         </div>
       </div>
 
@@ -712,6 +719,57 @@
       </div>
 
       <!-- Fórum dos Representantes (representantes + gerentes) -->
+      <!-- Pré-análise de certidões e matrícula (piloto, em construção). Página só informativa: não grava nada nem recebe PDF. -->
+      <div class="page" id="p-vnd-preanalise">
+        <div class="ph">
+          <div class="flex aic" style="gap:12px">
+            <div class="pci" style="width:42px;height:42px"><i data-icon="scale" data-size="24"></i></div>
+            <div><h1 class="pt">Pré-análise de certidões e matrícula</h1><div class="pst">Piloto da Gestão de Vendas Moema · conduzido pela Renata</div></div>
+          </div>
+          <span class="pcb" style="background:#fef3c7;color:#92400e;align-self:center">Em construção</span>
+        </div>
+        <div class="card" style="margin-bottom:14px"><div class="cb" style="font-size:14px;line-height:1.6">
+          <b>O que vai fazer.</b> Para cada venda, ler o PDF da matrícula e das certidões, aplicar o checklist de risco da Nova São Paulo
+          e fechar um status: <b style="color:#047857">Liberado</b>, <b style="color:#b45309">Com ressalvas</b>, <b style="color:#dc2626">Bloqueado</b>
+          ou <b style="color:#64748b">Incompleto</b>. A emissão das certidões continua no Pipe.Imo por enquanto; aqui é só a leitura.
+          <div style="margin-top:8px;color:var(--muted);font-size:13px">O motor de análise já existe fora do portal e foi testado em duas vendas reais. Esta área é onde ele vai morar.</div>
+        </div></div>
+        <div class="sg" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:14px">
+          <div class="card"><div class="cb" style="font-size:13px;line-height:1.6">
+            <div style="font-weight:700;margin-bottom:6px">Fase 1 · a tela</div>
+            <ul style="margin:0;padding-left:18px">
+              <li>Lista de vendas com o status e a data da última análise</li>
+              <li>Tela da venda: imóvel (matrícula e SQL), vendedores e anuentes, peças com situação (válida, vencida, falta)</li>
+              <li>Upload dos PDFs por venda</li>
+              <li>Dossiê: apontamentos por item do checklist, com o trecho do documento, e providências em ordem de prioridade</li>
+              <li>Com ressalvas e Bloqueado sobem para revisão jurídica; Liberado segue com a gerente</li>
+            </ul>
+          </div></div>
+          <div class="card"><div class="cb" style="font-size:13px;line-height:1.6">
+            <div style="font-weight:700;margin-bottom:6px">Fase 2 · o motor no ar</div>
+            O portal chama o motor e grava o resultado. Depende de hospedar o motor (a mesma decisão do servidor da Avaliação de Imóveis).
+            <div style="margin-top:8px;color:var(--muted)">Emissão automática das certidões fica para depois: depende de contrato com fornecedor e de conta gov.br da imobiliária.</div>
+          </div></div>
+        </div>
+        <div class="card" style="margin-bottom:14px"><div class="cb" style="font-size:13px;line-height:1.6">
+          <div style="font-weight:700;margin-bottom:6px">Decisões em aberto (Rodrigo e Renata)</div>
+          <ol style="margin:0;padding-left:18px">
+            <li><b>Validade:</b> vale a regra de 30 dias para toda certidão, ou a validade que o próprio documento declara (Receita e TST costumam declarar 6 meses)?</li>
+            <li><b>Itens 6, 7 e 8 do checklist</b> (meação sem formal de partilha completo e os dois seguintes): Ressalva ou Bloqueia?</li>
+            <li><b>Lista oficial das certidões exigidas</b> pela Nova São Paulo (a de hoje é provisória).</li>
+            <li><b>Retenção:</b> por quanto tempo PDFs e dossiês ficam guardados depois que a venda fecha ou cai.</li>
+          </ol>
+          <div style="margin-top:8px;color:var(--muted)">Enquanto não houver decisão, nenhuma venda vira Liberado por omissão: peça faltando, leitura ruim ou documento vencido fecham como Incompleto.</div>
+        </div></div>
+        <div class="card"><div class="cb" style="font-size:13px;line-height:1.6">
+          <div style="font-weight:700;margin-bottom:6px">Pronto quando a Renata consegue, sozinha:</div>
+          abrir uma venda e subir a matrícula e as certidões · ver o dossiê com os apontamentos e o trecho de cada documento ·
+          ver as providências em ordem · mandar o que é ressalva ou bloqueio para a revisão jurídica.
+          <div style="margin-top:8px;color:var(--muted)">E antes de valer: comparar 2 ou 3 matrículas reais com a leitura de um advogado.
+          Documentos de vendedores e anuentes são dado pessoal de terceiros: o acesso vai ser restrito no banco e com prazo de descarte.</div>
+        </div></div>
+      </div>
+
       <div class="page" id="p-vnd-forum">
         <div class="ph">
           <div>
@@ -1864,9 +1922,9 @@
 <script src="js/00-icons.js?v=20260911d"></script>
 <script src="js/00-config.js?v=20261001b"></script>
 <script src="js/01-state.js?v=20260911d"></script>
-<script src="js/02-manutencao.js?v=20261006a"></script>
+<script src="js/02-manutencao.js?v=20261006b"></script>
 <script src="js/03-auth.js?v=20261005b"></script>
-<script src="js/04-init.js?v=20261005b"></script>
+<script src="js/04-init.js?v=20261006a"></script>
 <script src="js/05-crud.js?v=20260911d"></script>
 <script src="js/06-tarefas.js?v=20260911d"></script>
 <script src="js/07-agenda.js?v=20260917b"></script>

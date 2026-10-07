@@ -171,6 +171,8 @@ function setMod(mod){
 }
 
 function goTo(pg){
+  // Pré-análise (piloto): só os participantes do piloto
+  if(pg==='vnd-preanalise' && !(typeof ehParticipantePiloto==='function' && ehParticipantePiloto())) pg='vendas-home';
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
   // req-ti e req-manut compartilham a mesma pagina p-requisicoes com modo fixo
@@ -196,10 +198,12 @@ function goTo(pg){
     if (cardPen) cardPen.style.display = (typeof ehVotantePeneira==='function' && ehVotantePeneira()) ? '' : 'none';
     const cardFor = document.getElementById('card-vnd-forum');
     if (cardFor) cardFor.style.display = (typeof podeAcessarForumVendas==='function' && podeAcessarForumVendas()) ? '' : 'none';
+    const cardPre = document.getElementById('card-vnd-preanalise');
+    if (cardPre) cardPre.style.display = (typeof ehParticipantePiloto==='function' && ehParticipantePiloto()) ? '' : 'none';
     // Representante puro (corretor rep, nao gerente/admin) so ve o Forum.
     // Esconde todos os outros cards de Vendas.
     if (typeof ehRepresentantePuro === 'function' && ehRepresentantePuro()) {
-      ['card-vnd-selecao','card-vnd-presenca','card-vnd-fotografo','card-vnd-peneira',
+      ['card-vnd-selecao','card-vnd-presenca','card-vnd-fotografo','card-vnd-peneira','card-vnd-preanalise',
        'card-vp-cota_anuncios_apto','card-vp-cota_extra_apto','card-vp-cota_anuncios_casas','card-vp-cota_extra_casas','card-vp-captacao_placas','card-vp-vendidos_selecao']
         .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
       // Redireciona direto pro forum (sem passar pelo home de Vendas)
