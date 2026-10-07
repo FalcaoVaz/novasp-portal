@@ -41,6 +41,12 @@ def main():
     print('✓ Usuário de banco carga_anuncios_nsp pronto (só mexe na tabela de anúncios).')
     dsn = f'postgresql://carga_anuncios_nsp.{PROJETO}:{senha}@{HOST}:{PORTA}/postgres?sslmode=require'
 
+    if '--so-banco' in sys.argv:   # só refaz a senha e copia o endereço do banco, sem perguntas
+        copia(dsn)
+        subprocess.run(['open', REPO_SECRETS.rsplit('/new', 1)[0]])
+        print('✓ Endereço do banco copiado. No GitHub, na lista de segredos, clique no lápis de NOVASP_DSN_ANUNCIOS,')
+        print('  apague o valor antigo, cole (Cmd+V) e clique em "Update secret". Não copie mais nada antes de colar.')
+        return
     subprocess.run(['open', REPO_SECRETS])
     itens = [('IMOVIEW_KEY', chave), ('NOVASP_DSN_ANUNCIOS', dsn)] + ([('SKYBOX_TOKEN', token_skybox)] if token_skybox else [])
     print('\nAbri a página "New secret" do GitHub no navegador. Para cada item abaixo:')
