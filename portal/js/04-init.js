@@ -216,6 +216,7 @@ function goTo(pg){
   if(pg==='vnd-presenca')  carregarVendasPresenca?.();
   if(pg==='vnd-cotas')     carregarVendasCotas?.();
   if(pg.startsWith('vp-')) window.VendasPlanilhas?.abrirPagina(pg.slice(3));   // Planilha Mensal por EQUIPE
+  if(pg==='vnd-preanalise') window.PreAnalise?.abrir();                        // pré-análise de certidões (piloto)
   if(pg==='acervo-guess')  window.AcervoGuess?.abrir();                        // Acervo (frente 11)
   if(pg==='acervo-nido')   window.AcervoNido?.abrir();
   if(pg==='auditoria')     window.Auditoria?.abrir();
