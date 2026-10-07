@@ -69,3 +69,12 @@ num raio de 2 km, do mesmo grupo (apto/casa), com repetidos removidos (mesma rua
 | Casas (valor = terreno + construção; anúncios só de referência) | 16% → 16% | +11% → +11% | 30% | 55% |
 Leitura: o desconto pedido→fechado foi medido nos NOSSOS anúncios, então usar os nossos casa a escala; o QuintoAndar
 puxava o valor para cima (+14%). Ressalva: se um imóvel vendido continuar como "disponível" no Imoview com outro código, ele pode vazar para a conta.
+
+## 6. Só referências de tamanho parecido (até 50% de diferença de área) — 07/10/2026 (adotado, v96)
+Vendas (área útil estimada) e anúncios com área entre 0,5× e 1,5× a do imóvel; busca de vendas ampliada para 40 e de anúncios da Nova SP para 30, antes do corte.
+| | erro abs mediano | viés | ≤10% | ≤20% |
+|---|---|---|---|---|
+| Apartamentos — Nova SP primeiro (v94) | 12% | +1% | 33% | 70% |
+| **Apartamentos — + filtro de tamanho** | **11%** | **+2%** | **40%** | **73%** |
+| Casas | 16% | +11% | 30% | 55% |
+Em média ficaram de fora, por apartamento, 18 vendas e 14 anúncios de tamanho muito diferente. Só 1 dos 30 ficou sem vendas suficientes.

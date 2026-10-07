@@ -180,7 +180,12 @@ function render(x){
         ${it('Terreno do lote', ip.area_terreno?N(ip.area_terreno)+' m²':null)}${it('Testada', ip.testada?N(ip.testada)+' m':null)}
         ${it('Área construída no cadastro', (ipU?ipU.area_construida:ip.area_construida)?N(ipU?ipU.area_construida:ip.area_construida)+' m²':null)}
         ${ip.unidades_no_lote>1?it('Unidades no lote', ip.unidades_no_lote):''}
+        ${it('Fração ideal', ipU&&ipU.fracao_ideal!=null?N(ipU.fracao_ideal):null)}${it('Profundidade média do lote', ip.profundidade?N(ip.profundidade)+' m':null)}
+        ${it('Área ocupada pela construção', ip.area_ocupada?N(ip.area_ocupada)+' m²'+(ip.to_atual!=null?` (${ip.to_atual}% do lote)`:''):null)}
+        ${it('m² de terreno (Planta Genérica)', ip.vm2_terreno?R$(ip.vm2_terreno):null)}${it('m² de construção (Planta Genérica)', ip.vm2_construcao?R$(ip.vm2_construcao):null)}
+        ${it('Valor venal aproximado (IPTU)', ip.venal_total?R$(ip.venal_total):null)}
       </div>
+      ${ip.venal_total?`<div class="foot">Valor venal é a base de cálculo do IPTU, definida pela Planta Genérica de Valores da Prefeitura. Não é valor de mercado.</div>`:''}
       ${ip.desatualizado?`<div class="foot" style="color:#b45309">O cadastro de 2026 ainda descreve o lote de outra forma. É comum em prédio recente, antes de a Prefeitura desmembrar as unidades: confirme área e ano na matrícula e no carnê de IPTU da unidade.</div>`:''}
       <div class="foot">A área construída do cadastro inclui áreas comuns e garagem; não é a área útil. É informação de referência.</div>` : ''}
     </div>`;
@@ -213,6 +218,7 @@ function render(x){
         <td class="r">${R$(c.preco)}</td>
         <td class="r">${itbi&&c.rs_util?`${R$(c.rs_util)} útil${c.rs_m2?`<br><span class="sub">${R$(c.rs_m2)} no cadastro</span>`:''}`:R$(c.rs_m2)}</td></tr>`; }).join('')}</tbody></table>
       ${excluidos.length?`<div class="foot">Deixadas de fora por destoarem do imóvel: ${excluidos.map(c=>c.endereco||c.tipo).join('; ')}.</div>`:''}
+      ${mu&&mu.area_ref?`<div class="foot">Só foram usadas referências de tamanho parecido com o imóvel: de ${N(Math.round(mu.area_ref*0.5))} a ${N(Math.round(mu.area_ref*1.5))} m², até 50% de diferença de área.</div>`:''}
       <div class="foot"><b>Venda real</b> = transação registrada na Prefeitura de São Paulo (guia de ITBI), com o preço declarado na venda; área útil estimada a partir da área do cadastro. <b>Anúncio</b> = preço pedido, da carteira da Nova São Paulo ou de portal imobiliário; costuma fechar um pouco abaixo.</div>
     </div>` : '';
 
@@ -252,7 +258,11 @@ function render(x){
       <div class="passo"><b class="t">Construção</b>${N(ev.constr)} m² ao custo de construção nova de ${R$(ev.custo_m2)}/m², depreciada ${Math.round((ev.dep||0)*100)}% = <b>${R$(ev.v_benf)}</b>.</div>
       <div class="res">Valor: <b>${R$(x.valor_mercado)}</b>. Faixa de ±10%.${ev.comparativo?` A referência residencial do entorno indicaria ${R$(ev.comparativo)}.`:''}</div>`;
   } else if(metodoAdotado==='terreno' && ev){
-    calculo = `<div class="res">${N(ev.terreno)} m² × <b>${R$(ev.rs_terreno)}/m²</b> de terreno = <b>${R$(ev.total)}</b> (${ev.rs_terreno_origem||''}). Faixa de ±10%.</div>`;
+    const rc=ev.recuos;
+    calculo = `<div class="res">${N(ev.terreno)} m² × <b>${R$(ev.rs_terreno)}/m²</b> de terreno = <b>${R$(ev.total)}</b> (${ev.rs_terreno_origem||''}). Faixa de ±10%.</div>` +
+      (rc ? `<div class="passo"><b class="t">Recuos e aproveitamento</b>${rc.precisa_vizinho?`<b>Para um prédio, este lote precisa ser somado a um vizinho.</b> ${ev.terreno<400?'Abaixo de 400 m²':'Com esta frente'}, os recuos obrigatórios deixam pouco espaço por andar, e a conta de incorporação só faz sentido com o lote ampliado. Sozinho, ele vale como lote para casa ou pequena construção. `:''}` +
+        `Recuo de frente ${rc.recuo_frente?rc.recuo_frente+' m':'não exigido nesta zona'}; laterais e fundo livres até 10 m de altura e de 3 m acima disso (Lei 16.402/2016); janelas voltadas para a divisa a (altura − 6) ÷ 10 m (Código de Obras). ` +
+        (rc.andar>0 ? `Frente ${N(rc.testada)} m e fundo ${N(rc.profundidade)} m: tirados os recuos, sobram cerca de ${N(rc.andar)} m² por andar (a taxa de ocupação permitiria ${N(rc.andar_to)} m²).` : `Com frente de ${N(rc.testada)} m, tirados 3 m de cada lado, não sobra largura para um prédio.`) + `</div>` : '');
   } else {
     calculo = `<p>${String(x.metodo||'').replace(/\s*\[incorp:.*?\]/g,'')}</p>`;
   }
@@ -294,6 +304,7 @@ function render(x){
       </div>
       ${(inc.lancRef||[]).length?`<div class="foot">Lançamentos anunciados perto: ${inc.lancRef.map(l=>`${l.nome} (${l.status||''}, ${R$(l.rs)}/m², ${N(l.d)} m)`).join('; ')}.</div>`:''}
       ${(inc.alertas||[]).length?`<ul style="margin:8px 0 0;padding-left:18px;font-size:.85em;color:#b45309">${inc.alertas.map(a=>`<li>${a}</li>`).join('')}</ul>`:''}
+      ${inc.recuos?`<div class="foot"><b>Recuos e implantação:</b> frente ${inc.recuos.recuo_frente?inc.recuos.recuo_frente+' m':'não exigida nesta zona'}; laterais e fundo de 3 m acima de 10 m de altura (Lei 16.402/2016); janelas a (altura − 6) ÷ 10 m da divisa (Código de Obras). Com frente de ${N(inc.recuos.testada)} m e fundo de ${N(inc.recuos.profundidade)} m, sobram cerca de ${N(inc.recuos.andar)} m² por andar${inc.recuos.pav?`, o que pede ~${inc.recuos.pav} andares para a área computável`:''}.</div>`:''}
       ${(inc.base_legal||[]).length?`<div style="margin-top:10px;padding:8px 10px;background:#f0fdf4;border-radius:8px;font-size:.85em"><div style="font-weight:600;color:#047857;margin-bottom:4px">Por que a área vendável é ${inc.ca>(inc.ca_zona||inc.ca)?'maior que terreno × CA da zona':'essa'} — base legal</div><ul style="margin:0;padding-left:18px;color:#334155">${inc.base_legal.map(b=>`<li style="margin:2px 0">${b}</li>`).join('')}</ul></div>`:''}
       ${(inc.refs||[]).length?`<div class="foot">Referência de outorga: ${inc.refs.length} concessões da Prefeitura num raio de 1,5 km (ex.: ${inc.refs.slice(0,3).map(r=>`${r.endereco} — ${R$(r.ct_m2)}/m²`).join('; ')}).</div>`:''}
       `:''}

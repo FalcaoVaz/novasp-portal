@@ -159,6 +159,50 @@ const _avNormBairro = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036
 const n0 = v => Math.round(v||0).toLocaleString('pt-BR');
 function _avPadraoSugerido(bairro){ const b=_avNormBairro(bairro); return AV_BAIRROS_ALTO.some(x=>b.includes(x)) ? 'alto' : 'medio'; }
 // Conta reversa de incorporação: quanto o terreno pode valer para o empreendimento fechar com margem.
+// ═══ RECUOS E IMPLANTAÇÃO (Rodrigo, 07/10/2026): "lote abaixo de 400 m² precisa juntar com vizinho por causa dos recuos" ═══
+// Lei 16.402/2016 (LPUOS), Quadro 3: recuo de frente 5 m (não se aplica em ZEU/ZEUP/ZEM/ZEMP, e é facultativo nos casos
+// dos art. 67 e 69); laterais e fundo dispensados até 10 m de altura e de 3 m acima disso (dispensáveis só nos casos do
+// art. 66, II e III, como vizinho encostado na divisa). Taxa de ocupação por zona e por tamanho de lote (até / a partir de 500 m²).
+// Código de Obras (Lei 16.642/2017, salubridade): janela voltada para a divisa a pelo menos (H − 6) ÷ 10 metros.
+// A revisão do zoneamento de 2024 (Lei 18.081) mexeu no Quadro 3: conferir a zona do lote antes de fechar projeto.
+function _avRecuos({zona, terreno, frente, area_comput}){
+  terreno=Number(terreno)||0; if(!terreno) return null;
+  const z=String(zona||'').toUpperCase().replace(/\s+/g,'');
+  const semFrente=/^(ZEU|ZEM)/.test(z);
+  const g500 = terreno>=500;
+  const to = /^(ZER|ZCOR|ZPR)/.test(z) ? 0.5 : /^ZPDS/.test(z) ? (g500?0.25:0.35) : /^ZPI-2/.test(z) ? (g500?0.3:0.5)
+           : /^(ZDE-1|ZPI-1|ZCA)/.test(z) ? 0.7 : /^(ZEUA|ZEUPA|ZMA|ZMISA|ZDE-2)/.test(z) ? (g500?0.5:0.7) : (g500?0.7:0.85);
+  const testada=Number(frente)||Math.sqrt(terreno), prof=terreno/testada;
+  const rf = semFrente?0:5;
+  const acima=Math.max(Number(area_comput)||0, 0);
+  // implantação de uma torre: tira os recuos e limita pela taxa de ocupação; a altura sai do número de andares e realimenta o afastamento
+  let lat=3, larg=0, pr=0, andar=0, pav=0, H=0;
+  for(let i=0;i<3;i++){
+    larg=Math.max(0, testada-2*lat); pr=Math.max(0, prof-rf-lat);
+    andar=Math.min(larg*pr, to*terreno);
+    pav = andar>0 && acima>0 ? Math.ceil(acima/andar) : 0;
+    H = pav*3;
+    lat = Math.max(3, Math.round((H-6)/10*10)/10);
+  }
+  const viavel = terreno>=AV_PARAM.lote_min_m2 && larg>=8 && andar>=150;
+  return { zona:z||null, to, recuo_frente:rf, recuo_lat:3, afast_aberturas:lat, testada:Math.round(testada*10)/10, frente_informada:!!Number(frente),
+           profundidade:Math.round(prof*10)/10, larg_util:Math.round(larg*10)/10, prof_util:Math.round(pr*10)/10, andar:Math.round(andar),
+           andar_to:Math.round(to*terreno), pav, altura:H, viavel, precisa_vizinho: terreno<AV_PARAM.lote_min_m2 || !viavel };
+}
+// Texto do quadro de recuos (tela e dossiê)
+function _avRecuosTexto(r, terreno){
+  if(!r) return '';
+  const n=v=>Number(v).toLocaleString('pt-BR',{maximumFractionDigits:1});
+  const linhas=[
+    `Recuo de frente: ${r.recuo_frente?r.recuo_frente+' m':'não se aplica nesta zona ('+(r.zona||'ZEU/ZEM')+')'}. Laterais e fundo: livres até 10 m de altura; acima disso, 3 m.`,
+    r.pav>0?`Janelas voltadas para a divisa (Código de Obras): (altura − 6) ÷ 10 = ${n(r.afast_aberturas)} m para um prédio de ${r.pav} andares (≈ ${r.altura} m).`:'',
+    r.andar>0
+      ? `Lote de ${n(terreno)} m², frente ${n(r.testada)} m${r.frente_informada?'':' (estimada: frente não informada)'} e fundo ${n(r.profundidade)} m: tirados os recuos, sobram ${n(r.larg_util)} × ${n(r.prof_util)} m = <b>${n(r.andar)} m² por andar</b> (a taxa de ocupação de ${Math.round(r.to*100)}% permitiria ${n(r.andar_to)} m²).`
+      : `Lote de ${n(terreno)} m² com frente de ${n(r.testada)} m${r.frente_informada?'':' (estimada)'}: tirados 3 m de cada lado, <b>não sobra largura para um prédio</b>.`,
+    r.pav?`Para construir a área computável seriam ~${r.pav} andares.`:''
+  ].filter(Boolean);
+  return linhas.join(' ');
+}
 function _avContaIncorp({terreno, ca, ca_basico, rs_lanc, padrao, qvt, frente, gabarito, outorga_ref_m2, outorga_ref_n, fp, categoria, fachada_ativa, zona, comaer}){
   const p=AV_PADROES[padrao]||AV_PADROES.medio, P=AV_PARAM;
   const cab = (ca_basico!=null && ca_basico>0) ? Number(ca_basico) : null;
@@ -216,8 +260,9 @@ function _avContaIncorp({terreno, ca, ca_basico, rs_lanc, padrao, qvt, frente, g
   const custos_aquisicao=Math.max(0,bruto)*(P.custo_aquisicao/(1+P.custo_aquisicao));
   const terreno_max=bruto-custos_aquisicao;                       // o que chega ao proprietário
   const alertas=[];
-  if(terreno<P.lote_min_m2) alertas.push(`Lote de ${terreno} m²: abaixo de ${P.lote_min_m2} m² o CA máximo raramente é atingido (recuos e taxa de ocupação).`);
-  if(frente && frente<P.frente_min_m) alertas.push(`Frente de ${frente} m: abaixo de ${P.frente_min_m} m a implantação de torre fica comprometida.`);
+  const recuos=_avRecuos({zona, terreno, frente, area_comput});
+  if(recuos && recuos.precisa_vizinho) alertas.unshift(`<b>Precisa juntar com vizinho.</b> ${terreno<P.lote_min_m2?`Lote de ${n0(terreno)} m², abaixo de ${P.lote_min_m2} m²`:`Lote de ${n0(terreno)} m² com frente de ${recuos.testada} m`}: com os recuos sobram ${n0(recuos.andar)} m² por andar${recuos.larg_util<8?` e só ${String(recuos.larg_util).replace('.',',')} m de largura`:''}, o que não comporta um prédio. A conta abaixo só faz sentido somando o lote a um vizinho (remembramento); sozinho, ele vale como lote para casa ou pequena construção.`);
+  else if(frente && frente<P.frente_min_m) alertas.push(`Frente de ${frente} m: abaixo de ${P.frente_min_m} m a implantação de torre fica comprometida.`);
   if(gabarito && String(gabarito).trim() && !/sem|n[aã]o/i.test(String(gabarito))) alertas.push(`Gabarito de altura na zona: ${gabarito} — pode limitar o número de pavimentos antes do CA.`);
   let pav_nec=null;
   if(comaer && comaer.pav!=null){
@@ -234,7 +279,7 @@ function _avContaIncorp({terreno, ca, ca_basico, rs_lanc, padrao, qvt, frente, g
   return {padrao, cub:p.cub, custo_m2, ca:ca_usado, ca_zona, ca_social:cs?cs.ca:null, zona:zona||null, base_legal, ca_basico:cab, terreno, frente:frente||null, gabarito:gabarito||null,
           categoria:cat, fs, fachada_ativa:!!fachada_ativa, area_fachada, priv_fator,
           area_comput, area_constr, area_vendavel, vgv, obra, projetos, despesas, comissao, ret, financiamento, indiretos, margem, antes,
-          area_adicional, v, v_origem, outorga, outorga_modo, fp:fpUsado, bruto, custos_aquisicao, terreno_max, terreno_vgv: vgv?terreno_max/vgv:null, alertas, comaer:comaer||null, pav_nec};
+          area_adicional, v, v_origem, outorga, outorga_modo, fp:fpUsado, bruto, custos_aquisicao, terreno_max, terreno_vgv: vgv?terreno_max/vgv:null, alertas, comaer:comaer||null, pav_nec, recuos};
 }
 
 let _avImoveis = [];
@@ -362,7 +407,7 @@ async function _avBuscarIptu(){
   const anos=rows.map(r=>+r.ano_construcao).filter(x=>x>1800);
   const resumo = vertical
     ? `<b>${rows.filter(r=>!/garagem|dep[oó]sito/i.test(r.uso||'')).length} unidades</b>${rows.some(r=>/garagem|dep[oó]sito/i.test(r.uso||''))?` + ${rows.filter(r=>/garagem|dep[oó]sito/i.test(r.uso||'')).length} vagas/depósitos avulsos`:''} no lote · terreno ${_avN(lote.area_terreno)} m² · ${lote.pavimentos||'?'} pavimentos · construído em ${anos.length?Math.min(...anos):'?'} · ${lote.padrao||''}`
-    : `<b>${lote.uso||'Imóvel'}</b> · terreno <b>${_avN(lote.area_terreno)} m²</b> · construída ${_avN(lote.area_construida)} m² no cadastro · testada ${_avN(lote.testada)} m · ${lote.ano_construcao>1800?'construído em '+lote.ano_construcao:''} · ${lote.padrao||''}`;
+    : `<b>${lote.uso||'Imóvel'}</b> · terreno <b>${_avN(lote.area_terreno)} m²</b> · construída ${_avN(lote.area_construida)} m² no cadastro · testada ${_avN(lote.testada)} m${lote.area_terreno&&lote.testada?` · fundo ≈ ${_avN(Math.round(lote.area_terreno/lote.testada))} m`:''} · ${lote.ano_construcao>1800?'construído em '+lote.ano_construcao:''} · ${lote.padrao||''}${lote.vm2_terreno?` · m² de terreno na Planta Genérica ${_avR$(lote.vm2_terreno)}`:''}`;
   const tabela = vertical ? `<details style="margin-top:4px"><summary style="cursor:pointer;color:#2563eb;font-size:.85em">ver unidades</summary>
       <div style="max-height:220px;overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:.82em"><thead><tr style="color:#94a3b8;text-align:left"><th style="padding:2px 6px">Contribuinte</th><th style="padding:2px 6px">Complemento</th><th style="padding:2px 6px;text-align:right">Construída (cadastro)</th><th style="padding:2px 6px;text-align:right">Fração</th><th style="padding:2px 6px">Uso</th></tr></thead>
       <tbody>${rows.map(r=>`<tr style="border-top:1px solid #f1f5f9;cursor:pointer" onclick="_avUsarIptu('${r.sql}')"><td style="padding:2px 6px">${r.sql}</td><td style="padding:2px 6px">${r.complemento||''}</td><td style="padding:2px 6px;text-align:right">${_avN(r.area_construida)} m²</td><td style="padding:2px 6px;text-align:right">${_avN(r.fracao_ideal)}</td><td style="padding:2px 6px">${r.uso||''}</td></tr>`).join('')}</tbody></table></div>
@@ -389,7 +434,21 @@ function _avIptuResumo(tipo){
   const sel=_avForm.iptuSel||null, base=sel||lote[0];
   const unid=lote.filter(r=>!/garagem|dep[oó]sito/i.test(r.uso||'')).length, vagas=lote.length-unid;
   const ehApto=/apart|studio|cobertura|duplex/i.test(tipo||'');
-  return { unidade: sel?{sql:sel.sql, complemento:sel.complemento||null, uso:sel.uso, area_construida:sel.area_construida, fracao_ideal:sel.fracao_ideal}:null,
+  // mais dados do cadastro (07/10/2026): valores da Planta Genérica, ocupação atual do lote, profundidade e valor venal aproximado
+  const num=v=>(v==null||v===''||isNaN(Number(v)))?null:Number(v);
+  const at=num(base.area_terreno), test=num(base.testada);
+  const fr = sel ? num(sel.fracao_ideal) : (lote.length===1 ? 1 : null);
+  const ac = sel||lote.length===1 ? num(base.area_construida) : null;
+  const vvt = at && num(base.vm2_terreno) && fr ? Math.round(at*fr*num(base.vm2_terreno)) : null;
+  const vvc = ac && num(base.vm2_construcao) ? Math.round(ac*num(base.vm2_construcao)*(num(base.fator_obsolescencia)||1)) : null;
+  const construidaLote = lote.reduce((t,r)=>t+(num(r.area_construida)||0),0);
+  const extra = { cep: base.cep||null, tipo_terreno: base.tipo_terreno||null, area_ocupada: num(lote[0].area_ocupada),
+           vm2_terreno: num(base.vm2_terreno), vm2_construcao: num(base.vm2_construcao), fator_obsolescencia: num(base.fator_obsolescencia),
+           profundidade: at&&test ? Math.round(at/test*10)/10 : null,
+           to_atual: at && num(lote[0].area_ocupada) ? Math.round(num(lote[0].area_ocupada)/at*100) : null,
+           ca_atual: at && construidaLote ? Math.round(construidaLote/at*100)/100 : null,
+           venal_terreno: vvt, venal_construcao: vvc, venal_total: (vvt||0)+(vvc||0) || null };
+  return { ...extra, unidade: sel?{sql:sel.sql, complemento:sel.complemento||null, uso:sel.uso, area_construida:sel.area_construida, fracao_ideal:sel.fracao_ideal}:null,
            sql: sel?sel.sql:(lote.length===1?base.sql:null), uso:base.uso, padrao:base.padrao, ano_construcao:base.ano_construcao>1800?base.ano_construcao:null,
            pavimentos:base.pavimentos||null, area_terreno:base.area_terreno, testada:base.testada, area_construida:sel||lote.length===1?base.area_construida:null,
            unidades_no_lote:unid, vagas_avulsas:vagas,
@@ -414,8 +473,15 @@ function _avIptuCaixaHTML(ip, idSalvo){
       ${it('Uso', ip.unidade?ip.unidade.uso:ip.uso)}${it('Padrão', ip.padrao)}${it('Ano de construção', ip.ano_construcao)}
       ${it('Pavimentos', ip.pavimentos)}${it('Terreno do lote', N(ip.area_terreno)&&N(ip.area_terreno)+' m²')}${it('Testada', N(ip.testada)&&N(ip.testada)+' m')}
       ${it('Área construída no cadastro', N(ip.unidade?ip.unidade.area_construida:ip.area_construida)&&N(ip.unidade?ip.unidade.area_construida:ip.area_construida)+' m²')}
-      ${it('Fração ideal', ip.unidade&&N(ip.unidade.fracao_ideal))}${ip.unidades_no_lote>1?it('Unidades no lote', ip.unidades_no_lote+(ip.vagas_avulsas?` + ${ip.vagas_avulsas} vagas/depósitos`:'')):''}
+      ${it('Fração ideal', ip.unidade&&Number(ip.unidade.fracao_ideal)!==1&&N(ip.unidade.fracao_ideal))}${ip.unidades_no_lote>1?it('Unidades no lote', ip.unidades_no_lote+(ip.vagas_avulsas?` + ${ip.vagas_avulsas} vagas/depósitos`:'')):''}
+      ${it('Profundidade média do lote', N(ip.profundidade)&&N(ip.profundidade)+' m')}${it('Tipo de terreno', ip.tipo_terreno)}${it('CEP', ip.cep&&String(ip.cep).replace(/^(\d{5})(\d{3})$/,'$1-$2'))}
+      ${it('Área ocupada pela construção', N(ip.area_ocupada)&&N(ip.area_ocupada)+' m²'+(ip.to_atual!=null?` (${ip.to_atual}% do lote)`:''))}${it('Construído no lote ÷ terreno', ip.ca_atual!=null?N(ip.ca_atual):null)}
     </div>
+    ${ip.vm2_terreno||ip.vm2_construcao?`<div style="margin-top:10px;padding-top:8px;border-top:1px dashed #e2e8f0;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;font-size:.92em">
+      ${it('m² de terreno na Planta Genérica', ip.vm2_terreno&&_avR$(ip.vm2_terreno))}${it('m² de construção na Planta Genérica', ip.vm2_construcao&&_avR$(ip.vm2_construcao))}
+      ${it('Fator de obsolescência', N(ip.fator_obsolescencia))}${it('Valor venal aproximado', ip.venal_total&&(_avR$(ip.venal_total)+(ip.venal_terreno&&ip.venal_construcao?`<br><small style="font-weight:400;color:#64748b">terreno ${_avR$(ip.venal_terreno)} + construção ${_avR$(ip.venal_construcao)}</small>`:'')))}
+    </div>
+    <div style="margin-top:4px;font-size:.78em;color:#94a3b8">Valor venal = base do IPTU, não é valor de mercado. Aproximado: o carnê ainda aplica fatores de profundidade, esquina e tipo de terreno.</div>`:''}
     ${ip.desatualizado?`<div style="margin-top:8px;font-size:.85em;color:#b45309">O cadastro de 2026 ainda descreve o lote de outra forma (${ip.uso||'—'}). É comum em prédio recente, antes de a Prefeitura desmembrar as unidades: confirme área e ano na matrícula e no carnê de IPTU da unidade.</div>`:''}
     <div style="margin-top:6px;font-size:.78em;color:#94a3b8">A área construída do cadastro inclui áreas comuns e garagem; não é a área útil. Dado de referência, não entra na conta de valor.</div>
   </div></div>`;
@@ -820,7 +886,7 @@ async function avalCalcular(opts){
   // entram PRIMEIRO; o QuintoAndar só completa até 12 (Rodrigo, 06/10/2026)
   let nsp=[];
   if(recalc) nsp=_avForm.cache.nsp||[];
-  else if(grupo!=='terreno' && _avPino){ try{ nsp=await _avRpc('aval_anuncios_nsp_perto',{p_lat:_avPino.lat,p_lng:_avPino.lng,p_grupo:_ehCasa(tipo)?'casa':'apto',p_lim:12})||[]; }catch(_){ nsp=[]; } }
+  else if(grupo!=='terreno' && _avPino){ try{ nsp=await _avRpc('aval_anuncios_nsp_perto',{p_lat:_avPino.lat,p_lng:_avPino.lng,p_grupo:_ehCasa(tipo)?'casa':'apto',p_lim:30})||[]; }catch(_){ nsp=[]; } }
   // o nome que o mapa dá às vezes é um sub-bairro e o portal traz poucos anúncios (no Planalto Paulista o mapa diz
   // "Indianópolis" ou "Mirandópolis" em várias ruas): completa com o bairro mais comum entre os anúncios da Nova SP por perto
   if(!recalc && nsp.length < 12 && nsp.length){
@@ -839,7 +905,7 @@ async function avalCalcular(opts){
   else {
     // vendas reais pelo RAIO em volta do imóvel (o bairro detectado no mapa nem sempre bate com o do ITBI); sem resultado, cai no bairro
     if(grupo==='terreno') compsItbi=[];   // terreno: o valor vem de lotes; vendas de apartamento não são referência
-    else try{ compsItbi=await _avRpc('aval_comps_itbi_raio',{p_lat:_avPino.lat,p_lng:_avPino.lng,p_tipo:_ehCasa(tipo)?'casa':'apto',p_lim:20})||[]; compsItbi.forEach(c=>{ c.porRaio=true; }); }catch(_){ compsItbi=[]; }
+    else try{ compsItbi=await _avRpc('aval_comps_itbi_raio',{p_lat:_avPino.lat,p_lng:_avPino.lng,p_tipo:_ehCasa(tipo)?'casa':'apto',p_lim:40})||[]; compsItbi.forEach(c=>{ c.porRaio=true; }); }catch(_){ compsItbi=[]; }
     if(!compsItbi.length && grupo!=='terreno'){ try{ compsItbi=await _avRpc('aval_comps_itbi',{p_bairro:bairro,p_lim:20}); }catch(_){} }
   }
   compsItbi=(compsItbi||[]).filter(c=>!/GARAGEM|VAGA|DEP[OÓ]SITO/i.test(c.uso||'') && (_ehCasa(tipo) ? /RESID|CASA|SOBRADO/i.test(c.uso||'') : /APART/i.test(c.uso||'')));
@@ -849,6 +915,12 @@ async function avalCalcular(opts){
   compsItbi.forEach(c=>{ c._k=kIt(c); c.excluido=_avForm.excl.has(c._k); });
   // R$/m² do ITBI em base de ÁREA ÚTIL (cadastro ≈ 1,35 × útil + 29 m²/vaga; casa: área construída ≈ útil)
   compsItbi.forEach(c=>{ const ac=Number(c.area_constr)||0; c.area_util_est=_ehCasa(tipo)?ac:Math.max(20,(ac-AV_INDICES.iptu_por_vaga)/AV_INDICES.iptu_por_util); c.rs_util=c.area_util_est?Math.round(Number(c.valor)/c.area_util_est):null; });
+  // TAMANHO PARECIDO (Rodrigo, 07/10/2026): vendas e anúncios com no máximo 50% de diferença de área para o imóvel
+  // (apartamento: área útil estimada da venda × área útil; casa/comercial: área construída). O que foge disso não aparece nem entra na conta.
+  const tamOk = a => !area || !(Number(a)>0) || (Number(a)>=area*0.5 && Number(a)<=area*1.5);
+  const compsItbiTodos=compsItbi;
+  compsItbi=compsItbi.filter(c=>tamOk(c.area_util_est)).slice(0,20);
+  const foraTamanho={itbi:compsItbiTodos.length-compsItbi.length, anuncios:0};
   // endereços → coordenadas (base local de endereços do portal; o que não resolver fica sem pino)
   const geocodar=async q=>{ try{ const r=await _avRpc('aval_geocode',{p_q:q}); const h=Array.isArray(r)?r[0]:null; return h?{lat:h.lat,lng:h.lng}:null; }catch(_){ return null; } };
   // anúncios do MESMO tipo do imóvel (o motor manda casas primeiro; apartamento não é comparável de casa e vice-versa)
@@ -857,7 +929,9 @@ async function avalCalcular(opts){
   const vistoNsp=new Set();
   const amostraNsp=(nsp||[]).filter(n=>{ const k=_avNorm(n.rua||'')+'|'+Math.round(Number(n.area))+'|'+Math.round(Number(n.valor)); if(vistoNsp.has(k)) return false; vistoNsp.add(k); return true; }).map(n=>({tipo:_ehCasa(tipo)?'Casa':'Apartamento', area:Number(n.area), preco:Number(n.valor), rs_m2:Number(n.rs_m2),
     dorm:n.dorm||null, vaga:n.vaga||null, rua:n.rua||'', bairro:/[a-zà-ú]/.test(n.bairro||'')?n.bairro:_avCap(n.bairro||''), ref:n.ref||null, url:n.url||null, nsp:true, dist_m:n.dist_m!=null?Number(n.dist_m):null}));
-  const amostraTodos=[...amostraNsp, ...(precos.amostra||[]).filter(a=>_ehCasa(tipo)?a.tipo==='Casa':a.tipo!=='Casa')].slice(0,12);
+  const candidatos=[...amostraNsp, ...(precos.amostra||[]).filter(a=>_ehCasa(tipo)?a.tipo==='Casa':a.tipo!=='Casa')];
+  const amostraTodos=candidatos.filter(a=>tamOk(a.area)).slice(0,12);
+  foraTamanho.anuncios=candidatos.length-candidatos.filter(a=>tamOk(a.area)).length;
   // anúncios INCLUÍDOS pelo corretor (link obrigatório, autoria registrada, no máx. AV_MANUAL_MAX) — 05/10/2026
   (_avForm.manuais||[]).forEach(m=>amostraTodos.push({tipo:_ehCasa(tipo)?'Casa':'Apartamento', area:m.area, preco:m.preco, rs_m2:Math.round(m.preco/m.area),
     dorm:m.dorm||null, vaga:m.vaga||null, rua:m.origem==='parecer'?'Anúncio no próprio prédio (achado pelo parecer)':'Anúncio incluído pelo corretor',
@@ -934,7 +1008,7 @@ async function avalCalcular(opts){
   if(recalc) entorno=_avForm.cache.entorno;
   else { try{ entorno=await _avRpc('aval_entorno',{p_lat:_avPino.lat,p_lng:_avPino.lng}); if(Array.isArray(entorno)) entorno=entorno[0]; }catch(_){} }
   _avForm.entorno=entorno;
-  _avForm.cache={precos:(recalc?_avForm.cache.precos:precos), semMotor, compsItbi, nsp, entorno, refs:recalc?_avForm.cache.refs:undefined, fpInfo:recalc?_avForm.cache.fpInfo:undefined};
+  _avForm.cache={precos:(recalc?_avForm.cache.precos:precos), semMotor, compsItbi:compsItbiTodos, nsp, entorno, refs:recalc?_avForm.cache.refs:undefined, fpInfo:recalc?_avForm.cache.fpInfo:undefined};
 
   // ── MÉTODO ÚNICO: macro (índices do bairro) aplicado no micro (este imóvel) ──
   const idxPF=_avIdxPedidoFechado(bairro);
@@ -944,7 +1018,7 @@ async function avalCalcular(opts){
     const m={ idx_pedido_fechado:idxPF.idx, idx_origem:idxPF.origem, sub_itbi:AV_INDICES.itbi_subdeclaracao,
               rs_anuncio: rs_tipo||null, n_anuncio: ehcasa?(precos.n_casa||0):(precos.n_apto||0),
               rs_itbi_util: rsItbiUtil, n_itbi: compsItbiAtivos.filter(c=>c.rs_util>0).length, excluidos:nExcl,
-              incluidos: amostra.filter(a=>a.manual).length, n_nsp: amostra.filter(a=>a.nsp).length };
+              incluidos: amostra.filter(a=>a.manual).length, n_nsp: amostra.filter(a=>a.nsp).length, fora_tamanho: foraTamanho, area_ref: area };
     m.rs_anuncio_ajust = m.rs_anuncio ? Math.round(m.rs_anuncio*m.idx_pedido_fechado) : null;     // pedido → fechado esperado
     // VENDAS NO PRÓPRIO PRÉDIO (05/10/2026): com 3+ vendas registradas no mesmo endereço, o corretor pode usar o preço delas
     // (mesma planta) — a área útil estimada pelo cadastro erra em prédio novo (Aracoiaba 30: 64 m² úteis = 134 m² no cadastro)
@@ -1007,7 +1081,9 @@ async function avalCalcular(opts){
       const vm=Math.round(terreno*rs_lote);
       dossie.valor_mercado=vm; dossie.faixa_min=Math.round(vm*0.9); dossie.faixa_max=Math.round(vm*1.1); dossie.mercado_rs_m2=rs_lote;
       dossie.metodo=`terreno nu: ${terreno} m² × R$ ${rs_lote.toLocaleString('pt-BR')}/m² de lote (${loteOrigem})`;
-      dossie.memoria.evolutivo={terreno, rs_terreno:rs_lote, rs_terreno_origem:loteOrigem, v_terreno:vm, total:vm, so_terreno:true, ref:tb};
+      // recuos: lote pequeno só vira prédio somado a um vizinho (Rodrigo, 07/10/2026)
+      const rec=_avRecuos({zona:geo.zona, terreno, frente, area_comput: terreno*(Number(geo.ca_maximo)||1)});
+      dossie.memoria.evolutivo={terreno, rs_terreno:rs_lote, rs_terreno_origem:loteOrigem, v_terreno:vm, total:vm, so_terreno:true, ref:tb, recuos:rec};
     }
   }else if(grupo==='casa' && evolutivo && evolutivo.calibrado){
     const ev=evolutivo, vm=ev.total;
@@ -1219,7 +1295,10 @@ function _avEvolutivoHTML(ev){
   </div></div>`;
   }
   if(ev.so_terreno) return `<div class="card" style="margin-bottom:12px"><div class="cb"><div style="color:#64748b;font-size:.85em;text-transform:uppercase;letter-spacing:.04em">Valor como terreno nu</div>
-    <div style="font-size:.9em;margin-top:6px">${n(ev.terreno)} m² × ${_avR$(ev.rs_terreno)}/m² = <b>${_avR$(ev.total)}</b> <span style="color:#94a3b8">(${ev.rs_terreno_origem||''})</span></div></div></div>`;
+    <div style="font-size:.9em;margin-top:6px">${n(ev.terreno)} m² × ${_avR$(ev.rs_terreno)}/m² = <b>${_avR$(ev.total)}</b> <span style="color:#94a3b8">(${ev.rs_terreno_origem||''})</span></div>
+    ${ev.recuos?`<div style="margin-top:8px;padding:8px 10px;border-radius:8px;font-size:.86em;background:${ev.recuos.precisa_vizinho?'#fef2f2':'#f8fafc'};border:1px solid ${ev.recuos.precisa_vizinho?'#fecaca':'#e2e8f0'}">
+      ${ev.recuos.precisa_vizinho?`<b style="color:#b91c1c">Para prédio, precisa juntar com vizinho.</b> ${ev.terreno<AV_PARAM.lote_min_m2?`Abaixo de ${AV_PARAM.lote_min_m2} m²`:'Com esta frente'}, os recuos deixam pouco espaço por andar: a conta de incorporação só faz sentido somando o lote a um vizinho (remembramento). Sozinho, ele vale como lote para casa ou pequena construção. `:'<b>Recuos e implantação.</b> '}${_avRecuosTexto(ev.recuos, ev.terreno)}
+      <div style="color:#94a3b8;font-size:.9em;margin-top:4px">Lei 16.402/2016 (Quadro 3) e Código de Obras (Lei 16.642/2017). Vizinho já encostado na divisa e a revisão de 2024 do zoneamento podem mudar os recuos.</div></div>`:''}</div></div>`;
   const l=(r,v,neg)=>`<tr style="border-top:1px solid #f1f5f9"><td style="padding:3px 8px;color:#64748b">${r}</td><td style="padding:3px 8px;text-align:right;white-space:nowrap;${neg?'color:#b91c1c':''}">${neg?'− ':''}${_avR$(Math.round(v))}</td></tr>`;
   return `<div class="card" style="margin-bottom:12px"><div class="cb">
     <div style="color:#64748b;font-size:.85em;text-transform:uppercase;letter-spacing:.04em">Terreno + construção (método evolutivo)</div>
@@ -1292,8 +1371,11 @@ function _avMemoriaHTML(m){
       <div><span style="color:#94a3b8">Acima do CA básico</span><br><b>${n(m.area_adicional)} m²</b> <small>(paga outorga)</small></div>
     </div>`;
   const alertas=(m.alertas||[]).length?`<ul style="margin:8px 0 0;padding-left:18px;font-size:.84em;color:#b45309">${m.alertas.map(a=>`<li>${a}</li>`).join('')}</ul>`:'';
+  const recuosBox=m.recuos?`<div style="margin-top:8px;padding:8px 10px;border-radius:8px;font-size:.85em;background:${m.recuos.precisa_vizinho?'#fef2f2':'#f8fafc'};border:1px solid ${m.recuos.precisa_vizinho?'#fecaca':'#e2e8f0'}">
+      <b>Recuos e implantação</b> · ${_avRecuosTexto(m.recuos, m.terreno)}
+      <div style="color:#94a3b8;font-size:.9em;margin-top:4px">Lei 16.402/2016 (Quadro 3) e Código de Obras (Lei 16.642/2017). Vizinho já encostado na divisa e a revisão de 2024 do zoneamento podem mudar os recuos: conferir antes de fechar projeto.</div></div>`:'';
   return `<details open style="margin-top:10px"><summary style="cursor:pointer;color:#047857;font-size:.9em">Memória de cálculo (conta reversa)</summary>
-    ${areas}
+    ${areas}${recuosBox}
     <table style="width:100%;border-collapse:collapse;font-size:.86em;margin-top:8px"><tbody>
       ${l(`VGV: ${n(m.area_vendavel)} m² vendáveis × lançamento ${_avR$(Math.round(m.vgv/m.area_vendavel))}/m²`, m.vgv)}
       ${l(`Obra: ${n(m.area_constr)} m² construídos × ${_avR$(Math.round(m.custo_m2))}/m² (CUB ${p.ref} ${_avR$(p.cub)} × ${P.obra_sobre_cub}, com BDI — padrão ${p.lb})`, m.obra, true)}
@@ -1449,6 +1531,7 @@ function _avMetodoHTML(mu, x){
     ${mu.rs_itbi_ajust?li(`Vendas reais (ITBI): ${_avR$(mu.rs_itbi_util)}/m² útil estimado × ${(1+mu.sub_itbi).toFixed(3)}`, _avR$(mu.rs_itbi_ajust)+'/m²', `${mu.n_itbi} vendas · ajuste de ${(mu.sub_itbi*100).toLocaleString('pt-BR',{maximumFractionDigits:1})}% porque o valor declarado na guia costuma ficar um pouco abaixo do negociado`):''}
     ${li(`<b>${referencia?'R$/m² de referência':'R$/m² adotado'}</b>${mu.divergencia!=null?` <small style="color:#94a3b8">(anúncios e vendas diferem ${mu.divergencia>0?'+':''}${mu.divergencia}%)</small>`:''}`, _avR$(mu.rs_final)+'/m²')}
     ${mu.aviso&&!referencia?`<div style="font-size:.85em;color:#b45309;margin-top:6px">⚠️ ${mu.aviso}</div>`:''}
+    ${mu.area_ref?`<div style="font-size:.8em;color:#64748b;margin-top:8px">Só entram vendas e anúncios de tamanho parecido: de ${n0(mu.area_ref*0.5)} a ${n0(mu.area_ref*1.5)} m² (até 50% de diferença para os ${n0(mu.area_ref)} m² do imóvel).${mu.fora_tamanho&&(mu.fora_tamanho.itbi||mu.fora_tamanho.anuncios)?` Ficaram de fora por tamanho: ${[mu.fora_tamanho.itbi?mu.fora_tamanho.itbi+' venda(s)':'',mu.fora_tamanho.anuncios?mu.fora_tamanho.anuncios+' anúncio(s)':''].filter(Boolean).join(' e ')}.`:''}</div>`:''}
     <div style="font-size:.78em;color:#94a3b8;margin-top:8px">Os ajustes vêm do histórico de negócios da Nova São Paulo (2019–2026: diferença entre preço pedido e fechado) e da comparação entre guias de ITBI e negócios fechados.</div>
   </div></div>`;
 }
