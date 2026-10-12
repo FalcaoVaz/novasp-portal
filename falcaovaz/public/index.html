@@ -1375,7 +1375,7 @@
         <div class="tab active" onclick="switchProcTab('resumo',this)">📋 Resumo</div>
         <div class="tab" onclick="switchProcTab('andamentos',this)">📅 Andamentos</div>
         <div class="tab" onclick="switchProcTab('prazos',this)">⏰ Prazos</div>
-        <div class="tab" onclick="switchProcTab('financeiro',this)">💰 Financeiro</div>
+        <!-- Financeiro desativado em 12/10/2026 (não é usado) -->
         <div class="tab" onclick="switchProcTab('documentos',this)">📄 Documentos</div>
       </div>
 
@@ -1423,7 +1423,6 @@
           <button class="btn btn-outline btn-sm" id="btn-abrir-esaj" onclick="abrirNoESAJ()" title="Abre o processo no e-SAJ TJSP para ler decisões/sentenças na íntegra">🔗 Ver no e-SAJ</button>
           <button class="btn btn-outline btn-sm" onclick="switchProcTab('prazos',null);abrirAddPrazo()">+ Prazo</button>
           <button class="btn btn-outline btn-sm" onclick="switchProcTab('andamentos',null);abrirAddAndamento()">+ Andamento</button>
-          <button class="btn btn-outline btn-sm" onclick="switchProcTab('financeiro',null);abrirAddFinanceiro()">+ Lançamento</button>
         </div>
       </div>
 

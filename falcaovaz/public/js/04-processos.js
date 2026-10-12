@@ -36,7 +36,7 @@
   // Carrega as outras abas em paralelo
   carregarAndamentos(id);
   carregarPrazosProcesso(id);
-  carregarFinanceiroProcesso(id);
+  // carregarFinanceiroProcesso(id);   // Financeiro desativado (12/10/2026)
   carregarDocumentosProcesso(id);
 }
 

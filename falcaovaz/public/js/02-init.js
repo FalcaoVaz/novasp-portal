@@ -21,7 +21,7 @@ async function initApp() {
   if (u.judicial) {
     show('nav-section-judicial');
     show('nav-processos'); show('nav-prazos'); show('nav-calculo-prazos');
-    show('nav-financeiro'); show('nav-chamados-jur');
+    show('nav-chamados-jur');   // Financeiro desativado (Rodrigo, 12/10/2026: não é usado; tabela fechada no banco)
     show('nav-acordos-jur');
     show('nav-planilhas');   // Calculadora de Correção
   }
