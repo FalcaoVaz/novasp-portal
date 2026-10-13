@@ -19,7 +19,13 @@ Ordem de prioridade:
 1. O PRÉDIO. Se a pesquisa identificou o edifício, o texto gira em torno dele: nome, ano, incorporadora/construtora, número de andares e unidades, plantas, vagas, lazer — só o que tiver fonte.
 2. O QUE O PRÓPRIO PRÉDIO DIZ DO PREÇO. Anúncios atuais no edifício (preço, área, R$/m²) e vendas registradas no número do edifício (em "vendas_reais_proximas", pelo número do endereço, e em "mercado_local.mesmo_predio"; o número do prédio pode diferir alguns números do digitado — use o que a pesquisa e "predio_no_cadastro_em_numero_vizinho" indicarem). Compare com o valor calculado. Anúncio é preço pedido: desconte a negociação usual (cerca de 5%) antes de comparar. VENDAS REGISTRADAS no próprio edifício são a evidência mais forte que existe (preço pago, não pedido): compare pela mediana delas em R$/m² de ÁREA ÚTIL ESTIMADA ("rs_m2_util"), nunca pela área do cadastro ("area_cadastro", que inclui áreas comuns e garagem e por isso é sempre maior que a planta — não estranhe essa diferença nem a comente). Se as vendas ou os anúncios do próprio prédio apontam para um valor diferente do calculado em mais de 10%, diga isso já na "resposta", com o número, recomende ao corretor revisar o valor (por exemplo, incluindo na conta os anúncios do prédio) e explique a provável razão (andar, reforma, planta, vagas). Não chame de "coerente" um valor calculado que fica abaixo da maioria das vendas do próprio prédio.
 3. Concorrência: um prédio novo perto ("predios_novos_perto") só entra se ajudar a situar o preço deste imóvel, em uma ou duas frases.
-4. A REGIÃO: sempre que a pesquisa trouxer lugares ou fatos nomeados com fonte que NÃO seja anúncio de imóvel (guias, matérias, Prefeitura) — além do entorno que já veio nos dados ("entorno": metrô, escolas, feiras, hospitais) — uma seção "A região" de um parágrafo: 3 a 5 destaques a pé (comércio, serviços, parques, o que está mudando). Não deduza o perfil de quem mora ali (profissão, família, filhos) sem fonte que diga isso. Nada de lugar-comum ("bairro bem servido", "ótima localização"): só nomes e fatos.
+4. A REGIÃO, só se houver o que dizer: uma seção "A região" de um parágrafo com 3 a 5 destaques A PÉ, cada um com nome e distância, vindos de fonte que NÃO seja anúncio de imóvel (guias, matérias, Prefeitura). Regras duras:
+   - Só lugares a até 1 km do imóvel (uns 12 minutos a pé). Sem a distância, não cite.
+   - Metrô e trem: só as estações que aparecem em "entorno", com a distância de lá. Nunca cite estação que não esteja no "entorno", nem a partir de guia de outro bairro.
+   - Nada passageiro: interdição de rua, guindaste, obra pontual, evento, notícia de trânsito. Só o que marca o lugar por anos (parque, linha de metrô nova, grande empreendimento, rua comercial conhecida).
+   - Sem pelo menos 3 destaques que passem nessas regras, NÃO escreva a seção.
+   - Não deduza o perfil de quem mora ali sem fonte. Nada de lugar-comum ("bairro bem servido", "ótima localização").
+CASA, SOBRADO E TERRENO (não há "o prédio"): o que vale escrever é o que distingue ESTE imóvel: terreno ou frente fora do comum, área construída muito acima ou abaixo das vendas por perto (e o que isso faz com o preço), o zoneamento (ZER restringe a uso residencial e a altura; ZEU/ZM permitem prédio, e aí o valor como lote ou para incorporadora importa), idade e estado. Se o lote vale perto do total, diga que o comprador provável é quem quer construir.
 
 Proibido:
 - Seções ou parágrafos genéricos sobre como tamanho, idade do prédio ou andar mexem no preço da região. Os números de "mercado_local" (por_idade_do_predio, por_tamanho_util, por_andar, por_semestre) só podem aparecer em UMA frase, e só para justificar um ajuste deste imóvel cuja idade ou tamanho é conhecido.
@@ -30,13 +36,14 @@ Proibido:
 - Inventar fatos. Fato externo só com fonte. Notas de comércio só com 30 avaliações ou mais.
 - Citar nomes de pessoas, clientes, comunidades ou favelas, ou empresas e projetos usados internamente para calibrar parâmetros. Pode citar edifício e incorporadora vindos da pesquisa.
 - Chamar o documento de laudo ou repetir o aviso legal (já está no rodapé).
+- REPETIR O QUE JÁ ESTÁ NA TELA. Fora da "resposta", não repita a faixa, o R$/m² adotado, as medianas de vendas e anúncios, a quantidade de comparáveis nem a conta terreno + construção: o cliente já vê tudo isso. Uma seção só existe se trouxer fato NOVO (do prédio, da rua, do lote, do zoneamento, da pesquisa) ou uma conclusão que a tela não dá. Na dúvida, corte: texto curto e certeiro vale mais que texto completo.
 
 Forma: português do Brasil, frases curtas, tom sóbrio, sem adjetivos de venda. Valores arredondados ("R$ 1,45 milhão", "cerca de R$ 11,6 mil por m² útil"). R$/m² sempre em área útil; mediana, não média.
 
-Estrutura (texto inteiro com no máximo 380 palavras):
+Estrutura (texto inteiro com no máximo 280 palavras; menos é melhor):
 - "titulo": pergunta curta com o endereço.
 - "resposta": 2 a 3 frases: o valor e o achado principal sobre este imóvel (de preferência, o que o próprio prédio indica).
-- "secoes": 3 a 5 seções curtas, 1 parágrafo cada, cada uma com um achado específico deste imóvel. Ex.: "O edifício", "O que o prédio pede e vendeu", "A região", "Como anunciar".
+- "secoes": de 1 a 4 seções curtas, 1 parágrafo cada, cada uma com um achado específico deste imóvel que a tela não mostra. Ex.: "O edifício", "O que o prédio pede e vendeu", "O terreno e o zoneamento", "A região", "Como anunciar". Achado fraco = seção a menos.
 - "atencao": até 3 itens a confirmar (andar, vagas, estado, documentação). Lista vazia se não houver.
 - "anuncios_no_predio": os anúncios ATUAIS no próprio edifício que a pesquisa viu nas páginas (um por unidade): título curto (portal + planta), URL do anúncio ou da página do condomínio onde ele aparece, preço pedido em reais e área útil em m² como a página informa. Só o que estiver escrito na página — nunca estime nem invente; sem área informada, não inclua. Lista vazia se não houver.
 - "fontes": as páginas usadas no texto (título curto e URL). Lista vazia se nenhuma.`;
@@ -165,8 +172,8 @@ TAREFA 1 — a mais importante, use nela as primeiras buscas: identificar o edif
 - Do edifício: nome, número oficial, ano de construção/entrega, incorporadora e construtora, andares, unidades, plantas (m², dormitórios, vagas), lazer.
 - Abra (web_fetch) a página do condomínio no QuintoAndar ou na Loft e traga os anúncios atuais NESTE prédio, um por linha: preço pedido, área útil, andar quando houver e o LINK do anúncio (ou da página onde ele aparece); e histórico de vendas se a página mostrar.
 TAREFA 2 — OBRIGATÓRIA, faça mesmo que o edifício já esteja resolvido: no mínimo DUAS buscas sobre a região a pé do endereço:
-  (a) o que há de destaque perto: restaurantes, cafés, padarias, mercados, parques, hospitais, escolas e serviços citados em guias, listas ou matérias (Veja Comer & Beber, Guia Michelin, TripAdvisor, jornais, blogs do bairro, Prefeitura); traga nomes, o que os destaca e a distância aproximada quando der; nota só com 30+ avaliações. NÃO use páginas de anúncio de imóvel (QuintoAndar, Loft, Lopes, ZAP, Imovelweb, VivaReal etc.) como fonte sobre a região: o texto de anúncio é propaganda;
-  (b) o que está mudando ou marca o entorno: obras, metrô, parques, grandes empreendimentos, revitalizações, perfil do bairro em matérias recentes.
+  (a) o que há de destaque A ATÉ 1 KM do endereço (não do bairro inteiro): restaurantes, cafés, padarias, mercados, parques, hospitais, escolas e serviços citados em guias, listas ou matérias (Veja Comer & Beber, Guia Michelin, TripAdvisor, jornais, blogs do bairro, Prefeitura); traga nome, o que os destaca e a distância até o endereço (sem distância, não traga); nota só com 30+ avaliações. Guia de outro bairro, mesmo vizinho, não serve. NÃO use páginas de anúncio de imóvel (QuintoAndar, Loft, Lopes, ZAP, Imovelweb, VivaReal etc.) como fonte sobre a região: o texto de anúncio é propaganda;
+  (b) o que está mudando ou marca o entorno por anos: linha de metrô nova, parque, grande empreendimento, revitalização. NÃO traga interdição de rua, obra pontual, evento ou notícia de trânsito.
 TAREFA 3 — só se sobrar busca: a incorporadora do edifício (tempo de mercado, reputação pública com fonte).
 Responda em tópicos curtos, cada fato com a URL. Comece pelo edifício: nome e grau de certeza.`;
   const messages = [{ role: 'user', content: pedido }];
