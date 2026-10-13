@@ -1573,7 +1573,7 @@ function _avResumoParaTexto(){
   const m=_avForm.memoria||null;
   return {
     data_base: new Date().toLocaleDateString('pt-BR',{month:'long',year:'numeric'}),
-    imovel:{endereco:d.endereco,bairro:d.bairro,tipo:d.tipo,area_util:d.area_util,terreno:d.terreno,frente:d.frente||null,dorm:d.dorm,suites:d.suite,vagas:d.vaga},
+    imovel:{endereco:d.endereco,bairro:d.bairro,tipo:d.tipo,area_util:d.area_util,terreno:d.terreno,frente:d.frente||null,dorm:d.dorm,suites:d.suite,vagas:d.vaga,lat:d.lat||(_avPino&&_avPino.lat)||null,lng:d.lng||(_avPino&&_avPino.lng)||null},   // lat/lng: a função confere a distância dos lugares citados (13/10/2026)
     valor:{mercado:d.valor_mercado,faixa_min:d.faixa_min,faixa_max:d.faixa_max,rs_m2_util:d.mercado_rs_m2},
     metodo:mu?{anuncios_rs_m2:mu.rs_anuncio,anuncios_n:mu.n_anuncio,indice_pedido_fechado:mu.idx_pedido_fechado,vendas_reais_rs_m2_util:mu.rs_itbi_util,vendas_reais_n:mu.n_itbi,ajuste_subdeclaracao_itbi:mu.sub_itbi,rs_m2_adotado:mu.rs_final,divergencia_entre_fontes_pct:mu.divergencia,comparaveis_excluidos_pelo_corretor:mu.excluidos||0}:null,
     terreno_mais_construcao:ev&&!ev.so_terreno?{terreno_m2:ev.terreno,rs_m2_terreno:ev.rs_terreno,origem_rs_terreno:ev.rs_terreno_origem,valor_terreno:ev.v_terreno,construcao_m2:ev.constr,idade:ev.idade,estado:ev.estadoLb,depreciacao_pct:Math.round((ev.dep||0)*100),valor_construcao:ev.v_benf,total:ev.total,valor_comparativo:ev.comparativo||null,valor_como_lote:ev.v_lote||null}:(ev&&ev.so_terreno?{terreno_m2:ev.terreno,rs_m2_lote:ev.rs_terreno,origem:ev.rs_terreno_origem,valor:ev.total}:null),

@@ -20,11 +20,13 @@ Ordem de prioridade:
 2. O QUE O PRÓPRIO PRÉDIO DIZ DO PREÇO. Anúncios atuais no edifício (preço, área, R$/m²) e vendas registradas no número do edifício (em "vendas_reais_proximas", pelo número do endereço, e em "mercado_local.mesmo_predio"; o número do prédio pode diferir alguns números do digitado — use o que a pesquisa e "predio_no_cadastro_em_numero_vizinho" indicarem). Compare com o valor calculado. Anúncio é preço pedido: desconte a negociação usual (cerca de 5%) antes de comparar. VENDAS REGISTRADAS no próprio edifício são a evidência mais forte que existe (preço pago, não pedido): compare pela mediana delas em R$/m² de ÁREA ÚTIL ESTIMADA ("rs_m2_util"), nunca pela área do cadastro ("area_cadastro", que inclui áreas comuns e garagem e por isso é sempre maior que a planta — não estranhe essa diferença nem a comente). Se as vendas ou os anúncios do próprio prédio apontam para um valor diferente do calculado em mais de 10%, diga isso já na "resposta", com o número, recomende ao corretor revisar o valor (por exemplo, incluindo na conta os anúncios do prédio) e explique a provável razão (andar, reforma, planta, vagas). Não chame de "coerente" um valor calculado que fica abaixo da maioria das vendas do próprio prédio.
 3. Concorrência: um prédio novo perto ("predios_novos_perto") só entra se ajudar a situar o preço deste imóvel, em uma ou duas frases.
 4. A REGIÃO, só se houver o que dizer: uma seção "A região" de um parágrafo com 3 a 5 destaques A PÉ, cada um com nome e distância, vindos de fonte que NÃO seja anúncio de imóvel (guias, matérias, Prefeitura). Regras duras:
+   - Lugares (comércio, restaurantes, parques, ruas): só os de "lugares_verificados" (a distância já foi conferida no mapa; use a distância de lá) e os de "entorno". Lugar que aparece só nas notas da pesquisa e não está em "lugares_verificados" NÃO entra, mesmo que pareça certo. Se "lugares_verificados" não vier, use só o "entorno".
    - Só lugares a até 1 km do imóvel (uns 12 minutos a pé). Sem a distância, não cite.
    - Metrô e trem: só as estações que aparecem em "entorno", com a distância de lá. Nunca cite estação que não esteja no "entorno", nem a partir de guia de outro bairro.
    - Nada passageiro: interdição de rua, guindaste, obra pontual, evento, notícia de trânsito. Só o que marca o lugar por anos (parque, linha de metrô nova, grande empreendimento, rua comercial conhecida).
    - Sem pelo menos 3 destaques que passem nessas regras, NÃO escreva a seção.
    - Não deduza o perfil de quem mora ali sem fonte. Nada de lugar-comum ("bairro bem servido", "ótima localização").
+5. O FOCA NA ZONA SUL ("foca"): é o portal de bairros da própria Nova São Paulo, com dados conferidos. Se o guia ou uma matéria do Foca sobre o bairro ajudar a entender ESTE imóvel (preço por lado do bairro, barulho de Congonhas, perto de qual estação, o que mudou no bairro), use em uma ou duas frases e ponha o link em "fontes". Não resuma o guia inteiro e não cite lugar do guia que não esteja em "lugares_verificados" ou no "entorno".
 CASA, SOBRADO E TERRENO (não há "o prédio"): o que vale escrever é o que distingue ESTE imóvel: terreno ou frente fora do comum, área construída muito acima ou abaixo das vendas por perto (e o que isso faz com o preço), o zoneamento (ZER restringe a uso residencial e a altura; ZEU/ZM permitem prédio, e aí o valor como lote ou para incorporadora importa), idade e estado. Se o lote vale perto do total, diga que o comprador provável é quem quer construir.
 
 Proibido:
@@ -150,6 +152,57 @@ async function anthropic(apiKey, corpo, betas) {
 
 function tipoTxt(im) { return [im.tipo || 'imóvel', im.area_util ? im.area_util + ' m² úteis' : null, im.dorm ? im.dorm + ' dorm.' : null, im.vagas ? im.vagas + ' vagas' : null].filter(Boolean).join(', '); }
 
+// ── FOCA NA ZONA SUL (13/10/2026): guia e matérias do bairro, fonte da casa e conferida ──
+const FOCA = 'https://focanazonasul.com.br';
+const semAcento = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+async function buscarTexto(url, ms) {
+  const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), ms || 12000);
+  try { const r = await fetch(url, { signal: ctrl.signal, headers: { 'User-Agent': 'NovaSP-parecer (+https://novasp.netlify.app)' } }); return r.status === 200 ? await r.text() : null; }
+  catch (_) { return null; } finally { clearTimeout(t); }
+}
+const limparHtml = h => String(h || '').replace(/<(script|style|nav|header|footer)[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]+>/g, ' ')
+  .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&#39;|&rsquo;/g, "'").replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim();
+async function focaDoBairro(dados) {
+  const sm = await buscarTexto(`${FOCA}/sitemap.xml`); if (!sm) return null;
+  const urls = [...sm.matchAll(/<loc>([^<]+)<\/loc>/g)].map(m => m[1]);
+  // bairro com guia = primeiro segmento que tem matérias embaixo (ex.: /moema/ e /moema/quanto-custa/)
+  const slugs = [...new Set(urls.map(u => (u.replace(FOCA, '').match(/^\/([a-z0-9-]+)\/[a-z0-9-]+\/$/) || [])[1]).filter(Boolean))];
+  const alvos = [dados.imovel && dados.imovel.bairro, dados.entorno && dados.entorno.distrito].map(semAcento).filter(Boolean);
+  const slug = slugs.find(sl => alvos.some(a => a.includes(sl.replace(/-/g, ' '))));
+  if (!slug) return null;
+  const guia = await buscarTexto(`${FOCA}/${slug}/`);
+  const feed = await buscarTexto(`${FOCA}/feed.xml`) || '';
+  const materias = [...feed.matchAll(/<item>([\s\S]*?)<\/item>/g)].map(m => m[1]).map(it => ({
+    titulo: limparHtml((it.match(/<title>([\s\S]*?)<\/title>/) || [])[1]), url: ((it.match(/<link>([\s\S]*?)<\/link>/) || [])[1] || '').trim(),
+    resumo: limparHtml((it.match(/<description>([\s\S]*?)<\/description>/) || [])[1]) }))
+    .filter(x => x.url.includes(`/${slug}/`)).slice(0, 6);
+  return { bairro: slug, guia_url: `${FOCA}/${slug}/`, guia_texto: guia ? limparHtml(guia).slice(0, 5000) : null, materias };
+}
+// ── LUGARES DA PESQUISA: localiza cada um no mapa e só deixa passar o que fica a até 1 km do imóvel ──
+const distM = (a, b, c, d) => { const R = 6371000, r = x => x * Math.PI / 180, dl = r(c - a), dg = r(d - b);
+  return Math.round(2 * R * Math.asin(Math.sqrt(Math.sin(dl / 2) ** 2 + Math.cos(r(a)) * Math.cos(r(c)) * Math.sin(dg / 2) ** 2))); };
+async function conferirLugares(notas, lat, lng) {
+  if (!notas || !lat || !lng) return null;
+  const bloco = (notas.split(/^\s*LUGARES:\s*$/mi)[1] || '').split('\n').map(l => l.trim()).filter(l => l.includes('|')).slice(0, 12);
+  const out = [];
+  for (const linha of bloco) {
+    const [nome, endereco, oque, fonte] = linha.replace(/^[-*•\s]+/, '').split('|').map(x => (x || '').trim());
+    if (!nome) continue;
+    let ponto = null;
+    for (const q of [endereco && `${endereco}, São Paulo, SP`, `${nome}, ${endereco || ''} São Paulo, SP`]) {
+      if (!q) continue;
+      const vb = `${lng - 0.03},${lat + 0.03},${lng + 0.03},${lat - 0.03}`;
+      const j = await buscarTexto(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&viewbox=${vb}&bounded=1&q=${encodeURIComponent(q)}`, 8000);
+      await new Promise(r => setTimeout(r, 1100));                   // Nominatim: no máximo 1 consulta por segundo
+      try { const a = JSON.parse(j || '[]')[0]; if (a) { ponto = { lat: +a.lat, lng: +a.lon }; break; } } catch (_) {}
+    }
+    if (!ponto) continue;                                             // não achou no mapa: não entra
+    const d = distM(lat, lng, ponto.lat, ponto.lng);
+    if (d <= 1000) out.push({ nome, o_que_e: oque || null, distancia_m: Math.round(d / 10) * 10, fonte: /^https?:/.test(fonte) ? fonte : null });
+  }
+  return out;
+}
+
 // Etapa 1: busca na internet sobre o prédio e o entorno. Falha aqui não impede o texto (segue sem pesquisa).
 async function pesquisar(apiKey, dados) {
   const im = (dados && dados.imovel) || {};
@@ -174,14 +227,19 @@ TAREFA 1 — a mais importante, use nela as primeiras buscas: identificar o edif
 TAREFA 2 — OBRIGATÓRIA, faça mesmo que o edifício já esteja resolvido: no mínimo DUAS buscas sobre a região a pé do endereço:
   (a) o que há de destaque A ATÉ 1 KM do endereço (não do bairro inteiro): restaurantes, cafés, padarias, mercados, parques, hospitais, escolas e serviços citados em guias, listas ou matérias (Veja Comer & Beber, Guia Michelin, TripAdvisor, jornais, blogs do bairro, Prefeitura); traga nome, o que os destaca e a distância até o endereço (sem distância, não traga); nota só com 30+ avaliações. Guia de outro bairro, mesmo vizinho, não serve. NÃO use páginas de anúncio de imóvel (QuintoAndar, Loft, Lopes, ZAP, Imovelweb, VivaReal etc.) como fonte sobre a região: o texto de anúncio é propaganda;
   (b) o que está mudando ou marca o entorno por anos: linha de metrô nova, parque, grande empreendimento, revitalização. NÃO traga interdição de rua, obra pontual, evento ou notícia de trânsito.
+  (c) as 2 ou 3 ruas ou polos comerciais mais conhecidos a até 1 km do endereço (rua de bares e restaurantes, centro de compras), com o que têm de destaque.
+  Buscas para a Tarefa 2 (faça pelo menos estas três, com o nome do bairro): "melhores restaurantes ${im.bairro || ''} São Paulo"; "site:vejasp.abril.com.br ${im.bairro || ''}" (Veja Comer & Beber); "${rua} restaurantes bares" (a rua do imóvel e as vizinhas). Guia Michelin, TripAdvisor, Guia da Semana, jornais e blogs do bairro também valem; anúncio de imóvel não.
 TAREFA 3 — só se sobrar busca: a incorporadora do edifício (tempo de mercado, reputação pública com fonte).
+NO FIM da resposta, depois de uma linha só com "LUGARES:", liste cada lugar citado na Tarefa 2, um por linha, assim:
+nome | endereço com número ou esquina | o que é | URL da fonte
+(sem endereço confiável, deixe o lugar fora da lista)
 Responda em tópicos curtos, cada fato com a URL. Comece pelo edifício: nome e grau de certeza.`;
   const messages = [{ role: 'user', content: pedido }];
   const corpo = {
     model: MODELO, max_tokens: 6000, system: PESQUISA_SISTEMA, messages,
     output_config: { effort: 'medium' },
     cache_control: { type: 'ephemeral' },   // cache automático: cada volta interna da busca relê o contexto acumulado do cache
-    tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 6,
+    tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 9,   // 13/10: 6 → 9, para sobrar busca para a região depois do prédio
               user_location: { type: 'approximate', city: 'São Paulo', region: 'São Paulo', country: 'BR', timezone: 'America/Sao_Paulo' } },
             { type: 'web_fetch_20260209', name: 'web_fetch', max_uses: 3, max_content_tokens: 5000 }]
   };
@@ -285,11 +343,15 @@ exports.handler = async (event) => {
     // preço de anúncio sugerido = faixa de fechamento ÷ desconto típico pedido→fechado do bairro (evita contas incoerentes no texto)
     const v = dados.valor || {}, idx = Number((dados.metodo || {}).indice_pedido_fechado) || 0.952;
     if (v.faixa_min && v.faixa_max) dados.preco_anuncio_sugerido = { min: Math.round(v.faixa_min / idx / 1000) * 1000, max: Math.round(v.faixa_max / idx / 1000) * 1000, desconto_tipico: Math.round((1 - idx) * 1000) / 10 };
-    const r = await chamarClaude(apiKey, Object.assign({}, dados, { __pesquisa: pesq.notas }));
+    let foca = null, lugares = null;
+    try { foca = await focaDoBairro(dados); } catch (e) { console.error('[parecer] foca falhou', e.message); }
+    try { const im = dados.imovel || {}; lugares = await conferirLugares(pesq.notas, Number(im.lat), Number(im.lng)); } catch (e) { console.error('[parecer] lugares falhou', e.message); }
+    const notas = pesq.notas ? pesq.notas.split(/^\s*LUGARES:\s*$/mi)[0].trim() : null;   // a lista crua sai; entra a conferida
+    const r = await chamarClaude(apiKey, Object.assign({}, dados, { __pesquisa: notas, foca, lugares_verificados: lugares }));
     const uso = { pesquisa: fecharUso(pesq.uso), texto: fecharUso(r.uso) };
     uso.custo_usd = +(uso.pesquisa.custo_usd + uso.texto.custo_usd).toFixed(4);
     r.tokens += pesq.tokens;
-    console.log('[parecer] buscas na internet:', pesq.buscas, 'uso:', JSON.stringify(uso));
+    console.log('[parecer] buscas na internet:', pesq.buscas, '· foca:', foca ? foca.bairro : '—', '· lugares conferidos:', lugares ? lugares.length : '—', 'uso:', JSON.stringify(uso));
     // _uso vai junto do resultado só para medir custo (o portal lê apenas titulo/resposta/secoes/atencao/fontes)
     await gravarJob(supabaseUrl, supabaseKey, job_id, { status: 'pronto', resultado: JSON.stringify(Object.assign({}, r.texto, { _uso: uso })), modelo: r.modelo, tokens: r.tokens, erro: null });
     console.log('[parecer] pronto', job_id, r.modelo, r.tokens, 'US$', uso.custo_usd);
