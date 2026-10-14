@@ -606,7 +606,13 @@ async function carregarLideresDoUsuario(){
         if (r.ok) _LIDERES_DO_USUARIO = await r.json(); } catch(_) {}
   return _LIDERES_DO_USUARIO;
 }
+// Só a Avaliação: corretor que entrou pela Área do Corretor do site (perfil "corretor" ou modo site) — 14/10/2026
+function ehSoAvaliacao(){
+  if (!CUR) return false;
+  return CUR.perfil === 'corretor' || ((typeof ehModoSite === 'function') && ehModoSite());
+}
 function ehCorretor(){
+  if (CUR && CUR.perfil === 'corretor') return true;
   if (!CUR || CUR.admin) return false;
   if (typeof ehAcessoTotal === 'function' && ehAcessoTotal()) return false;
   if (CUR.acesso_juridico || CUR.acesso_interno || CUR.acesso_calendar) return false;

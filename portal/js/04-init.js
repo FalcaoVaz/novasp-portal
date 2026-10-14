@@ -47,6 +47,14 @@ function _initAppTela(){
     if (tVnd) tVnd.classList.toggle('off', !(typeof podeAcessarForumVendas === 'function' && podeAcessarForumVendas()));
   }
 
+  // Corretor da Área do Corretor do site: só a Avaliação (sem tela inicial nem outros módulos) — 14/10/2026
+  if (typeof ehSoAvaliacao === 'function' && ehSoAvaliacao()) {
+    ['jur','int','cal','ges','reg','vnd','acv','home'].forEach(k=>{ const el=document.getElementById('t-'+k); if(el) el.style.display='none'; });
+    if (typeof resolverIcones === 'function') resolverIcones();
+    setMod('avaliacao');
+    return;
+  }
+
   // Cibele (telefonista): vai direto para abertura de chamado
   if(CUR.dept==='Telefonista'){
     setMod('interno');
@@ -117,6 +125,7 @@ function renderHome(){
 
 // Botão "Início" do menu lateral: fecha o módulo aberto e volta aos cards
 function voltarInicio(){
+  if (typeof ehSoAvaliacao === 'function' && ehSoAvaliacao()) { setMod('avaliacao'); return; }
   ['jur','int','cal','ges','reg','vnd','acv','avl'].forEach(k=>{ const el=document.getElementById('t-'+k); if(el) el.classList.remove('active'); });
   const nav=document.getElementById('nav'); if(nav) nav.innerHTML='';
   const tHome=document.getElementById('t-home'); if(tHome) tHome.classList.add('active');
@@ -127,6 +136,7 @@ function voltarInicio(){
   if (window.innerWidth<=768 && typeof closeSB==='function') closeSB();
 }
 function setMod(mod){
+  if (typeof ehSoAvaliacao === 'function' && ehSoAvaliacao() && mod !== 'avaliacao') return;   // corretor do site: só Avaliação
   // Corretor: só os módulos do perfil (prevalece sobre a regra de representante)
   const ehCorM = (typeof ehCorretor === 'function') && ehCorretor();
   if (ehCorM) {

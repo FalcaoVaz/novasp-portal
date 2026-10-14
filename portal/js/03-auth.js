@@ -31,8 +31,48 @@ function _lerAuthPersistente(){
   } catch(_) { return null; }
 }
 
+// ═══ LOGIN ÚNICO DA ÁREA DO CORRETOR (14/10/2026) ═══
+// O corretor entra pelo site (novasaopaulo.com.br/area-do-corretor); a função sso-corretor do jurídico confere o passe
+// e manda para cá com a sessão do Supabase no endereço (#access_token=…&refresh_token=…). Aqui: guarda a sessão,
+// tira o token da barra, acha ou cria a conta dele em "usuarios" (RPC portal_entrar_corretor) e abre SÓ a Avaliação.
+// Quem chega pelo site fica no "modo site" (só Avaliação) até sair. SQL: sql/2026-10-14-sso-corretor.sql.
+const _MODO_SITE_KEY = 'nsp_modo_site';
+function ehModoSite(){ try { return localStorage.getItem(_MODO_SITE_KEY) === '1'; } catch(_) { return false; } }
+async function _entrarPeloSite(){
+  const h = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));
+  const at = h.get('access_token'), rt = h.get('refresh_token');
+  if (!at || !rt) {
+    if (h.get('error') || h.get('error_description')) {      // link vencido ou já usado
+      history.replaceState(null, '', location.pathname);
+      showErr('O link de entrada venceu. Volte à Área do Corretor do site e toque de novo em "Avaliação".');
+      return true;
+    }
+    return false;
+  }
+  history.replaceState(null, '', location.pathname);         // o token sai da barra de endereço na hora
+  _authSalvarSessao({ access_token: at, refresh_token: rt, expires_at: Date.now() + (Number(h.get('expires_in')) || 3600) * 1000 - 60000 });
+  let meta = {};
+  try { meta = (JSON.parse(atob(at.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))) || {}).user_metadata || {}; } catch(_) {}
+  let u = null;
+  try {
+    const r = await fetch(SBU + '/rest/v1/rpc/portal_entrar_corretor', { method: 'POST', headers: hdr(), body: JSON.stringify({ p_nome: meta.nome || null }) });
+    const rows = r.ok ? await r.json() : [];
+    u = Array.isArray(rows) ? rows[0] : null;
+  } catch(_) {}
+  if (!u) { showErr('Não consegui abrir a sua conta. Volte à Área do Corretor do site e tente de novo.'); return true; }
+  CUR = { ...u, dept: u.dept || '', cor_avatar: u.cor_avatar || '#1E2D4A' };
+  _salvarAuthPersistente({ email: u.email });                // sb:true — volta logado nos próximos 30 dias
+  try { localStorage.setItem(_MODO_SITE_KEY, '1'); } catch(_) {}
+  document.getElementById('ls').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  initApp();
+  console.log('[auth] entrada pelo site:', u.email);
+  return true;
+}
+
 // INIT LOGIN — carrega usuarios em background para validacao por email
 async function initLogin(){
+  if (await _entrarPeloSite()) return;
   const log = msg => { const d = document.getElementById('dbg'); if(d) d.textContent = msg; };
   log('Conectando ao banco...');
 
@@ -281,7 +321,10 @@ async function doLogin(){
 }
 
 function doLogout(){
+  const vinhaDoSite = (typeof ehModoSite === 'function') && ehModoSite();
+  try { localStorage.removeItem(_MODO_SITE_KEY); } catch(_) {}
   _limparAuthPersistente();
+  if (vinhaDoSite) { if (typeof encerrarSessaoSupabase === 'function') encerrarSessaoSupabase(); CUR = null; location.href = 'https://www.novasaopaulo.com.br/area-do-corretor'; return; }
   if (typeof encerrarSessaoSupabase === 'function') encerrarSessaoSupabase();
   CUR=null;
   if (typeof _LIDERES_DO_USUARIO !== 'undefined') _LIDERES_DO_USUARIO = null;   // perfil corretor: recarrega no próximo login
