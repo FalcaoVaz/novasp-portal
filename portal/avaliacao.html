@@ -194,7 +194,7 @@ function render(x){
       ${ip && !ip.oculto ? `
       <div class="kicker" style="margin-top:16px">Cadastro da Prefeitura (IPTU 2026)</div>
       <div class="grid3" style="margin-top:6px">
-        ${it('Contribuinte (SQL)', ipU?ipU.sql:ip.sql)}${it('Unidade', ipU&&ipU.complemento)}${it('Uso', ipU?ipU.uso:ip.uso)}
+        ${it('Contribuinte (SQL)', ipU?ipU.sql:ip.sql)}${ip.matricula?it('Matrícula', `${ip.matricula.matricula}${ip.matricula.cartorio?' · '+(String(ip.matricula.cartorio).match(/(\d{1,2})/)?String(ip.matricula.cartorio).match(/(\d{1,2})/)[1]+'º Registro de Imóveis':ip.matricula.cartorio):''}`):''}${it('Unidade', ipU&&ipU.complemento)}${it('Uso', ipU?ipU.uso:ip.uso)}
         ${it('Padrão', ip.padrao)}${it('Ano de construção', ip.ano_construcao)}${it('Pavimentos', ip.pavimentos)}
         ${it('Terreno do lote', ip.area_terreno?N(ip.area_terreno)+' m²':null)}${it('Testada', ip.testada?N(ip.testada)+' m':null)}
         ${it('Área construída no cadastro', (ipU?ipU.area_construida:ip.area_construida)?N(ipU?ipU.area_construida:ip.area_construida)+' m²':null)}

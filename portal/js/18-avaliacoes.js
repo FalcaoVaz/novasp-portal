@@ -398,6 +398,7 @@ async function _avBuscarIptu(){
     return;
   }
   _avForm.iptu=rows;
+  _avBuscarMatriculas(rows.map(r=>r.sql));   // matrícula e cartório pelas guias de ITBI (15/10/2026)
   if(rows[0] && rows[0].sql && _avPino){
     try{ const q=await _avRpc('aval_quadra_ponto',{p_sql:rows[0].sql}); const h=Array.isArray(q)?q[0]:q;
       if(!velho() && h && h.lat){ const d=_avDistM(_avPino,h); _avForm.quadraIptu={lat:h.lat,lng:h.lng,dist:d};
@@ -427,6 +428,17 @@ async function _avBuscarIptu(){
     }
   }
 }
+// MATRÍCULA E CARTÓRIO (15/10/2026): da guia de ITBI mais recente do contribuinte (2010–2026, dado público da Prefeitura).
+// Só existe para imóvel que teve guia no período; sem guia, não há fonte pública e o quadro não mostra nada.
+const _avSql11 = s => String(s||'').replace(/\D/g,'').padStart(11,'0');
+async function _avBuscarMatriculas(sqls){
+  _avForm.matriculas={};
+  try{ (await _avRpc('aval_matricula_por_sql',{p_sqls:(sqls||[]).filter(Boolean).slice(0,400)})||[])
+         .forEach(m=>{ _avForm.matriculas[m.sql]={matricula:m.matricula, cartorio:m.cartorio||null, data:m.data||null}; }); }catch(_){}
+}
+function _avCartorioCurto(c){
+  const m=String(c||'').match(/(\d{1,2})\s*[ºo°ª]?/); return m ? `${m[1]}º Registro de Imóveis` : String(c||'');
+}
 // Preenche o formulário com os dados do cadastro (casa/terreno: terreno e testada; apto: só referência)
 // Resumo do cadastro para a caixa "Cadastro da Prefeitura" (tela e dossiê): a unidade escolhida, ou o lote quando nenhuma foi escolhida
 function _avIptuResumo(tipo){
@@ -448,6 +460,8 @@ function _avIptuResumo(tipo){
            to_atual: at && num(lote[0].area_ocupada) ? Math.round(num(lote[0].area_ocupada)/at*100) : null,
            ca_atual: at && construidaLote ? Math.round(construidaLote/at*100)/100 : null,
            venal_terreno: vvt, venal_construcao: vvc, venal_total: (vvt||0)+(vvc||0) || null };
+  const mt = (_avForm.matriculas||{})[_avSql11(sel ? sel.sql : (lote.length===1 ? base.sql : ''))] || null;
+  extra.matricula = mt;
   return { ...extra, unidade: sel?{sql:sel.sql, complemento:sel.complemento||null, uso:sel.uso, area_construida:sel.area_construida, fracao_ideal:sel.fracao_ideal}:null,
            sql: sel?sel.sql:(lote.length===1?base.sql:null), uso:base.uso, padrao:base.padrao, ano_construcao:base.ano_construcao>1800?base.ano_construcao:null,
            pavimentos:base.pavimentos||null, area_terreno:base.area_terreno, testada:base.testada, area_construida:sel||lote.length===1?base.area_construida:null,
@@ -474,6 +488,7 @@ function _avIptuCaixaHTML(ip, idSalvo){
       ${it('Pavimentos', ip.pavimentos)}${it('Terreno do lote', N(ip.area_terreno)&&N(ip.area_terreno)+' m²')}${it('Testada', N(ip.testada)&&N(ip.testada)+' m')}
       ${it('Área construída no cadastro', N(ip.unidade?ip.unidade.area_construida:ip.area_construida)&&N(ip.unidade?ip.unidade.area_construida:ip.area_construida)+' m²')}
       ${it('Fração ideal', ip.unidade&&Number(ip.unidade.fracao_ideal)!==1&&N(ip.unidade.fracao_ideal))}${ip.unidades_no_lote>1?it('Unidades no lote', ip.unidades_no_lote+(ip.vagas_avulsas?` + ${ip.vagas_avulsas} vagas/depósitos`:'')):''}
+      ${ip.matricula?it('Matrícula', `${_avEscH(ip.matricula.matricula)}${ip.matricula.cartorio?' · '+_avEscH(_avCartorioCurto(ip.matricula.cartorio)):''}${ip.matricula.data?`<br><small style="font-weight:400;color:#64748b">pela guia de ITBI de ${String(ip.matricula.data).slice(5,7)}/${String(ip.matricula.data).slice(0,4)}</small>`:''}`):''}
       ${it('Profundidade média do lote', N(ip.profundidade)&&N(ip.profundidade)+' m')}${it('Tipo de terreno', ip.tipo_terreno)}${it('CEP', ip.cep&&String(ip.cep).replace(/^(\d{5})(\d{3})$/,'$1-$2'))}
       ${it('Área ocupada pela construção', N(ip.area_ocupada)&&N(ip.area_ocupada)+' m²'+(ip.to_atual!=null?` (${ip.to_atual}% do lote)`:''))}${it('Construído no lote ÷ terreno', ip.ca_atual!=null?N(ip.ca_atual):null)}
     </div>
