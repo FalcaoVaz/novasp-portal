@@ -26,6 +26,7 @@ if not KEY:
     sys.exit('ERRO: chave do Imoview não encontrada (IMOVIEW_KEY ou Chaveiro: serviço imoview, conta nsp).')
 
 BASE = 'https://api.imoview.com.br/'
+LIMITE_AVISO_MB = 475            # banco principal: aviso de espaço (o plano gratuito trava em 500 MB)
 POR_PAGINA = 20                     # a API recusa mais que 20 ("Nº de registros não pode ser maior que 20!")
 
 
@@ -191,9 +192,17 @@ def main():
                             l['dorm'], l['vaga'], l['lat'], l['lng'], l['alterado_em'], l['url']) for l in linhas], page_size=500)
         cur.execute('select count(*), max(carregado_em) from aval_anuncios_nsp')
         n, quando = cur.fetchone()
+        cur.execute('select pg_database_size(current_database())')
+        mb = round(cur.fetchone()[0] / 1048576)
     print(f'Gravado: {n} anúncios em aval_anuncios_nsp ({quando:%d/%m/%Y %H:%M}).')
     if os.environ.get('SKYBOX_TOKEN', '').strip():
         guarda_no_skybox(linhas)
+    # AVISO DE ESPAÇO (15/10/2026): o plano gratuito do Supabase deixa o banco só para leitura acima de 500 MB.
+    # Passando de 475 MB a rodada termina com erro (fica vermelha no GitHub e chega e-mail) — hora de migrar para o Pro.
+    print(f'Banco principal: {mb} MB de 500 (aviso a partir de {LIMITE_AVISO_MB}).')
+    if mb >= LIMITE_AVISO_MB:
+        sys.exit(f'ATENÇÃO: o banco principal está em {mb} MB, perto do limite de 500 MB do plano gratuito do Supabase '
+                 f'(acima disso ele fica só para leitura). Hora de migrar para o plano Pro. Os anúncios foram gravados normalmente.')
 
 
 if __name__ == '__main__':
