@@ -192,8 +192,12 @@ def main():
                             l['dorm'], l['vaga'], l['lat'], l['lng'], l['alterado_em'], l['url']) for l in linhas], page_size=500)
         cur.execute('select count(*), max(carregado_em) from aval_anuncios_nsp')
         n, quando = cur.fetchone()
-        cur.execute('select pg_database_size(current_database())')
-        mb = round(cur.fetchone()[0] / 1048576)
+    mb = 0
+    try:                                   # depois do commit: um erro aqui nunca desfaz a carga
+        with con.cursor() as cur:
+            cur.execute('select pg_database_size(current_database())'); mb = round(cur.fetchone()[0] / 1048576)
+    except Exception as e:
+        print('Aviso: não consegui medir o tamanho do banco:', e)
     print(f'Gravado: {n} anúncios em aval_anuncios_nsp ({quando:%d/%m/%Y %H:%M}).')
     if os.environ.get('SKYBOX_TOKEN', '').strip():
         guarda_no_skybox(linhas)
