@@ -103,10 +103,29 @@ async function carregar(){
     const x = Array.isArray(arr) ? arr[0] : arr;
     if(!x){ box.innerHTML = '<div class="center">Esta avaliação não está disponível.<br>Fale com o seu corretor da Nova São Paulo.</div>'; return; }
     box.innerHTML = render(x);
+    if(params.get('pdfblob')==='1' && window.parent!==window){ await _pdfParaPortal(); return; }   // "Enviar para a Área do Corretor"
     document.getElementById('barra').style.display = '';
     await desenharMapa(x);
     if(modoPdf) setTimeout(()=>window.print(), 1800);
   }catch(e){ box.innerHTML = '<div class="center">Não foi possível carregar a avaliação.</div>'; }
+}
+
+// PDF do dossiê para o portal (15/10/2026): html2pdf (cdnjs) sobre a página, sem o mapa (os mosaicos de mapa são de
+// outro domínio e não entram no PDF); o resultado vai ao portal por postMessage, só para a mesma origem.
+async function _pdfParaPortal(){
+  const avisa = d => window.parent.postMessage(d, location.origin);
+  try{
+    if(!window.html2pdf) await new Promise((ok,err)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js'; s.onload=ok; s.onerror=()=>err(new Error('não carregou o gerador de PDF')); document.head.appendChild(s); });
+    // no PDF para o site os blocos podem quebrar entre páginas (na impressão continuam inteiros)
+    const st=document.createElement('style'); st.textContent='.card{page-break-inside:auto !important;break-inside:auto !important}'; document.head.appendChild(st);
+    await new Promise(r=>setTimeout(r,400));
+    const blob = await window.html2pdf().set({
+      margin:[8,8,10,8], image:{type:'jpeg',quality:0.92},
+      html2canvas:{ scale:2, useCORS:true, ignoreElements: el => el.id==='mapa' || el.id==='barra' || (el.classList && el.classList.contains('no-print')) },
+      jsPDF:{ unit:'mm', format:'a4', orientation:'portrait' }, pagebreak:{ mode:['css','legacy'], avoid:['tr','.passo','.res','.kicker','h1','h2'] }
+    }).from(document.body).outputPdf('blob');
+    avisa({ pdf: blob });
+  }catch(e){ avisa({ erro: String(e && e.message || e) }); }
 }
 
 function render(x){

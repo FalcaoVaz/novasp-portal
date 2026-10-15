@@ -627,6 +627,82 @@ function _avLinha(x){
 }
 function _avSet(k,v){ _avFiltro[k]=v; renderAvalLista(); }
 
+// ═══ "AVALIAR ESTE IMÓVEL" vindo da Área do Corretor do site (15/10/2026) ═══
+// O site manda os dados do imóvel do Imoview; a função sso-corretor guarda (sso_prefill) e o login do site traz o id.
+// Aqui: preenche a avaliação (editável). Depois de salvar, "Enviar para a Área do Corretor" gera o PDF do dossiê,
+// guarda no bucket privado "dossies" e volta ao site pela função sso-retorno, que assina o passe de volta.
+window._avPre = window._avPre || null;                 // {imovel, retorno, aplicado}
+const _avEscH = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function _avTipoDoSite(t){
+  const x=_avNorm(t);
+  return /cobertura|penthouse/.test(x)?'Cobertura': /studio|kit/.test(x)?'Studio': /apart|flat|duplex|triplex|garden/.test(x)?'Apartamento':
+         /vila/.test(x)?'Casa de vila': /condom/.test(x)?'Casa em condomínio': /sobrado|assobrad/.test(x)?'Sobrado':
+         /casa/.test(x)?'Casa térrea': /terreno|lote|area/.test(x)?'Terreno': /comerc|sala|loja|conj|galp|predio|ponto|andar/.test(x)?'Comercial': null;
+}
+async function _avAplicarPre(){
+  const p=window._avPre; if(!p || p.aplicado) return; p.aplicado=true;
+  const im=p.imovel||{};
+  const corpo=document.getElementById('aval-corpo');
+  if(corpo) corpo.insertAdjacentHTML('afterbegin', `<div class="card" style="margin-bottom:12px;border-left:4px solid #0088CC"><div class="cb" style="font-size:.9em">
+    📌 Avaliação do imóvel <b>${_avEscH(im.ref)}</b> pedida pela Área do Corretor. Os dados vieram do Imoview: confira, ajuste o que precisar e gere.
+    Ao salvar, aparece o botão para mandar o valor e o PDF de volta ao imóvel no site.</div></div>`);
+  const set=(id,v)=>{ const e=document.getElementById(id); if(e && v!=null && v!=='' && Number(v)!==0) e.value=v; };
+  set('av-rua', im.logradouro); set('av-num', im.numero);
+  if(im.logradouro){ try{ await avalGeocodificar(); }catch(_){} }
+  const tp=_avTipoDoSite(im.tipo); if(tp){ const e=document.getElementById('av-tipo'); if(e){ e.value=tp; _avCamposTipo(); } }
+  set('av-area', im.area_util||im.area_privativa); set('av-terreno', im.area_lote);
+  set('av-dorm', im.quartos); set('av-suite', im.suites); set('av-vaga', im.vagas);
+}
+// PDF do dossiê: abre a página do dossiê num quadro escondido (mesmo endereço do portal) e recebe o PDF pronto
+function _avPdfDoDossie(tok){
+  return new Promise((ok, erro)=>{
+    const fr=document.createElement('iframe');
+    fr.style.cssText='position:fixed;left:-12000px;top:0;width:900px;height:1300px;border:0';
+    fr.src=`${location.origin}/avaliacao.html?t=${encodeURIComponent(tok)}&pdfblob=1`;
+    const fim=()=>{ window.removeEventListener('message', ouvir); clearTimeout(t); fr.remove(); };
+    const t=setTimeout(()=>{ fim(); erro(new Error('o PDF demorou demais')); }, 90000);
+    function ouvir(ev){ if(ev.source!==fr.contentWindow || ev.origin!==location.origin) return; const d=ev.data||{}; fim(); d.pdf ? ok(d.pdf) : erro(new Error(d.erro||'sem PDF')); }
+    window.addEventListener('message', ouvir);
+    document.body.appendChild(fr);
+  });
+}
+function _avCartaoEnviarSite(id){
+  const p=window._avPre, corpo=document.getElementById('aval-corpo'); if(!p || !corpo) return;
+  corpo.insertAdjacentHTML('afterbegin', `<div class="card" id="av-site-card" style="margin-bottom:12px;border-left:4px solid #047857"><div class="cb">
+    <div style="font-weight:700;margin-bottom:6px">Mandar para a Área do Corretor</div>
+    <div style="font-size:.88em;color:#475569;margin-bottom:8px">O valor, a faixa e o PDF do dossiê vão para o imóvel <b>${_avEscH((p.imovel||{}).ref)}</b> no site, de onde você envia ao proprietário.</div>
+    <button class="btn btn-p" id="av-site-btn" onclick="_avEnviarAoSite('${id}')">📤 Enviar para a Área do Corretor</button>
+    <span id="av-site-st" style="margin-left:8px;font-size:.88em;color:#64748b"></span></div></div>`);
+}
+async function _avEnviarAoSite(id){
+  const p=window._avPre, x=(_avImoveis||[]).find(y=>y.id===id); if(!p || !x) return;
+  const btn=document.getElementById('av-site-btn'), st=document.getElementById('av-site-st');
+  const msg=t=>{ if(st) st.textContent=t; };
+  if(btn) btn.disabled=true;
+  let pdfOk=false;
+  try{
+    msg('Gerando o PDF do dossiê… (até 1 minuto)');
+    const blob=await _avPdfDoDossie(x.token);
+    msg('Guardando o PDF…');
+    const em=String(CUR.email||'').toLowerCase();
+    const h=hdr({'Content-Type':'application/pdf','x-upsert':'true'}); delete h.Prefer;
+    const r=await fetch(`${SBU}/storage/v1/object/dossies/${encodeURIComponent(em)}/${id}.pdf`, {method:'POST', headers:h, body:blob});
+    pdfOk=r.ok;
+  }catch(e){ console.warn('[aval] PDF:', e.message); }
+  if(!pdfOk && !confirm('Não consegui gerar o PDF do dossiê. Mandar ao site só o valor e a faixa, sem o PDF?')){ if(btn) btn.disabled=false; msg(''); return; }
+  msg('Voltando para a Área do Corretor…');
+  if(typeof _authRenovarSePerto==='function'){ try{ await _authRenovarSePerto(); }catch(_){} }
+  const s=_authCarregarSessao()||{};
+  const origem=(typeof JURIDICO_ORIGIN!=='undefined'&&JURIDICO_ORIGIN)||'https://falcaovaz.netlify.app';
+  // formulário (POST) de página inteira: o token não vai no endereço; a função assina o passe e redireciona ao site
+  const f=document.createElement('form'); f.method='POST'; f.action=`${origem}/.netlify/functions/sso-retorno`;
+  Object.entries({token:s.access_token||'', avaliacao_id:id, ref:(p.imovel||{}).ref||'', retorno:p.retorno||''})
+    .forEach(([k,v])=>{ const i=document.createElement('input'); i.type='hidden'; i.name=k; i.value=v; f.appendChild(i); });
+  document.body.appendChild(f);
+  window._avPre=null;
+  f.submit();
+}
+
 // ═══════════════ NOVA AVALIAÇÃO — formulário ═══════════════
 function avalNova(){
   _avPino=null; _avForm={};
@@ -676,6 +752,7 @@ function avalNova(){
 
     <div style="margin-top:8px"><button class="btn btn-o bsm" onclick="carregarAvalImoveis({lista:true})">🗂 Ver avaliações salvas</button></div>`;
   _avCamposTipo();
+  if(window._avPre && !window._avPre.aplicado) setTimeout(_avAplicarPre, 50);   // imóvel pedido pela Área do Corretor do site
 }
 
 async function _avCarregarLeaflet(){
@@ -1679,7 +1756,7 @@ async function avalSalvar(){
     const novo=Array.isArray(rows)?rows[0]:rows;
     _avForm={}; _avPino=null;   // avaliação gravada: nada dela continua valendo nas próximas telas
     await carregarAvalImoveis({lista:true});
-    if(novo?.id) abrirAvalDetalhe(novo.id);
+    if(novo?.id){ abrirAvalDetalhe(novo.id); if(window._avPre) _avCartaoEnviarSite(novo.id); }
   }catch(e){ alert('Não foi possível salvar: '+(e.message||e)); }
 }
 

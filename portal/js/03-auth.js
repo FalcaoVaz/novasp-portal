@@ -49,6 +49,7 @@ async function _entrarPeloSite(){
     }
     return false;
   }
+  const preId = new URLSearchParams(location.search).get('pre');   // "Avaliar este imóvel" (15/10/2026)
   history.replaceState(null, '', location.pathname);         // o token sai da barra de endereço na hora
   _authSalvarSessao({ access_token: at, refresh_token: rt, expires_at: Date.now() + (Number(h.get('expires_in')) || 3600) * 1000 - 60000 });
   let meta = {};
@@ -63,6 +64,13 @@ async function _entrarPeloSite(){
   CUR = { ...u, dept: u.dept || '', cor_avatar: u.cor_avatar || '#1E2D4A' };
   _salvarAuthPersistente({ email: u.email });                // sb:true — volta logado nos próximos 30 dias
   try { localStorage.setItem(_MODO_SITE_KEY, '1'); } catch(_) {}
+  if (preId && /^[0-9a-f-]{36}$/i.test(preId)) {
+    try {
+      const r = await fetch(SBU + '/rest/v1/rpc/aval_prefill_pegar', { method: 'POST', headers: hdr(), body: JSON.stringify({ p_id: preId }) });
+      const rows = r.ok ? await r.json() : [];
+      if (rows && rows[0] && rows[0].imovel) window._avPre = { imovel: rows[0].imovel, retorno: rows[0].retorno, aplicado: false };
+    } catch(_) {}
+  }
   document.getElementById('ls').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   initApp();

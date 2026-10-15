@@ -62,9 +62,22 @@ exports.handler = async (event) => {
     body: JSON.stringify({ email, email_confirm: true, user_metadata: { nome: String(dados.nome || '').slice(0, 120), perfil: 'corretor', codigos_imoview: Array.isArray(dados.codigos) ? dados.codigos.slice(0, 20) : [], origem: 'site' } }) });
   if (rc.status >= 300 && rc.status !== 422) console.error('[sso] criar conta HTTP', rc.status);
 
+  // "Avaliar este imóvel" (15/10/2026): os dados do imóvel ficam no banco (sso_prefill) e só o id vai no endereço
+  let destinoFinal = destino;
+  const ret = String(dados.retorno || '');
+  if (dados.imovel && typeof dados.imovel === 'object' && dados.imovel.ref && ret.startsWith('https://www.novasaopaulo.com.br/')) {
+    const imovel = Object.fromEntries(Object.entries(dados.imovel).filter(([, v]) => v !== null && v !== '' && typeof v !== 'object').slice(0, 40));
+    const rp = await fetch(`${sbUrl}/rest/v1/sso_prefill`, { method: 'POST', headers: { ...h, Prefer: 'return=representation' }, body: JSON.stringify({ email, imovel, retorno: ret }) });
+    const pj = await rp.json().catch(() => null);
+    const pid = Array.isArray(pj) && pj[0] && pj[0].id;
+    if (pid) destinoFinal = destino + (destino.includes('?') ? '&' : '?') + 'pre=' + pid;
+    else console.error('[sso] prefill HTTP', rp.status);
+    fetch(`${sbUrl}/rest/v1/sso_prefill?criado_em=lt.${encodeURIComponent(new Date(Date.now() - 864e5).toISOString())}`, { method: 'DELETE', headers: h }).catch(() => {});
+  }
+
   // magic link → o portal recebe a sessão no endereço de destino
   const rl = await fetch(`${sbUrl}/auth/v1/admin/generate_link`, { method: 'POST', headers: h,
-    body: JSON.stringify({ type: 'magiclink', email, redirect_to: destino, options: { redirect_to: destino } }) });
+    body: JSON.stringify({ type: 'magiclink', email, redirect_to: destinoFinal, options: { redirect_to: destinoFinal } }) });
   const j = await rl.json().catch(() => ({}));
   const link = j.action_link || (j.properties && j.properties.action_link);
   if (!link) { console.error('[sso] generate_link HTTP', rl.status); return pagina('Não foi possível abrir a avaliação agora. Tente de novo em instantes.', 503); }
