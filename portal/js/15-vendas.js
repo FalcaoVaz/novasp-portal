@@ -685,6 +685,8 @@ async function importarSelecao(){
   if (!equipe) { toast('Escolha a equipe.','err'); return; }
   if (!_uploadLinhas.length) { toast('Nenhuma linha pra importar.','err'); return; }
   const mes = document.getElementById('up-sel-mes')?.value || _mesAtual();
+  // 16/10/2026: Águia e Fênix de 06/10 entraram no ciclo de setembro e sumiram da tela de outubro. Mês anterior ao atual só com confirmação.
+  if (mes < _mesAtual() && !confirm(`Atenção: você está enviando para o ciclo de ${_ymLabel(mes)}, que já passou. O ciclo de agora é ${_ymLabel(_mesAtual())}.\n\nEnviar mesmo assim para ${_ymLabel(mes)}?`)) return;
 
   const btn = document.getElementById('up-sel-importar');
   btn.disabled = true;
