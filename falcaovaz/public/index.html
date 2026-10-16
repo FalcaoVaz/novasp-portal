@@ -377,13 +377,23 @@
         </div>
 
         <div class="card">
-          <div class="card-header" style="padding-bottom:16px">
-            <div class="tabs" style="margin:0">
+          <div class="card-header" style="padding-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <div class="tabs" style="margin:0;flex-wrap:wrap">
               <div class="tab active" id="tab-prazos-todos" onclick="filterPrazos('todos',this)">Todos</div>
               <div class="tab" id="tab-prazos-urgente" onclick="filterPrazos('urgente',this)">Urgentes</div>
               <div class="tab" id="tab-prazos-judicial" onclick="filterPrazos('judicial',this)">Judiciais</div>
               <div class="tab" id="tab-prazos-extrajudicial" onclick="filterPrazos('extrajudicial',this)">Extrajudiciais</div>
+              <div class="tab" id="tab-prazos-relatorio" onclick="filterPrazos('relatorio',this)" title="Lançamentos automáticos do Relatório de andamentos">Origem: Relatório de andamentos</div>
+              <div class="tab" id="tab-prazos-conferir" onclick="filterPrazos('conferir',this)" title="Lançamentos automáticos que a advogada ainda não confirmou">A conferir</div>
             </div>
+            <select id="filtro-prazos-resp" onchange="carregarPrazos()" style="margin-left:auto;padding:7px 10px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);font-family:DM Sans,sans-serif;font-size:13px;color:var(--gray-700);outline:none">
+              <option value="">Todos os responsáveis</option>
+              <option>Edna Rebesco</option>
+              <option>Fernanda Araujo</option>
+              <option>Rodrigo Falcão Vaz</option>
+              <option>Durval Falcão Vaz</option>
+              <option>Janaina Alves</option>
+            </select>
           </div>
           <div class="table-wrap">
             <table>
@@ -403,7 +413,11 @@
             <h1>Processos Judiciais</h1>
             <p>Gestão completa dos processos do escritório</p>
           </div>
-          <button class="btn btn-primary" onclick="abrirNovoProcesso()">+ Novo Processo</button>
+          <div class="flex gap-2" style="flex-wrap:wrap;justify-content:flex-end">
+            <button class="btn btn-outline" onclick="RA.abrirPlanilhas()" title="Enviar as planilhas exportadas do eproc (prazos em aberto, eventos)">📤 Enviar planilhas do eproc</button>
+            <button class="btn btn-outline" onclick="RA.abrirRelatorio()" title="Relatório de andamentos da carteira escolhida no filtro de advogado">📑 Emitir relatório de andamentos</button>
+            <button class="btn btn-primary" onclick="abrirNovoProcesso()">+ Novo Processo</button>
+          </div>
         </div>
 
         <div class="card">
@@ -1275,6 +1289,55 @@
   </div>
 </div>
 
+<!-- Modal Relatório de andamentos (16/10/2026) -->
+<style>#ra-log:empty,#ra-preview:empty{display:none}</style>
+<div class="modal-overlay" id="modal-relatorio-andamentos">
+  <div class="modal" style="width:1120px;max-width:96vw">
+    <div class="modal-header">
+      <div class="modal-title">📑 Relatório de andamentos</div>
+      <button class="modal-close" onclick="closeModal('modal-relatorio-andamentos')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="flex gap-2 items-center" style="flex-wrap:wrap;margin-bottom:10px">
+        <div class="text-sm">Carteira: <b id="ra-carteira">—</b> <span class="text-xs text-gray">(muda pelo filtro de advogado da tela)</span></div>
+        <label class="text-sm" style="margin-left:auto">Referência <input type="date" id="ra-ref" style="padding:6px 8px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm)"></label>
+        <label class="text-sm" title="Desmarcado: usa só o que já está no portal (mais rápido)"><input type="checkbox" id="ra-consultar" checked> Consultar DJEN e e-SAJ agora</label>
+        <button class="btn btn-primary" id="ra-gerar" onclick="RA.gerar()">Gerar relatório</button>
+      </div>
+      <div id="ra-log" class="text-xs text-gray" style="max-height:110px;overflow-y:auto;font-family:monospace;background:var(--gray-50);border-radius:6px;padding:6px 8px;margin-bottom:10px"></div>
+      <div id="ra-acoes" style="display:none;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+        <button class="btn btn-primary" id="ra-emitir" onclick="RA.emitir()">⬇️ Emitir PDF (salva no histórico e lança os urgentes em Prazos)</button>
+        <span class="text-xs text-gray" style="align-self:center">Os urgentes entram na aba Prazos como "A conferir"; só valem depois que a advogada confirma. Emitir de novo não duplica.</span>
+      </div>
+      <div id="ra-preview" style="border:1px solid var(--gray-200);border-radius:8px;padding:14px;max-height:58vh;overflow:auto;background:#fff"></div>
+      <div class="font-semibold text-sm" style="margin-top:14px">Histórico</div>
+      <div id="ra-historico"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Planilhas do eproc (16/10/2026) -->
+<div class="modal-overlay" id="modal-planilhas-eproc">
+  <div class="modal" style="width:760px">
+    <div class="modal-header">
+      <div class="modal-title">📤 Enviar planilhas do eproc</div>
+      <button class="modal-close" onclick="closeModal('modal-planilhas-eproc')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="text-xs text-gray" style="margin-bottom:10px">Exporte do eproc a lista de intimações/prazos (e, se quiser, a relação de processos) e envie aqui: Excel, CSV ou a página salva. O relatório usa a planilha mais recente de cada carteira, dos últimos 10 dias. A consulta automática ao eproc não é feita porque ele tem bloqueio anti-robô.</div>
+      <div class="grid-2">
+        <div class="form-group"><label>Carteira (advogada)</label><select id="ra-eproc-adv"></select></div>
+        <div class="form-group"><label>Arquivo(s)</label><input type="file" id="ra-eproc-arq" multiple accept=".xlsx,.xls,.csv,.ods,.html,.htm" onchange="RA.lerArquivosEproc(this)"></div>
+      </div>
+      <div id="ra-eproc-res" style="max-height:48vh;overflow:auto"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-planilhas-eproc')">Cancelar</button>
+      <button class="btn btn-primary" id="ra-eproc-salvar" style="display:none" onclick="RA.salvarPlanilha()">Salvar planilha</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal Novo Processo -->
 <div class="modal-overlay" id="modal-processo">
   <div class="modal">
@@ -2068,16 +2131,17 @@
 <script src="js/03-planilhas.js?v=20260805b"></script>
 <script src="js/04-processos.js?v=20260805b"></script>
 <script src="js/05-email.js?v=20260805b"></script>
-<script src="js/06-listas.js?v=20260805b"></script>
+<script src="js/06-listas.js?v=20261016a"></script>
 <script src="js/07-meus-docs.js?v=20260805b"></script>
 <script src="js/08-chamados.js?v=20260805b"></script>
 <script src="js/09-nav.js?v=20260805b"></script>
-<script src="js/10-dashboard.js?v=20260805b"></script>
+<script src="js/10-dashboard.js?v=20261016a"></script>
 <script src="js/11-documentos.js?v=20260805b"></script>
 <script src="js/12-uploads.js?v=20260805b"></script>
 <script src="js/13-gerar-doc.js?v=20260805b"></script>
 <script src="js/14-modais.js?v=20260805b"></script>
 <script src="js/15-acordos.js?v=20260805b"></script>
 <script src="js/16-calc-correcao.js?v=20260805b"></script>
+<script src="js/17-relatorio-andamentos.js?v=20261016a"></script>
 </body>
 </html>

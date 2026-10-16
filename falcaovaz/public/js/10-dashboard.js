@@ -1,4 +1,4 @@
-﻿// ─── TOKENS ──────────────────────────────────────────────
+// ─── TOKENS ──────────────────────────────────────────────
 function tokenBarHTML(used, quota) {
   const pct = Math.min(100, Math.round(used/quota*100));
   const cls = pct > 85 ? 'danger' : pct > 65 ? 'warn' : '';
@@ -121,6 +121,8 @@ function switchTab(tabId, el) {
 function filterPrazos(type, el) {
   el.closest('.tabs').querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
+  _prazosFiltro = type;
+  carregarPrazos();
 }
 
 // ─── SIDEBAR MOBILE ──────────────────────────────────────

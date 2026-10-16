@@ -1,4 +1,4 @@
-﻿async function carregarProcessos() {
+async function carregarProcessos() {
   const busca  = document.getElementById('filtro-processo-busca')?.value?.toLowerCase() || '';
   const tipo   = document.getElementById('filtro-processo-tipo')?.value || '';
   const adv    = document.getElementById('filtro-processo-adv')?.value || '';
@@ -109,19 +109,42 @@
 }
 
 // ─── CARREGAR PRAZOS ──────────────────────────────────────
+// Filtros da aba Prazos (16/10/2026: as abas passaram a filtrar de verdade; + Origem: Relatório de andamentos e A conferir)
+let _prazosFiltro = 'todos';
 async function carregarPrazos() {
+  const tbody = document.querySelector('#page-prazos table tbody');
+  const resp = document.getElementById('filtro-prazos-resp')?.value || '';
   const dados = await db.get('prazos',
-    `?concluido=eq.false&order=vencimento.asc&limit=50` +
+    `?concluido=eq.false&order=vencimento.asc&limit=300` +
     `&select=*,responsavel:usuarios(nome),processo:processos(numero,vara,autor,reu)`
   );
-  if (!dados || !dados.length) return;
-
-  const tbody = document.querySelector('#page-prazos table tbody');
   if (!tbody) return;
-  tbody.innerHTML = dados.map(p => {
+  const hoje = new Date();
+  const diasAte = p => Math.ceil((new Date(p.vencimento + 'T12:00:00') - hoje) / (1000*60*60*24));
+  const auto = p => p.origem === 'relatorio_andamentos';
+  let lista = (dados || []).filter(p => {
+    if (resp && p.responsavel?.nome !== resp) return false;
+    if (_prazosFiltro === 'urgente')       return diasAte(p) <= 5;
+    if (_prazosFiltro === 'judicial')      return !!p.processo_id || p.modulo === 'judicial';
+    if (_prazosFiltro === 'extrajudicial') return !p.processo_id && p.modulo !== 'judicial';
+    if (_prazosFiltro === 'relatorio')     return auto(p);
+    if (_prazosFiltro === 'conferir')      return p.status_conferencia === 'a_conferir';
+    return true;
+  });
+  // Contagens nas abas (sobre o filtro de responsável)
+  const base = (dados || []).filter(p => !resp || p.responsavel?.nome === resp);
+  const nt = (id, n) => { const e = document.getElementById(id); if (e) e.textContent = e.textContent.split(' (')[0] + (n > 0 ? ` (${n})` : ''); };
+  nt('tab-prazos-relatorio', base.filter(auto).length);
+  nt('tab-prazos-conferir', base.filter(p => p.status_conferencia === 'a_conferir').length);
+  if (!lista.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="text-gray text-xs" style="text-align:center;padding:24px">Nenhum prazo em aberto neste filtro.</td></tr>`;
+    return;
+  }
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+  tbody.innerHTML = lista.map(p => {
     const venc = new Date(p.vencimento + 'T12:00:00');
-    const diff = Math.ceil((venc - new Date()) / (1000*60*60*24));
-    const diasLabel = diff < 0 ? 'Vencido' : diff === 0 ? 'Hoje' : `${diff} dias`;
+    const diff = diasAte(p);
+    const diasLabel = diff < 0 ? 'Vencido' : diff === 0 ? 'Vence hoje' : `${diff} dias`;
     const cls = diff <= 0 ? 'prazo-urgent' : diff <= 5 ? 'prazo-warn' : 'prazo-ok';
     const badgeCls = diff <= 0 ? 'badge-red' : diff <= 5 ? 'badge-amber' : 'badge-blue';
     const ref = p.processo?.numero || p.referencia || '—';
@@ -129,26 +152,37 @@ async function carregarPrazos() {
     const autor = (p.processo?.autor||'').substring(0,30);
     const reu   = (p.processo?.reu||'').substring(0,30);
     const partes = (autor || reu)
-      ? `<div class="text-xs" style="color:var(--gray-700)">${autor||'—'}</div><div class="text-xs text-gray">× ${reu||'—'}</div>`
+      ? `<div class="text-xs" style="color:var(--gray-700)">${esc(autor)||'—'}</div><div class="text-xs text-gray">× ${esc(reu)||'—'}</div>`
       : '';
-    const resp = p.responsavel?.nome || '—';
-    const descCurta = `${p.tipo} · ${ref}`.replace(/'/g, "\\'");
+    const respNome = p.responsavel?.nome || '—';
+    const descCurta = `${p.tipo} · ${ref}`.replace(/['"\\]/g, '');
+    const conferir = p.status_conferencia === 'a_conferir';
+    const tipoCel = auto(p)
+      ? `<div>${esc(p.tipo)}</div><div class="text-xs text-gray" style="margin-top:2px">${esc(p.regra_calculo || '')}</div>
+         <div style="margin-top:3px"><span class="badge badge-gray" style="font-size:9px">📑 Relatório de andamentos</span>${p.origem_data ? ` <span class="badge badge-blue" style="font-size:9px">${esc(p.origem_data)}</span>` : ''}</div>`
+      : esc(p.tipo);
+    const statusCel = conferir
+      ? `<span class="badge badge-amber">A conferir</span>`
+      : `<span class="badge ${badgeCls}">${diff<=0?'Urgente':diff<=5?'Atenção':'Normal'}</span>${p.status_conferencia === 'confirmado' ? '<div class="text-xs text-gray" style="margin-top:2px">confirmado</div>' : ''}`;
+    const acoes = conferir
+      ? `<button class="btn btn-xs btn-outline" style="color:var(--green)" onclick="RA.confirmarPrazo('${p.id}')" title="Confirmar: passa a valer como prazo">Confirmar</button>
+         <button class="btn btn-xs btn-outline" style="color:var(--red)" onclick="RA.descartarPrazo('${p.id}')" title="Descartar: não volta a ser lançado">Descartar</button>
+         <button class="btn btn-xs btn-outline" onclick="abrirEditarPrazo('${p.id}')" title="Ajustar a data antes de confirmar">✏️</button>`
+      : `<button class="btn btn-xs btn-outline" onclick="abrirEditarPrazo('${p.id}')" title="Editar">✏️</button>
+         <button class="btn btn-xs btn-outline" style="color:var(--green)" onclick="concluirPrazo('${p.id}','${esc(descCurta)}')" title="Marcar concluído">✅</button>
+         <button class="btn btn-xs btn-outline" style="color:var(--red)" onclick="excluirPrazo('${p.id}','${esc(descCurta)}')" title="Excluir">🗑️</button>`;
     return `<tr>
       <td>
-        <div class="font-semibold">${ref}</div>
-        <div class="text-xs text-gray">${vara}</div>
+        <div class="font-semibold">${esc(ref)}</div>
+        <div class="text-xs text-gray">${esc(vara)}</div>
         ${partes}
       </td>
-      <td>${p.tipo}</td>
-      <td>${resp}</td>
+      <td style="max-width:340px">${tipoCel}</td>
+      <td>${esc(respNome)}</td>
       <td>${venc.toLocaleDateString('pt-BR')}</td>
       <td class="${cls}">${diasLabel}</td>
-      <td><span class="badge ${badgeCls}">${diff<=0?'Urgente':diff<=5?'Atenção':'Normal'}</span></td>
-      <td><div class="flex gap-1">
-        <button class="btn btn-xs btn-outline" onclick="abrirEditarPrazo('${p.id}')" title="Editar">✏️</button>
-        <button class="btn btn-xs btn-outline" style="color:var(--green)" onclick="concluirPrazo('${p.id}','${descCurta}')" title="Marcar concluído">✅</button>
-        <button class="btn btn-xs btn-outline" style="color:var(--red)" onclick="excluirPrazo('${p.id}','${descCurta}')" title="Excluir">🗑️</button>
-      </div></td>
+      <td>${statusCel}</td>
+      <td><div class="flex gap-1" style="flex-wrap:wrap">${acoes}</div></td>
     </tr>`;
   }).join('');
 }

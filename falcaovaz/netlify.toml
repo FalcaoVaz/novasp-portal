@@ -8,6 +8,9 @@
 [functions."gerar-documento"]
   timeout = 26
 
+[functions."tjsp-esaj"]
+  timeout = 26
+
 [[headers]]
   for = "/*"
   [headers.values]
