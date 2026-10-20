@@ -5,7 +5,7 @@
   const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const ROTULO = { usuarios:'Usuários', agenda_eventos:'Agenda', aval_resultado:'Avaliações', vendas_corretores:'Corretores', vendas_cotas:'Cotas (antigas)',
     vendas_captacoes_mensais:'Captação (antiga)', vendas_planilhas_importacoes:'Planilha mensal', guess_acesso:'Acesso ao acervo', processos:'Processos (jurídico)',
-    acordos_extrajudiciais:'Acordos (jurídico)', gestao_perguntas:'Perguntas de gestão' };
+    acordos_extrajudiciais:'Acordos (jurídico)', gestao_perguntas:'Perguntas de gestão', rh_candidatos:'Recrutamento (candidatos)', rh_perguntas:'Recrutamento (roteiro)' };
   const OP = { INSERT:['criou','#047857','#d1fae5'], UPDATE:['alterou','#b45309','#fef3c7'], DELETE:['apagou','#b91c1c','#fee2e2'] };
   let _lista=[];
   async function abrir(){

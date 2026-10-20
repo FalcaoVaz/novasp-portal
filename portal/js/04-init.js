@@ -230,6 +230,7 @@ function goTo(pg){
   if(pg==='acervo-guess')  window.AcervoGuess?.abrir();                        // Acervo (frente 11)
   if(pg==='acervo-nido')   window.AcervoNido?.abrir();
   if(pg==='auditoria')     window.Auditoria?.abrir();
+  if(pg==='recrutamento')  window.Recrutamento?.abrir();                        // RH: funil de corretores
   if(pg==='aval-cotas')    window.AvalCotas?.abrir();
   if(pg==='vnd-fotografo') carregarAgendaFotografo?.();
   if(pg==='vnd-foto-disp') carregarFotoDisp?.();

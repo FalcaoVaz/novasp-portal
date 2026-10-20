@@ -462,7 +462,8 @@ function usuariosCalendar(){
 }
 // Itens de menu do modulo Gestao conforme o papel
 function menuGestaoItens(){
-  if (ehLiderGestao()) return MENUS.gestao.filter(i => !i.soAdmin || (CUR && CUR.admin));
+  const rh = typeof podeRecrutamento === 'function' && podeRecrutamento();
+  if (ehLiderGestao()) return MENUS.gestao.filter(i => (!i.soAdmin || (CUR && CUR.admin)) && (!i.soRH || rh));
   // colaborador: somente avaliacao/feedback do proprio lider
   return MENUS.gestao.filter(i => i.pg === 'av-lider');
 }
@@ -493,6 +494,7 @@ const MENUS={
     {ic:'target',    lb:'Tarefas / Bônus',  pg:'metas'},
     {ic:'dollar',    lb:'Apurar Bônus',     pg:'bonus'},
     {ic:'star',      lb:'Avaliar Líder',    pg:'av-lider'},
+    {ic:'usersTwo',  lb:'Recrutamento',     pg:'recrutamento', soRH:true},   // funil de corretores (RH + gerentes + admin), 20/10/2026
     {ic:'clipboard', lb:'Auditoria',        pg:'auditoria', soAdmin:true}
   ],
   // Avaliação de Imóveis — módulo próprio (card na home); o mais usado do portal (centenas/mês)
@@ -857,6 +859,7 @@ const TITLES={
   'pauta-renata':'Pauta Vendas — Renata (Moema)','pauta-felippe':'Pauta Vendas — Felippe',
   'pauta-christiane':'Pauta Vendas — Christiane','pauta-emilia':'Pauta Vendas — Emilia',
   auditoria:'Auditoria — quem mexeu em quê',
+  recrutamento:'Recrutamento — Funil de Corretores',
   'acervo-nido':'Acervo Nido — vendas e locação até 2026 (só leitura)',
   'acervo-guess':'Acervo Guess — locação (só leitura)',
   liderados:'Meus Liderados',organograma:'Organograma',avaliacoes:'Avaliações Trimestrais',
