@@ -16,7 +16,8 @@ insert into rh_acesso (email) values
   ('renata@novasaopaulo.com.br'),            -- Renata
   ('felippe.lemos@novasaopaulo.com.br'),     -- Felippe
   ('gerenciavendas@novasaopaulo.com.br'),    -- Christiane
-  ('emilia.vitoria@novasaopaulo.com.br')     -- Emilia
+  ('emilia.vitoria@novasaopaulo.com.br'),    -- Emilia
+  ('leandro.nogueira@novasaopaulo.com.br')   -- Nogueira (22/10/2026)
 on conflict do nothing;
 alter table rh_acesso enable row level security;
 revoke all on rh_acesso from anon, authenticated;

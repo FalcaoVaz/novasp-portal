@@ -12,7 +12,7 @@
 (function () {
   'use strict';
   const T = 'rh_candidatos', TP = 'rh_perguntas';
-  const ORIGENS = ['Indeed', 'LinkedIn', 'Instagram', 'Facebook', 'Indicação', 'Site Nova SP', 'InfoJobs', 'Catho', 'WhatsApp', 'Placa/anúncio', 'Outro'];
+  const ORIGENS = ['Indeed', 'LinkedIn', 'Instagram', 'Facebook', 'Indicação', 'Site Nova SP', 'Site CRECI SP', 'InfoJobs', 'Catho', 'WhatsApp', 'Placa/anúncio', 'Outro'];
   const RESPONSAVEIS = ['Dayani', 'Renata', 'Felippe', 'Christiane', 'Emilia', 'Rodrigo'];
   const EQUIPES = ['Aguia', 'Chris', 'Emilia', 'Felippe', 'Fenix', 'Moema'];
   const OP = {
@@ -54,7 +54,8 @@
     if (typeof CUR === 'undefined' || !CUR) return false;
     if (CUR.admin) return true;
     const em = String(CUR.email || '').toLowerCase();
-    return ['financeiro@novasaopaulo.com.br', 'renata@novasaopaulo.com.br', 'felippe.lemos@novasaopaulo.com.br', 'gerenciavendas@novasaopaulo.com.br', 'emilia.vitoria@novasaopaulo.com.br'].includes(em);
+    return ['financeiro@novasaopaulo.com.br', 'renata@novasaopaulo.com.br', 'felippe.lemos@novasaopaulo.com.br', 'gerenciavendas@novasaopaulo.com.br', 'emilia.vitoria@novasaopaulo.com.br',
+            'leandro.nogueira@novasaopaulo.com.br'].includes(em);   // Nogueira (22/10, pedido da Dayani)
   }
   window.podeRecrutamento = podeRecrutamento;
 
