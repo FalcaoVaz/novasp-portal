@@ -872,7 +872,7 @@ async function _avDetectarBairro(){
 
 // Ponto mudou: descarta tudo o que foi calculado para o ponto anterior (incorporação, cache de buscas, dossiê)
 function _avNovoPonto(){
-  ['ctx','dossie','cache','incorp','memoria','lancItbi','lancAnuncio','evolutivo','comaer','entorno','geo','iptu','iptuSel','iptuOculto','iptuVizinho','manuais','usarPredio','podeIncorp','incorpMotivo','metodoUnico'].forEach(k=>{ delete _avForm[k]; });
+  ['ctx','dossie','cache','incorp','memoria','lancItbi','lancAnuncio','evolutivo','comaer','entorno','geo','iptu','iptuSel','iptuOculto','iptuVizinho','manuais','usarPredio','usarComparativo','podeIncorp','incorpMotivo','metodoUnico'].forEach(k=>{ delete _avForm[k]; });
   const pan=document.getElementById('av-incorp-painel'); if(pan){ pan.style.display='none'; pan.innerHTML=''; }
   const solo=document.getElementById('av-incorp-solo'); if(solo) solo.innerHTML='';
 }
@@ -1177,6 +1177,15 @@ async function avalCalcular(opts){
       const rec=_avRecuos({zona:geo.zona, terreno, frente, area_comput: terreno*(Number(geo.ca_maximo)||1)});
       dossie.memoria.evolutivo={terreno, rs_terreno:rs_lote, rs_terreno_origem:loteOrigem, v_terreno:vm, total:vm, so_terreno:true, ref:tb, recuos:rec};
     }
+  }else if(grupo==='casa' && evolutivo && evolutivo.calibrado && _avForm.usarComparativo && metodoUnico && metodoUnico.valor_final){
+    // CASA COM O COMPARATIVO ADOTADO PELO CORRETOR (23/10/2026): o valor segue os comparáveis (anúncios + vendas reais,
+    // com as exclusões dele); terreno + construção fica como referência. Escolha registrada no dossiê.
+    const mu=metodoUnico, ev=evolutivo, vm=mu.valor_final;
+    dossie.valor_mercado=vm; dossie.faixa_min=Math.round(vm*0.93); dossie.faixa_max=Math.round(vm*1.07); dossie.mercado_rs_m2=mu.rs_final;
+    dossie.metodo=`valor comparativo adotado pelo corretor: ${area} m² × R$ ${mu.rs_final.toLocaleString('pt-BR')}/m² = média de [anúncios ${mu.rs_anuncio?mu.rs_anuncio.toLocaleString('pt-BR'):'—'} × ${mu.idx_pedido_fechado}`+
+      (mu.rs_itbi_ajust?` ; vendas reais ${mu.rs_itbi_util.toLocaleString('pt-BR')}/m² × ${(1+mu.sub_itbi).toFixed(3)}`:'')+`]`+
+      ` · terreno + construção daria ${_avR$(ev.total)}`+(nExcl?` · ${nExcl} comparável(is) excluído(s) pelo corretor`:'');
+    dossie.memoria.comparativo_adotado={ por:(typeof CUR!=='undefined'&&CUR&&CUR.nome)||null, em:new Date().toISOString(), evolutivo:ev.total, comparativo:vm };
   }else if(grupo==='casa' && evolutivo && evolutivo.calibrado){
     const ev=evolutivo, vm=ev.total;
     dossie.valor_mercado=vm; dossie.faixa_min=Math.round(vm*0.9); dossie.faixa_max=Math.round(vm*1.1); dossie.mercado_rs_m2=Math.round(vm/area);
@@ -1424,6 +1433,7 @@ function renderAvalPreview(x, precos){
     </div></div>`:`<div class="card" style="margin-bottom:12px"><div class="cb" style="color:#b45309">Sem preço de mercado (faltou área útil ou anúncios do bairro).</div></div>`}
     ${AV_TEXTO_ATIVO?`<div id="av-texto">${_avTextoHTML()}</div>`:''}
     ${_avMesmoPredioHTML(_avForm.metodoUnico)}
+    ${_avComparativoCasaHTML()}
     ${_avMetodoHTML(_avForm.metodoUnico, x)}
     ${_avEvolutivoHTML((x.memoria&&x.memoria.evolutivo)||_avForm.evolutivo)}
     ${_avIptuCaixaHTML(x.entorno&&x.entorno.iptu)}
@@ -1605,6 +1615,21 @@ function _avMesmoPredioHTML(mu){
   </div></div>`;
 }
 async function _avUsarPredio(v){ _avForm.usarPredio=!!v; await avalCalcular({recalc:true}); }
+// Casa: valor por terreno + construção (padrão) ou pelo comparativo, à escolha do corretor (23/10/2026)
+function _avComparativoCasaHTML(){
+  const ev=_avForm.evolutivo, mu=_avForm.metodoUnico;
+  if(!_avForm.dossie || !_avForm.cache || !ev || !ev.calibrado || !mu || !mu.valor_final) return '';
+  const nEx=(_avForm.excl&&_avForm.excl.size)||0;
+  return `<div class="card" style="margin-bottom:12px;border-left:3px solid ${_avForm.usarComparativo?'#2563eb':'#cbd5e1'}"><div class="cb" style="font-size:.9em">
+    ${_avForm.usarComparativo
+      ? `<div style="color:#1d4ed8">✓ O valor está seguindo os <b>comparáveis</b> (anúncios e vendas reais${nEx?`, com ${nEx} excluído(s) por você`:''}): <b>${_avR$(mu.valor_final)}</b>. Excluir ou incluir comparável muda o valor. Pelo terreno + construção daria <b>${_avR$(ev.total)}</b>.
+         <button class="btn btn-o bsm" style="margin-left:6px" onclick="_avUsarComparativo(false)">Voltar ao terreno + construção</button></div>`
+      : `<div style="color:#475569">Em casa, o valor vem do <b>terreno + construção</b> (${_avR$(ev.total)}); os anúncios e vendas da tabela são <b>referência</b> — excluir um deles muda só a referência comparativa (<b>${_avR$(mu.valor_final)}</b>${ev.divergencia!=null?`, ${ev.divergencia>0?'+':''}${ev.divergencia}%`:''}), não o valor.
+         Se os comparáveis filtrados representam melhor este imóvel, adote o comparativo: fica registrado com seu nome no dossiê.
+         <div style="margin-top:6px"><button class="btn btn-p bsm" onclick="_avUsarComparativo(true)">Adotar o valor comparativo</button></div></div>`}
+  </div></div>`;
+}
+async function _avUsarComparativo(v){ _avForm.usarComparativo=!!v; await avalCalcular({recalc:true}); }
 function _avMetodoHTML(mu, x){
   if(!mu || !mu.rs_final) return '';
   const li=(t,v,sub)=>`<div style="padding:6px 0;border-top:1px solid #f1f5f9;display:flex;justify-content:space-between;gap:10px"><span>${t}${sub?`<br><small style="color:#94a3b8">${sub}</small>`:''}</span><b style="white-space:nowrap">${v}</b></div>`;
