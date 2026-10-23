@@ -712,3 +712,49 @@ async function saveEv(){
 if (typeof window !== 'undefined') {
   window.addEventListener('load', () => { try { _popularHorasSelects(); } catch(_){} });
 }
+
+// ─── AGENDA NO CELULAR (23/10/2026) ─────────────────────────────────
+// Link pessoal de assinatura (.ics): o calendário do iPhone/Google mostra os compromissos da pessoa
+// (os dela, os pessoais e as reuniões fixas de que participa). Só leitura. Monta: função agenda-ics
+// no site do jurídico; token: RPC agenda_feed_token (sql/2026-10-23-agenda-celular.sql).
+async function abrirAgendaCelular(renovar){
+  let tok;
+  try {
+    const r = await fetch(SBU + '/rest/v1/rpc/agenda_feed_token', { method:'POST', headers: hdr(), body: JSON.stringify({ renovar: !!renovar }) });
+    if (!r.ok) throw new Error((await r.json().catch(()=>({}))).message || ('HTTP ' + r.status));
+    tok = await r.json();
+  } catch(e) { toast('Não consegui gerar o link: ' + e.message, 'err'); return; }
+  const https = `${JURIDICO_ORIGIN}/.netlify/functions/agenda-ics?t=${tok}`;
+  const webcal = https.replace(/^https:/, 'webcal:');
+  let m = document.getElementById('m-ag-cel');
+  if (!m) { m = document.createElement('div'); m.className = 'mo'; m.id = 'm-ag-cel'; document.body.appendChild(m); m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); }); }
+  m.innerHTML = `<div class="modal" style="width:620px">
+    <div class="mh"><div class="mt">📱 Agenda no celular</div><button class="mc" onclick="closeM('m-ag-cel')">×</button></div>
+    <div class="mb" style="font-size:13px">
+      <div style="color:var(--muted);margin-bottom:12px">Seus compromissos do portal aparecem no calendário do celular, junto com os seus: os eventos em que você participa, os pessoais 🔒 e as reuniões fixas da pauta. Atualiza sozinho (no iPhone, a cada 15 min a 1 h; no Google, algumas horas). É só leitura: o que você criar no celular não vai para o portal.</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
+        <div id="ag-cel-qr" style="width:170px;height:170px;border:1px solid var(--borda);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px">gerando QR…</div>
+        <div style="flex:1;min-width:240px">
+          <div style="font-weight:700;margin-bottom:4px">iPhone</div>
+          <div>Aponte a câmera para o QR code e toque em <b>Assinar</b>. Ou: Ajustes → Calendário → Contas → Adicionar Conta → Outra → <b>Adicionar Calendário Assinado</b> e cole o link.</div>
+          <div style="font-weight:700;margin:10px 0 4px">Android / Google Agenda</div>
+          <div>No computador, abra <b>calendar.google.com</b> → “Outras agendas” <b>+</b> → <b>Do URL</b> → cole o link. Ela aparece sozinha no app Google Agenda do celular.</div>
+        </div>
+      </div>
+      <div class="fg" style="margin-top:14px"><label>Seu link (pessoal — não compartilhe)</label>
+        <div style="display:flex;gap:6px"><input id="ag-cel-link" readonly value="${https}" style="flex:1;font-size:12px;padding:8px;border:1.5px solid var(--borda);border-radius:8px">
+        <button class="btn btn-o" onclick="navigator.clipboard.writeText(document.getElementById('ag-cel-link').value).then(()=>toast('Link copiado.','ok'))">Copiar</button></div></div>
+      <div style="font-size:12px;color:var(--muted)">Se o link vazar, gere um novo: o antigo para de funcionar e é preciso assinar de novo no celular.</div>
+    </div>
+    <div class="mf"><button class="btn btn-o" style="margin-right:auto" onclick="if(confirm('Gerar um link novo? O atual para de funcionar no celular.')) abrirAgendaCelular(true)">Gerar novo link</button>
+      <a class="btn btn-o" href="${webcal}" style="text-decoration:none">Assinar neste aparelho</a>
+      <button class="btn btn-p" onclick="closeM('m-ag-cel')">Fechar</button></div>
+  </div>`;
+  m.classList.add('open');
+  try {
+    if (typeof qrcode !== 'function') await new Promise((ok, falha) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js'; s.onload = ok; s.onerror = falha; document.head.appendChild(s); });
+    const q = qrcode(0, 'M'); q.addData(webcal); q.make();
+    document.getElementById('ag-cel-qr').innerHTML = q.createSvgTag({ cellSize: 3, margin: 2 });
+  } catch(_) { const el = document.getElementById('ag-cel-qr'); if (el) el.textContent = 'QR indisponível — use o link'; }
+  if (renovar) toast('Link novo gerado. Assine de novo no celular.', 'ok');
+}
