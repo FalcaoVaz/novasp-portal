@@ -167,7 +167,8 @@ function setMod(mod){
   const itens = (mod==='gestao' && typeof menuGestaoItens==='function') ? menuGestaoItens()
               : (mod==='vendas' && typeof menuVendasItens==='function') ? menuVendasItens()
               : (MENUS[mod]||[]).filter(i=>!i.soAdmin || (typeof CUR!=='undefined' && CUR && CUR.admin))
-                  .filter(i=> !(typeof ehCorretor==='function' && ehCorretor() && mod==='regras' && i.pg!=='reg-vendas'));
+                  .filter(i=> !(typeof ehCorretor==='function' && ehCorretor() && mod==='regras' && i.pg!=='reg-vendas'))
+                  .filter(i=> mod!=='acervo' || typeof podeAcervoItem!=='function' || podeAcervoItem(i.pg));   // Nido x Guess (22/10)
   const nav=document.getElementById('nav');
   if(tabEl && nav && tabEl.nextElementSibling!==nav) tabEl.after(nav);   // páginas do módulo logo abaixo dele (menu vertical)
   const tHome=document.getElementById('t-home'); if(tHome) tHome.classList.remove('active');
@@ -227,6 +228,7 @@ function goTo(pg){
   if(pg==='vnd-cotas')     carregarVendasCotas?.();
   if(pg.startsWith('vp-')) window.VendasPlanilhas?.abrirPagina(pg.slice(3));   // Planilha Mensal por EQUIPE
   if(pg==='vnd-preanalise') window.PreAnalise?.abrir();                        // pré-análise de certidões (piloto)
+  if(pg==='acervo-guess' && typeof podeAcervoItem==='function' && !podeAcervoItem(pg)) { goTo('acervo-nido'); return; }
   if(pg==='acervo-guess')  window.AcervoGuess?.abrir();                        // Acervo (frente 11)
   if(pg==='acervo-nido')   window.AcervoNido?.abrir();
   if(pg==='auditoria')     window.Auditoria?.abrir();

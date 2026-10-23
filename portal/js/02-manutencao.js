@@ -722,12 +722,22 @@ function podeAcessarAcervo(){
   if (_ACERVO_OK !== null) return _ACERVO_OK;
   return !!CUR.admin || ehAcessoTotal();          // até o banco responder
 }
+// 22/10/2026: Nido e Guess com listas separadas (nido_acesso / guess_acesso) — assistentes só no Nido.
+let _ACERVO_NIDO = null, _ACERVO_GUESS = null;
 async function verificarAcessoAcervo(){
+  const rpc = f => fetch(SBU + '/rest/v1/rpc/' + f, { method:'POST', headers: hdr(), body: '{}' }).then(r => r.ok ? r.json() : null).catch(() => null);
   try {
-    const r = await fetch(SBU + '/rest/v1/rpc/acervo_pode_ler', { method:'POST', headers: hdr(), body: '{}' });
-    if (r.ok) _ACERVO_OK = (await r.json()) === true;   // erro de rede/RPC: mantém a regra local (admin/TI)
+    const [a, n, g] = await Promise.all([rpc('acervo_pode_ler'), rpc('nido_pode_ler'), rpc('guess_pode_ler')]);
+    if (a !== null) _ACERVO_OK = a === true;            // erro de rede/RPC: mantém a regra local (admin/TI)
+    if (n !== null) _ACERVO_NIDO = n === true;          // RPC ainda inexistente (SQL não rodado): null = mostra
+    if (g !== null) _ACERVO_GUESS = g === true;
   } catch(_) {}
   return _ACERVO_OK;
+}
+function podeAcervoItem(pg){
+  if (pg === 'acervo-guess') return _ACERVO_GUESS !== false;
+  if (pg === 'acervo-nido')  return _ACERVO_NIDO !== false;
+  return true;
 }
 function podeGerenciarCorretores(){
   if (!CUR) return false;
