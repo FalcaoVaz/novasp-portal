@@ -37,13 +37,7 @@ const AV_HIS_CA = {
 function _avCaSocial(zona, cat){ const z=String(zona||'').trim(); for(const g of Object.values(AV_HIS_CA)){ if(g.zonas.includes(z)) return {ca:g[cat], lb:g.lb}; } return null; }
 // Tetos de preço por unidade (Decreto 64.895/2026, atualização anual pelo INCC) — definem de fato o que é HIS-1, HIS-2 e HMP
 const AV_HIS_TETO = { his1:276102.20, his2:383636.74, hmp:537672.71, renda_his1:4863, renda_his2:9726, renda_hmp:16210, ref:'Decreto 64.895/2026' };
-// ── Terreno × construção, medido na carteira da NSP (Nido, anúncios de venda; análise de 01/10/2026) ──
-// Modelo CONJUNTO: valor = a_bairro·terreno + b·construída, com custo de construção b ÚNICO para todos os bairros (R$ 3661/m² em 2024–26, R² 0.72)
-// e só o terreno variando por bairro — mais estável que uma regressão por bairro (vizinhos de padrão parecido ficam próximos).
-// Prioridade para anúncios ATUALIZADOS em 2024–2026 (per/lote_per); série 2018–2026 só onde faltou volume ou o coeficiente saiu implausível.
-// lote = mediana R$/m² de lotes anunciados (pedido) · share = fração do valor da casa que é terreno · casa_util = mediana R$/m² útil de casas
-// chave = bairro normalizado (_avNorm, sem o sufixo entre parênteses)
-const AV_TERRENO = {"aclimacao":{"terreno":3239,"constr":3085,"share":0.52,"n":103,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":6500,"casa_n":103},"americanopolis":{"casa_util":3414,"casa_n":137,"per":"2018–2026","lote":1303,"lote_n":12,"lote_per":"2018–2026"},"bosque da saude":{"terreno":2049,"constr":3662,"share":0.36,"n":211,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":6471,"casa_n":211,"lote":3220,"lote_n":9,"lote_per":"2024–2026"},"brooklin paulista":{"terreno":4508,"constr":3662,"share":0.55,"n":148,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":8744,"casa_n":148,"lote":3875,"lote_n":11,"lote_per":"2018–2026"},"cambuci":{"terreno":2092,"constr":3085,"share":0.4,"n":106,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":5345,"casa_n":106,"lote":4000,"lote_n":9,"lote_per":"2024–2026"},"campanario":{"casa_util":2270,"casa_n":32,"per":"2018–2026"},"campo belo":{"terreno":3398,"constr":3662,"share":0.48,"n":120,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":7132,"casa_n":120,"lote":2778,"lote_n":11,"lote_per":"2018–2026"},"centro":{"casa_util":3200,"casa_n":321,"per":"2018–2026","lote":1684,"lote_n":72,"lote_per":"2018–2026"},"chacara inglesa":{"terreno":2657,"constr":3662,"share":0.42,"n":64,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":7250,"casa_n":64,"lote":2832,"lote_n":18,"lote_per":"2018–2026"},"chacara santo antonio":{"casa_util":6794,"casa_n":30,"per":"2018–2026"},"cidade ademar":{"casa_util":2122,"casa_n":61,"per":"2018–2026"},"cidade domitila":{"casa_util":3116,"casa_n":42,"per":"2018–2026"},"cidade julia":{"casa_util":4607,"casa_n":42,"per":"2018–2026"},"cidade moncoes":{"casa_util":7000,"casa_n":55,"per":"2018–2026"},"cidade vargas":{"terreno":1221,"constr":3662,"share":0.28,"n":91,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":5083,"casa_n":91,"lote":2207,"lote_n":14,"lote_per":"2018–2026"},"conceicao":{"casa_util":2376,"casa_n":110,"per":"2018–2026","lote":1363,"lote_n":14,"lote_per":"2018–2026"},"conjunto residencial jardim canaa":{"casa_util":3664,"casa_n":36,"per":"2018–2026"},"eldorado":{"casa_util":2400,"casa_n":65,"per":"2018–2026","lote":400,"lote_n":10,"lote_per":"2018–2026"},"indianopolis":{"terreno":4803,"constr":3662,"share":0.57,"n":108,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":8323,"casa_n":108,"lote":6343,"lote_n":27,"lote_per":"2018–2026"},"interlagos":{"casa_util":4800,"casa_n":37,"per":"2018–2026"},"ipiranga":{"terreno":1589,"constr":3662,"share":0.3,"n":178,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":5371,"casa_n":178,"lote":5000,"lote_n":10,"lote_per":"2024–2026"},"jabaquara":{"terreno":1196,"constr":3662,"share":0.26,"n":169,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":5000,"casa_n":169,"lote":3370,"lote_n":13,"lote_per":"2024–2026"},"jardim aeroporto":{"terreno":1446,"constr":3662,"share":0.28,"n":69,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":5667,"casa_n":69},"jardim botucatu":{"casa_util":11250,"casa_n":39,"per":"2018–2026"},"jardim da gloria":{"terreno":2984,"constr":3085,"share":0.47,"n":155,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":6410,"casa_n":155},"jardim da saude":{"terreno":1962,"constr":3662,"share":0.36,"n":146,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":5963,"casa_n":146,"lote":3956,"lote_n":5,"lote_per":"2024–2026"},"jardim europa":{"lote":8470,"lote_n":8,"lote_per":"2018–2026"},"jardim jabaquara":{"casa_util":3459,"casa_n":38,"per":"2018–2026"},"jardim maria estela":{"terreno":568,"constr":3085,"share":0.12,"n":81,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":3065,"casa_n":81},"jardim miriam":{"casa_util":4318,"casa_n":72,"per":"2018–2026"},"jardim oriental":{"terreno":881,"constr":3662,"share":0.21,"n":127,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":4921,"casa_n":127,"lote":2500,"lote_n":10,"lote_per":"2024–2026"},"jardim paulista":{"casa_util":17893,"casa_n":50,"per":"2018–2026","lote":9731,"lote_n":8,"lote_per":"2018–2026"},"jardim paulistano":{"casa_util":13313,"casa_n":32,"per":"2018–2026"},"jardim prudencia":{"casa_util":4762,"casa_n":51,"per":"2018–2026"},"jardim santa cruz":{"casa_util":3790,"casa_n":31,"per":"2018–2026"},"jardim saude":{"terreno":2461,"constr":3085,"share":0.46,"n":66,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":6000,"casa_n":66},"jardim vergueiro":{"casa_util":3764,"casa_n":32,"per":"2018–2026"},"jardim vila mariana":{"casa_util":6138,"casa_n":36,"per":"2018–2026"},"mirandopolis":{"terreno":3790,"constr":3662,"share":0.5,"n":216,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":7452,"casa_n":216,"lote":4861,"lote_n":36,"lote_per":"2018–2026"},"moema":{"terreno":7002,"constr":3085,"share":0.7,"n":66,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":9702,"casa_n":66},"paraiso":{"casa_util":7043,"casa_n":36,"per":"2018–2026"},"parque colonial":{"casa_util":6600,"casa_n":39,"per":"2018–2026"},"parque imperial":{"terreno":1711,"constr":3085,"share":0.35,"n":120,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":5000,"casa_n":120,"lote":2950,"lote_n":11,"lote_per":"2018–2026"},"parque jabaquara":{"terreno":921,"constr":3662,"share":0.2,"n":109,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":4800,"casa_n":109},"pinheiros":{"lote":10608,"lote_n":13,"lote_per":"2018–2026"},"planalto paulista":{"terreno":2917,"constr":3662,"share":0.44,"n":656,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":6659,"casa_n":656,"lote":3235,"lote_n":29,"lote_per":"2024–2026"},"sacoma":{"terreno":685,"constr":3085,"share":0.18,"n":111,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":3929,"casa_n":111,"lote":2500,"lote_n":33,"lote_per":"2018–2026"},"santo amaro":{"casa_util":6414,"casa_n":55,"per":"2018–2026","lote":3769,"lote_n":27,"lote_per":"2018–2026"},"sao joao climaco":{"lote":1201,"lote_n":9,"lote_per":"2018–2026"},"sao judas":{"terreno":2498,"constr":3085,"share":0.45,"n":125,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":5932,"casa_n":125,"lote":4542,"lote_n":8,"lote_per":"2024–2026"},"saude":{"terreno":2696,"constr":3662,"share":0.42,"n":328,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":6876,"casa_n":328,"lote":4613,"lote_n":42,"lote_per":"2024–2026"},"serraria":{"lote":152,"lote_n":7,"lote_per":"2018–2026"},"taboao":{"casa_util":2652,"casa_n":67,"per":"2018–2026"},"vila agua funda":{"casa_util":4534,"casa_n":50,"per":"2018–2026"},"vila babilonia":{"casa_util":4333,"casa_n":71,"per":"2018–2026"},"vila brasilina":{"casa_util":4290,"casa_n":213,"per":"2018–2026"},"vila brasilio machado":{"terreno":1555,"constr":3085,"share":0.34,"n":125,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":5034,"casa_n":125,"lote":2367,"lote_n":14,"lote_per":"2018–2026"},"vila campestre":{"casa_util":3557,"casa_n":113,"per":"2018–2026","lote":1351,"lote_n":8,"lote_per":"2024–2026"},"vila caraguata":{"casa_util":4564,"casa_n":32,"per":"2018–2026"},"vila clementino":{"terreno":5556,"constr":3662,"share":0.59,"n":92,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":9326,"casa_n":92,"lote":7645,"lote_n":24,"lote_per":"2018–2026"},"vila congonhas":{"terreno":2572,"constr":3085,"share":0.48,"n":63,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":6286,"casa_n":63},"vila cordeiro":{"casa_util":6504,"casa_n":32,"per":"2018–2026"},"vila da saude":{"terreno":2290,"constr":3662,"share":0.39,"n":97,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":6825,"casa_n":97,"lote":4167,"lote_n":15,"lote_per":"2024–2026"},"vila das merces":{"terreno":1145,"constr":3085,"share":0.27,"n":73,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":4236,"casa_n":73,"lote":2575,"lote_n":12,"lote_per":"2018–2026"},"vila do bosque":{"terreno":1725,"constr":3085,"share":0.36,"n":93,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":5778,"casa_n":93,"lote":2957,"lote_n":11,"lote_per":"2018–2026"},"vila do encontro":{"casa_util":3846,"casa_n":146,"per":"2018–2026","lote":1882,"lote_n":6,"lote_per":"2024–2026"},"vila dom pedro i":{"terreno":2317,"constr":3085,"share":0.43,"n":141,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":5380,"casa_n":141,"lote":4500,"lote_n":7,"lote_per":"2024–2026"},"vila fachini":{"casa_util":3426,"casa_n":114,"per":"2018–2026","lote":1645,"lote_n":12,"lote_per":"2018–2026"},"vila firmiano pinto":{"terreno":2158,"constr":3085,"share":0.41,"n":66,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":5552,"casa_n":66,"lote":3097,"lote_n":8,"lote_per":"2018–2026"},"vila guarani":{"terreno":1296,"constr":3662,"share":0.27,"n":270,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":5411,"casa_n":270,"lote":3231,"lote_n":35,"lote_per":"2024–2026"},"vila gumercindo":{"terreno":2795,"constr":3662,"share":0.43,"n":127,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":7250,"casa_n":127,"lote":2801,"lote_n":34,"lote_per":"2018–2026"},"vila marari":{"casa_util":4293,"casa_n":38,"per":"2018–2026"},"vila mariana":{"terreno":4345,"constr":3662,"share":0.53,"n":284,"r2":0.72,"per":"2024–2026","modelo":"conjunto","casa_util":8020,"casa_n":284,"lote":6034,"lote_n":14,"lote_per":"2024–2026"},"vila mascote":{"casa_util":6009,"casa_n":57,"per":"2018–2026","lote":7083,"lote_n":34,"lote_per":"2018–2026"},"vila moinho velho":{"terreno":1407,"constr":3085,"share":0.32,"n":131,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":5154,"casa_n":131,"lote":2385,"lote_n":17,"lote_per":"2018–2026"},"vila monte alegre":{"terreno":1508,"constr":3085,"share":0.33,"n":124,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":4749,"casa_n":124,"lote":2615,"lote_n":31,"lote_per":"2018–2026"},"vila monumento":{"terreno":1658,"constr":3085,"share":0.37,"n":122,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":5061,"casa_n":122,"lote":1933,"lote_n":16,"lote_per":"2018–2026"},"vila moraes":{"casa_util":3659,"casa_n":201,"per":"2018–2026","lote":2420,"lote_n":8,"lote_per":"2024–2026"},"vila nair":{"terreno":1479,"constr":3085,"share":0.32,"n":109,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":5200,"casa_n":109},"vila nogueira":{"casa_util":2157,"casa_n":32,"per":"2018–2026","lote":1672,"lote_n":9,"lote_per":"2018–2026"},"vila nova conceicao":{"casa_util":17741,"casa_n":39,"per":"2018–2026","lote":14151,"lote_n":10,"lote_per":"2018–2026"},"vila olimpia":{"casa_util":7500,"casa_n":39,"per":"2018–2026","lote":22756,"lote_n":7,"lote_per":"2024–2026"},"vila parque jabaquara":{"terreno":1012,"constr":3085,"share":0.25,"n":222,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":4532,"casa_n":222,"lote":2129,"lote_n":37,"lote_per":"2018–2026"},"vila paulista":{"casa_util":4558,"casa_n":39,"per":"2018–2026"},"vila santa catarina":{"terreno":815,"constr":3085,"share":0.21,"n":206,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":4022,"casa_n":206,"lote":1530,"lote_n":22,"lote_per":"2018–2026"},"vila santa maria":{"casa_util":2635,"casa_n":33,"per":"2018–2026"},"vila santo estefano":{"terreno":1074,"constr":3085,"share":0.26,"n":156,"r2":0.71,"per":"2018–2026","modelo":"conjunto","casa_util":4418,"casa_n":156,"lote":2523,"lote_n":9,"lote_per":"2024–2026"},"vila sao jose":{"casa_util":5508,"casa_n":42,"per":"2018–2026"},"vila vera":{"casa_util":4144,"casa_n":36,"per":"2018–2026"}};
+// (tabela de terreno por bairro, casa calibrada e índice pedido→fechado: no núcleo único nsp-avalia-core.js, 26/10/2026)
 // ── Altura máxima pelo COMAER: Plano Básico de Zona de Proteção do Aeroporto de Congonhas (SBSP), superfícies da ICA 11-408/2020, Tabela 4-3, código 4, IFR precisão ──
 // O GeoSampa não publica o PBZPA (conferido em 01/10/2026: nem WFS nem WMS). Aqui as superfícies são reconstruídas geometricamente a partir da pista principal;
 // a elevação do terreno vem da API pública Open-Meteo (modelo digital de 90 m). Resultado é ESTIMATIVA — a altura real é a da consulta prévia ao DECEA/COMAER.
@@ -152,7 +146,6 @@ const AV_INDICES = {
   iptu_por_util: 1.35, iptu_por_vaga: 29,
   fonte: 'NIDO 2019–26 (pedido→fechado) · Foca 28/09/2026 (ITBI × fechamento) · Foca 13/09/2026 (área IPTU × útil)',
 };
-function _avIdxPedidoFechado(bairro){ const b=_avNormBairro(bairro).toUpperCase(); const k=Object.keys(AV_INDICES.pedido_fechado).filter(k=>k!=='global').sort((a,c)=>c.length-a.length).find(k=>b.includes(k)); return { idx: k?AV_INDICES.pedido_fechado[k]:AV_INDICES.pedido_fechado.global, origem: k?`${k} (NIDO)`:'média NSP (NIDO)' }; }
 // Bairros onde o padrão sugerido é ALTO (o corretor pode trocar na tela)
 const AV_BAIRROS_ALTO = ['moema','itaim','vila nova conceicao','brooklin','campo belo','jardim paulista','jardins','paraiso','vila olimpia','ibirapuera','chacara klabin','vila mariana','pinheiros','perdizes'];
 const _avNormBairro = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
@@ -306,53 +299,10 @@ function _avCamposTipo(){
   const a=document.getElementById('av-area'); if(a) a.placeholder = '';
   const al=document.getElementById('av-area-lb'); if(al) al.textContent = gr==='apto' ? 'Área útil (m²)' : 'Área construída (m²)';
   const h=document.getElementById('av-tipo-hint'); if(h) h.textContent = {apto:'Apartamento: preço por m² de área útil pelos anúncios perto do imóvel (primeiro os da Nova São Paulo) e pelas vendas reais registradas por perto.',
-    casa:'Casa: terreno + construção. O terreno pelo preço das vendas de casas por perto; a construção pelo padrão, idade e estado. A comparação com vendas e anúncios fica como referência.',
-    terreno:'Terreno: valor como lote para construir e, se a zona permitir, a conta para incorporadora.',
+    casa:'Casa: terreno + construção. O terreno pelo preço das vendas de casas por perto; a construção pelo padrão, idade e estado. A comparação (só com casas: anúncios e vendas reais) fica como referência.',
+    terreno:'Terreno: valor como lote para construir, comparado só com terrenos por perto (anunciados pela Nova SP e vendas reais de terreno) e, se a zona permitir, a conta para incorporadora. Tem casa ou construção no lote? Escolha Casa térrea ou Sobrado: aí entram terreno + construção.',
     com:'Comercial: terreno a preço de lote + construção depreciada (as vendas e anúncios por perto são residenciais e ficam como referência).'}[gr];
 }
-// Método evolutivo: V = (terreno × R$/m² terreno + construída × custo de reposição × (1 − depreciação)) × Fc. Depreciação Ross-Heidecke.
-function _avTerrenoBairro(bairro){ const k=_avNorm(bairro).split('(')[0].replace(/\s+/g,' ').trim(); return AV_TERRENO[k]||null; }
-// ── CASA: terreno + construção CALIBRADO nas vendas de casas do ITBI (04/10/2026) ──
-// valor = terreno × L_local × (terreno/154)^-0,5 + construída × 3.500 × fator do padrão × max(0,5; 1 − idade/100) × estado
-// L_local = RPC aval_terreno_local (30 vendas de casa mais próximas). Validação deixando cada venda de fora, 10.585 casas:
-// erro absoluto mediano 23%, viés 0% (comparativo por R$/m² construído 26%; a conta anterior saía ~metade do mercado).
-const AV_CASA_CAL = { c0:3500, lote_ref:154, beta:0.5, vida:100, piso:0.5,
-  kpad:{ economico:0.8, medio:1, alto:1.25 }, kletra:{ A:0.65, B:0.8, C:1, D:1.25, E:1.55, F:1.9 },
-  estado:{ novo:[1.05,'novo'], bom:[1,'bom'], regular:[0.85,'regular'], reforma:[0.65,'precisa de reforma'], ruim:[0.45,'ruim'] },
-  fonte:'10.585 vendas de casas registradas no ITBI nos últimos 24 meses (Zona Sul e entorno); erro mediano de 23% na validação' };
-function _avContaCasaCalibrada({terreno, constr, idade, padrao, padraoIptu, estado, tl, rs_lote, lote_origem}){
-  const C=AV_CASA_CAL;
-  const letra=(String(padraoIptu||'').match(/padr[aã]o\s+([A-F])/i)||[])[1];
-  const kp = letra ? C.kletra[letra.toUpperCase()] : (C.kpad[padrao]||1);
-  const padraoLb = letra ? `IPTU padrão ${letra.toUpperCase()}` : ({economico:'econômico',medio:'médio',alto:'alto'}[padrao]||'médio');
-  const fl=Math.pow(terreno/C.lote_ref, -C.beta);                       // lote menor vale mais por m²
-  const rs_terreno=Math.round(Number(tl.rs_terreno_ref)*fl), v_terreno=Math.round(terreno*rs_terreno);
-  const custo_m2=Math.round(C.c0*kp), v_novo=Math.round(constr*custo_m2);
-  const fid=Math.max(C.piso, 1-(idade||50)/C.vida), est=C.estado[estado]||C.estado.bom;
-  const v_benf=Math.round(v_novo*fid*est[0]);
-  const total=v_terreno+v_benf;
-  return { calibrado:true, terreno, rs_terreno, rs_terreno_ref:Number(tl.rs_terreno_ref), fator_lote:Math.round(fl*100)/100,
-    rs_terreno_origem:`mediana de ${tl.n} vendas de casas por perto (até ${n0(tl.raio_m)} m), já descontada a construção; lote de referência ${C.lote_ref} m², ajustado ao tamanho deste`,
-    rs_terreno_faixa:[Number(tl.rs_terreno_p25), Number(tl.rs_terreno_p75)], v_terreno, constr, padrao, padraoLb, custo_m2, v_novo, idade:idade||null,
-    fator_idade:Math.round(fid*100)/100, estado, estadoLb:est[1], fator_estado:est[0], dep:Math.round((1-fid*est[0])*100)/100, v_benf, fc:1, total,
-    pct_terreno: total?Math.round(v_terreno/total*100):null, rs_lote:rs_lote||null, lote_origem:lote_origem||null,
-    v_lote:(rs_lote&&terreno)?Math.round(terreno*rs_lote):null, fonte:C.fonte };
-}
-function _avContaEvolutivo({terreno, rs_terreno, rs_terreno_origem, constr, padrao, idade, estado, rs_lote, lote_origem, ref}){
-  const P=AV_PARAM, p=AV_PADROES[padrao]||AV_PADROES.medio;
-  const v_terreno=terreno*rs_terreno;
-  const custo_m2=p.cub*P.casa_obra_sobre_cub, v_novo=constr*custo_m2;
-  const k=Math.min(Math.max(idade||0,0)/P.vida_util_casa,1), ross=0.5*(k+k*k);
-  const est=P.estados[estado]||P.estados.bom, heid=est[0];
-  const dep=Math.min(ross+(1-ross)*heid, 0.85);
-  const v_benf=v_novo*(1-dep);
-  const total=Math.round((v_terreno+v_benf)*P.fator_comercializacao);
-  return {terreno, rs_terreno, rs_terreno_origem, v_terreno:Math.round(v_terreno), constr, padrao, padraoLb:p.lb, cub:p.cub, cubRef:p.ref, custo_m2:Math.round(custo_m2),
-          v_novo:Math.round(v_novo), idade:idade||0, estado, estadoLb:est[1], dep_ross:ross, dep_heidecke:heid, dep, v_benf:Math.round(v_benf), fc:P.fator_comercializacao, total,
-          pct_terreno: total? Math.round(v_terreno/(v_terreno+v_benf)*100):null,
-          rs_lote:rs_lote||null, lote_origem:lote_origem||null, v_lote: (rs_lote&&terreno)?Math.round(terreno*rs_lote):null, ref:ref||null};
-}
-
 const AV_STATUS = {
   gerada:{lb:'Gerada',cor:'#b45309',bg:'#fef3c7'},
   aprovada:{lb:'Aprovada',cor:'#047857',bg:'#d1fae5'},
@@ -944,6 +894,19 @@ async function _avPinoInfo(){
   }catch(e){ if(seq!==window._avPinoSeq) return; _avRenderCta(); el.innerHTML='<span style="color:#b45309">Não consegui confirmar o zoneamento deste ponto.</span> <span style="color:#94a3b8;font-size:.85em">'+String(e&&e.message||e).replace(/</g,'&lt;')+(/401/.test(String(e&&e.message))?' — sessão vencida; saia e entre de novo.':'')+'</span>'; }
 }
 
+// ═══════════════ NÚCLEO ÚNICO DA AVALIAÇÃO (26/10/2026) ═══════════════
+// A conta de valor é a mesma do NSP Intelligence: https://nspintel.netlify.app/nsp-avalia-core.js (repo nsp-intelligence,
+// shared/nsp-avalia-core.js). Regra mudou? Muda LÁ e sobe a VERSAO. A cópia em js/nsp-avalia-core.js é só reserva (site fora do ar
+// ou versão publicada mais velha que a que este portal espera).
+const AV_NUCLEO_MIN = '2026-10-26.1';
+let _AV_NUCLEO = null;
+async function _avNucleo(){
+  if(_AV_NUCLEO) return _AV_NUCLEO;
+  try{ const m=await import('https://nspintel.netlify.app/nsp-avalia-core.js'); if(String(m.VERSAO||'')>=AV_NUCLEO_MIN) _AV_NUCLEO=m; }catch(_){}
+  if(!_AV_NUCLEO){ try{ _AV_NUCLEO=await import('./nsp-avalia-core.js?v='+AV_NUCLEO_MIN); }catch(e){ console.error('[avaliação] núcleo indisponível', e); } }
+  return _AV_NUCLEO;
+}
+
 // ═══════════════ CÁLCULO (preço ao vivo + conta no navegador) ═══════════════
 async function avalCalcular(opts){
   opts=opts||{}; const recalc=!!opts.recalc && _avForm.cache;
@@ -978,11 +941,11 @@ async function avalCalcular(opts){
   // entram PRIMEIRO; o QuintoAndar só completa até 12 (Rodrigo, 06/10/2026)
   let nsp=[];
   if(recalc) nsp=_avForm.cache.nsp||[];
-  else if(grupo!=='terreno' && _avPino){ try{ nsp=await _avRpc('aval_anuncios_nsp_perto',{p_lat:_avPino.lat,p_lng:_avPino.lng,p_grupo:_ehCasa(tipo)?'casa':'apto',p_lim:30})||[]; }catch(_){ nsp=[]; } }
+  else if(_avPino){ try{ nsp=await _avRpc('aval_anuncios_nsp_perto',{p_lat:_avPino.lat,p_lng:_avPino.lng,p_grupo:grupo==='terreno'?'terreno':(_ehCasa(tipo)?'casa':'apto'),p_lim:30})||[]; }catch(_){ nsp=[]; } }
   // o nome que o mapa dá às vezes é um sub-bairro e o portal traz poucos anúncios (no Planalto Paulista o mapa diz
   // "Indianópolis" ou "Mirandópolis" em várias ruas): completa com o bairro mais comum entre os anúncios da Nova SP por perto
-  if(!recalc && nsp.length < 12 && nsp.length){
-    const nTipo=((precos&&precos.amostra)||[]).filter(a=>_ehCasa(tipo)?a.tipo==='Casa':a.tipo!=='Casa').length;
+  if(!recalc && grupo!=='terreno' && nsp.length < 12 && nsp.length){
+    const nTipo=((precos&&precos.amostra)||[]).filter(a=>{ const c=a.tipo==='Casa'||a.tipo==='CasaCondominio'; return _ehCasa(tipo)?c:!c; }).length;
     const cont={}; nsp.forEach(n=>{ const b=_avCap(String(n.bairro||'').replace(/\(.*?\)/g,'').trim().toLowerCase()); if(b) cont[b]=(cont[b]||0)+1; });
     const b2=Object.keys(cont).sort((x,y)=>cont[y]-cont[x])[0];
     if(nTipo<6 && b2 && _avNorm(b2).toUpperCase()!==_avNorm(bairro).toUpperCase()){
@@ -996,99 +959,50 @@ async function avalCalcular(opts){
   if(recalc) compsItbi=_avForm.cache.compsItbi;
   else {
     // vendas reais pelo RAIO em volta do imóvel (o bairro detectado no mapa nem sempre bate com o do ITBI); sem resultado, cai no bairro
-    if(grupo==='terreno') compsItbi=[];   // terreno: o valor vem de lotes; vendas de apartamento não são referência
+    if(grupo==='terreno'){ try{ compsItbi=await _avRpc('aval_comps_itbi_terreno_raio',{p_lat:_avPino.lat,p_lng:_avPino.lng,p_lim:20})||[]; }catch(_){ compsItbi=[]; } }   // terreno: vendas reais de TERRENO por perto (26/10/2026)
     else try{ compsItbi=await _avRpc('aval_comps_itbi_raio',{p_lat:_avPino.lat,p_lng:_avPino.lng,p_tipo:_ehCasa(tipo)?'casa':'apto',p_lim:40})||[]; compsItbi.forEach(c=>{ c.porRaio=true; }); }catch(_){ compsItbi=[]; }
     if(!compsItbi.length && grupo!=='terreno'){ try{ compsItbi=await _avRpc('aval_comps_itbi',{p_bairro:bairro,p_lim:20}); }catch(_){} }
   }
-  compsItbi=(compsItbi||[]).filter(c=>!/GARAGEM|VAGA|DEP[OÓ]SITO/i.test(c.uso||'') && (_ehCasa(tipo) ? /RESID|CASA|SOBRADO/i.test(c.uso||'') : /APART/i.test(c.uso||'')));
-  // exclusões feitas pelo corretor (comparável destoante) — chave estável por origem
+  // ── A CONTA vem do NÚCLEO ÚNICO da avaliação (26/10/2026; decisão do Rodrigo de 23/10: "é pra ser uma avaliação só") ──
+  // nsp-avalia-core.js é a mesma conta do NSP Intelligence (Farol). Aqui ficam só as buscas, a tela, o dossiê e a incorporação.
+  const A=await _avNucleo();
+  if(!A){ stt.innerHTML='<span style="color:#dc2626">Não consegui carregar a conta da avaliação. Atualize a página e tente de novo.</span>'; return; }
   _avForm.excl=_avForm.excl||new Set();
-  const kAn=a=>a.nsp?'n:'+(a.ref||a.rua+'|'+a.preco):'a:'+(a.url||a.rua+'|'+a.preco); const kIt=c=>'i:'+(c.logradouro||'')+'|'+(c.numero||'')+'|'+(c.data||'')+'|'+c.valor;
-  compsItbi.forEach(c=>{ c._k=kIt(c); c.excluido=_avForm.excl.has(c._k); });
-  // R$/m² do ITBI em base de ÁREA ÚTIL (cadastro ≈ 1,35 × útil + 29 m²/vaga; casa: área construída ≈ útil)
-  compsItbi.forEach(c=>{ const ac=Number(c.area_constr)||0; c.area_util_est=_ehCasa(tipo)?ac:Math.max(20,(ac-AV_INDICES.iptu_por_vaga)/AV_INDICES.iptu_por_util); c.rs_util=c.area_util_est?Math.round(Number(c.valor)/c.area_util_est):null; });
-  // TAMANHO PARECIDO (Rodrigo, 07/10/2026): vendas e anúncios com no máximo 50% de diferença de área para o imóvel
-  // (apartamento: área útil estimada da venda × área útil; casa/comercial: área construída). O que foge disso não aparece nem entra na conta.
-  const tamOk = a => !area || !(Number(a)>0) || (Number(a)>=area*0.5 && Number(a)<=area*1.5);
-  const compsItbiTodos=compsItbi;
-  compsItbi=compsItbi.filter(c=>tamOk(c.area_util_est)).slice(0,20);
-  const foraTamanho={itbi:compsItbiTodos.length-compsItbi.length, anuncios:0};
-  // endereços → coordenadas (base local de endereços do portal; o que não resolver fica sem pino)
-  const geocodar=async q=>{ try{ const r=await _avRpc('aval_geocode',{p_q:q}); const h=Array.isArray(r)?r[0]:null; return h?{lat:h.lat,lng:h.lng}:null; }catch(_){ return null; } };
-  // anúncios do MESMO tipo do imóvel (o motor manda casas primeiro; apartamento não é comparável de casa e vice-versa)
-  // primeiro os da Nova SP (mais perto primeiro), depois o QuintoAndar completa até 12
-  // o mesmo imóvel pode estar na carteira com mais de um código (BI/JA/MO, das antigas unidades): conta uma vez só
-  const vistoNsp=new Set();
-  const amostraNsp=(nsp||[]).filter(n=>{ const k=_avNorm(n.rua||'')+'|'+Math.round(Number(n.area))+'|'+Math.round(Number(n.valor)); if(vistoNsp.has(k)) return false; vistoNsp.add(k); return true; }).map(n=>({tipo:_ehCasa(tipo)?'Casa':'Apartamento', area:Number(n.area), preco:Number(n.valor), rs_m2:Number(n.rs_m2),
-    dorm:n.dorm||null, vaga:n.vaga||null, rua:n.rua||'', bairro:/[a-zà-ú]/.test(n.bairro||'')?n.bairro:_avCap(n.bairro||''), ref:n.ref||null, url:n.url||null, nsp:true, dist_m:n.dist_m!=null?Number(n.dist_m):null}));
-  const candidatos=[...amostraNsp, ...(precos.amostra||[]).filter(a=>_ehCasa(tipo)?a.tipo==='Casa':a.tipo!=='Casa')];
-  const amostraTodos=candidatos.filter(a=>tamOk(a.area)).slice(0,12);
-  foraTamanho.anuncios=candidatos.length-candidatos.filter(a=>tamOk(a.area)).length;
-  // anúncios INCLUÍDOS pelo corretor (link obrigatório, autoria registrada, no máx. AV_MANUAL_MAX) — 05/10/2026
-  (_avForm.manuais||[]).forEach(m=>amostraTodos.push({tipo:_ehCasa(tipo)?'Casa':'Apartamento', area:m.area, preco:m.preco, rs_m2:Math.round(m.preco/m.area),
-    dorm:m.dorm||null, vaga:m.vaga||null, rua:m.origem==='parecer'?'Anúncio no próprio prédio (achado pelo parecer)':'Anúncio incluído pelo corretor',
-    bairro:m.por?('por '+m.por):'', url:m.url, manual:true, por:m.por||null, origem_manual:m.origem||'corretor'}));
+  // trava: se o zoneamento ainda não resolveu (clique rápido), busca agora
+  if(!_avForm.geo){
+    try{ const z=await _avRpc('aval_geo',{p_lat:_avPino.lat,p_lng:_avPino.lng}); _avForm.geo=Array.isArray(z)?z[0]:z; }catch(_){}
+  }
+  const geo=_avForm.geo||{};
+  const inp={ tipo, bairro, rua:_avForm.rua, numero:_avForm.num, numeros_predio:[_avForm.num, _avForm.iptuVizinho?_avForm.iptuVizinho.numero:null],
+    area:gt('av-area'), terreno, frente:gt('av-frente'), dorm:gt('av-dorm'), suite:gt('av-suite'), vaga:gt('av-vaga'),
+    padrao:g('av-padrao-casa')||'medio', padrao_iptu:(_avForm.iptuSel||{}).padrao, idade:g('av-idade'), estado:g('av-estado')||'bom',
+    rs_terreno:gt('av-rs-terreno'), usar_predio:!!_avForm.usarPredio, usar_comparativo:!!_avForm.usarComparativo,
+    adotado_por:(typeof CUR!=='undefined'&&CUR&&CUR.nome)||null };
+  const dados={ precos, semMotor, nsp, compsItbi:compsItbi||[], geo, tlocal:null, excl:_avForm.excl, manuais:_avForm.manuais||[] };
+  const sel=A.selecionarComparaveis(inp, dados);
   // distância de cada anúncio (pela rua) até o imóvel: aparece na tabela e ordena a lista; o cálculo não muda
-  // (filtrar por distância foi testado em 04/10/2026 e não melhorou o valor: 16% → 20% de erro nos negócios fechados)
-  // (os da Nova SP já vêm com a distância pela coordenada do Imoview)
-  const semDist=amostraTodos.filter(a=>!a.nsp);
+  const semDist=sel.amostraTodos.filter(a=>!a.nsp && !a.manual);
   if(!recalc && semDist.length && _avPino){
     try{ const ruas=[...new Set(semDist.map(a=>a.rua).filter(Boolean))]; const dist={};
          (await _avRpc('aval_ruas_distancia',{p_lat:_avPino.lat,p_lng:_avPino.lng,p_ruas:ruas})||[]).forEach(x=>{ dist[x.rua]=x.dist_m; });
          semDist.forEach(a=>{ a.dist_m=(dist[a.rua]!=null)?dist[a.rua]:null; }); }catch(_){}
   }
-  amostraTodos.sort((x,y)=>(!!y.nsp-!!x.nsp) || (x.dist_m==null)-(y.dist_m==null) || (x.dist_m||0)-(y.dist_m||0));
-  amostraTodos.forEach(a=>{ a._k=kAn(a); a.excluido=_avForm.excl.has(a._k); });
-  const amostra=amostraTodos.filter(a=>!a.excluido);
-  const compsItbiAtivos=compsItbi.filter(c=>!c.excluido);
-  // anúncios só trazem a rua (sem número): ficam fora do mapa — só na tabela de comparáveis (Rodrigo, 02/10/2026)
-  amostraTodos.forEach(a=>{ delete a.lat; delete a.lng; });
-  if(!recalc) await Promise.all([
-    ...compsItbi.slice(0,12).filter(c=>!(c.lat&&c.lng)).map(async c=>{ try{ const r=await _avRpc('aval_geocode_endereco',{p_rua:c.logradouro||'',p_numero:c.numero||''}); const h=Array.isArray(r)?r[0]:null; if(h&&h.lat){ c.lat=h.lat; c.lng=h.lng; return; } }catch(_){} const g=await geocodar(`${c.logradouro||''} ${c.numero||''}`); if(g) Object.assign(c,g); }),
-  ]);
-  // R$/m² dos anúncios: o motor manda a mediana de toda a página; se o corretor excluiu algum, recalcula pela amostra restante
-  const mediana=v=>{ v=v.filter(x=>x>0).sort((a,b)=>a-b); return v.length?(v.length%2?v[(v.length-1)/2]:(v[v.length/2-1]+v[v.length/2])/2):null; };
-  // com anúncio da Nova SP, excluído ou incluído, o R$/m² sai da amostra (e não da mediana da página inteira do portal)
-  const houveExclAn=amostraTodos.some(a=>a.excluido) || amostraTodos.some(a=>a.manual) || amostraTodos.some(a=>a.nsp);
-  if(houveExclAn){
-    const pa=amostra.filter(a=>a.tipo!=='Casa').map(a=>a.rs_m2), pc=amostra.filter(a=>a.tipo==='Casa').map(a=>a.rs_m2);   // anúncios incluídos pelo corretor entram aqui, como anúncios
-    precos={...precos, rs_apto: pa.length?Math.round(mediana(pa)):null, rs_casa: pc.length?Math.round(mediana(pc)):null, n_apto:pa.length, n_casa:pc.length};
-  }
-  const nExcl=_avForm.excl.size;
-
-  // MODO TESTE (motor de anúncios ao vivo ainda não hospedado): usa a mediana do R$/m²
-  // dos fechamentos ITBI do bairro como preço de mercado, e avisa. Quando o motor entrar
-  // no ar (AVAL_MOTOR_URL), o fluxo volta ao normal sem mexer aqui.
-  if(semMotor && !amostra.length){
-    const rs=(compsItbi||[]).map(c=>Number(c.rs_m2)).filter(v=>v>0);
-    if(rs.length || grupo==='terreno'){
-      // sem anúncios: a conta usa só as vendas reais (em área útil, no método único); nada de "anúncio" derivado do ITBI
-      precos={rs_apto:null, rs_casa:null, n_apto:0, n_casa:0, amostra:[], base:'ITBI', n_itbi:rs.length};
-      stt.innerHTML='<span style="color:#b45309">Anúncios ao vivo indisponíveis agora — o valor usa só as '+rs.length+' vendas reais registradas por perto.</span>';
-    }else{
-      stt.innerHTML='<span style="color:#dc2626">Motor de anúncios indisponível e sem fechamentos ITBI para "'+bairro+'". Confira o nome do bairro.</span>'; return;
-    }
-  }
-
-  // trava: se o zoneamento ainda não resolveu (clique rápido), busca agora
-  if(!_avForm.geo){
-    try{ const z=await _avRpc('aval_geo',{p_lat:_avPino.lat,p_lng:_avPino.lng}); _avForm.geo=Array.isArray(z)?z[0]:z; }catch(_){}
-  }
-  const ehcasa=_ehCasa(tipo), ehterreno=/terreno/i.test(tipo), ehlote=_avPodeTerreno(tipo);
-  const rs_apto=precos.rs_apto;
-  const rs_casa=precos.rs_casa || (rs_apto ? Math.round(rs_apto*AV_PARAM.casa_sobre_apto) : null);
-  const casaEstimada=!precos.rs_casa && !!rs_casa;
-  const rs_tipo = ehcasa ? rs_casa : (ehterreno ? null : rs_apto);
-  const geo=_avForm.geo||{};
-  // R$/m² de terreno — duas leituras, medidas na carteira da NSP (AV_TERRENO):
-  //  · rs_terreno: o que o terreno vale DENTRO de uma casa vendida como casa (regressão valor = a·terreno + b·construída)
-  //  · rs_lote:    o que o lote vale vendido PARA CONSTRUIR (mediana de lotes anunciados, trazida a preço fechado)
-  const tb=_avTerrenoBairro(bairro), idxPF0=_avIdxPedidoFechado(bairro);
-  const rsTerrenoInf=+gt('av-rs-terreno')||null;
-  const rs_terreno = rsTerrenoInf || (tb&&tb.terreno) || (rs_casa ? Math.round(rs_casa*AV_PARAM.terreno_sobre_casa) : null);
-  const rsTerrenoOrigem = rsTerrenoInf ? 'informado pelo corretor' : (tb&&tb.terreno ? `modelo dos anúncios de casas da Nova São Paulo: ${tb.n} casas em ${bairro}, preços de ${tb.per||'2018–2026'}, custo de construção único de R$ ${(tb.constr||0).toLocaleString('pt-BR')}/m² (terreno = ${Math.round(tb.share*100)}% do valor)` : (rs_casa ? `estimado: ${Math.round(AV_PARAM.terreno_sobre_casa*100)}% do R$/m² de casa do bairro (${casaEstimada?'casa ≈ apto × '+AV_PARAM.casa_sobre_apto:'anúncios de casas'})` : null));
-  const rs_lote = rsTerrenoInf || (tb&&tb.lote ? Math.round(tb.lote*idxPF0.idx) : null) || (rs_casa ? Math.round(rs_casa*AV_PARAM.lote_sobre_casa) : null);
-  const loteOrigem = rsTerrenoInf ? 'informado pelo corretor' : (tb&&tb.lote ? `mediana de ${tb.lote_n} lotes anunciados pela NSP em ${bairro}, ${tb.lote_per||'2018–2026'} (R$ ${tb.lote.toLocaleString('pt-BR')}/m² pedido × ${idxPF0.idx} pedido→fechado)` : (rs_casa ? `estimado: ${Math.round(AV_PARAM.lote_sobre_casa*100)}% do R$/m² de casa do bairro` : null));
+  A.ordenarAmostra(sel.amostraTodos);
+  // vendas reais sem coordenada: endereço → ponto (fica guardado na lista original, para o recálculo)
+  const geocodar=async q=>{ try{ const r=await _avRpc('aval_geocode',{p_q:q}); const h=Array.isArray(r)?r[0]:null; return h?{lat:h.lat,lng:h.lng}:null; }catch(_){ return null; } };
+  if(!recalc) await Promise.all(sel.compsItbi.slice(0,12).filter(c=>!(c.lat&&c.lng)).map(async c=>{
+    let h=null;
+    try{ const r=await _avRpc('aval_geocode_endereco',{p_rua:c.logradouro||'',p_numero:c.numero||''}); const x=Array.isArray(r)?r[0]:null; if(x&&x.lat) h={lat:x.lat,lng:x.lng}; }catch(_){}
+    if(!h) h=await geocodar(`${c.logradouro||''} ${c.numero||''}`);
+    if(h){ Object.assign(c,h); const o=(dados.compsItbi||[]).find(x=>A.chaveVenda(x)===c._k); if(o) Object.assign(o,h); }
+  }));
+  // casa: preço local do terreno pelas vendas de casas do ITBI (conta calibrada)
+  if(grupo==='casa' && terreno && +gt('av-area')){ try{ const r=await _avRpc('aval_terreno_local',{p_lat:_avPino.lat,p_lng:_avPino.lng}); dados.tlocal=Array.isArray(r)?r[0]:r; }catch(_){} }
+  const r=A.calcularValor(inp, sel, dados);
+  if(!r.versao){ stt.innerHTML='<span style="color:#dc2626">'+String(r.erro||'Não foi possível avaliar.').replace(/</g,'&lt;')+'</span>'; return; }
+  if(r.aviso) stt.innerHTML='<span style="color:#b45309">'+r.aviso+'</span>';
+  precos=r.precos;
+  const ehlote=_avPodeTerreno(tipo), rs_apto=r.rs_apto;
   const padrao=(_avForm.incorp&&_avForm.incorp.padrao)||_avPadraoSugerido(bairro);
   const lancInformado=(_avForm.incorp&&_avForm.incorp.lanc)||null;
   await Promise.all([_avLancAnuncio(), _avLancItbi()]); const la=_avLancAuto(precos, rs_apto);
@@ -1100,131 +1014,28 @@ async function avalCalcular(opts){
   if(recalc) entorno=_avForm.cache.entorno;
   else { try{ entorno=await _avRpc('aval_entorno',{p_lat:_avPino.lat,p_lng:_avPino.lng}); if(Array.isArray(entorno)) entorno=entorno[0]; }catch(_){} }
   _avForm.entorno=entorno;
-  _avForm.cache={precos:(recalc?_avForm.cache.precos:precos), semMotor, compsItbi:compsItbiTodos, nsp, entorno, refs:recalc?_avForm.cache.refs:undefined, fpInfo:recalc?_avForm.cache.fpInfo:undefined};
-
-  // ── MÉTODO ÚNICO: macro (índices do bairro) aplicado no micro (este imóvel) ──
-  const idxPF=_avIdxPedidoFechado(bairro);
-  const rsItbiUtil=(()=>{ const v=compsItbiAtivos.map(c=>c.rs_util).filter(x=>x>0); return v.length>=3?mediana(v):null; })();
-  const metodoUnico = (()=>{
-    if(!area) return null;
-    const m={ idx_pedido_fechado:idxPF.idx, idx_origem:idxPF.origem, sub_itbi:AV_INDICES.itbi_subdeclaracao,
-              rs_anuncio: rs_tipo||null, n_anuncio: ehcasa?(precos.n_casa||0):(precos.n_apto||0),
-              rs_itbi_util: rsItbiUtil, n_itbi: compsItbiAtivos.filter(c=>c.rs_util>0).length, excluidos:nExcl,
-              incluidos: amostra.filter(a=>a.manual).length, n_nsp: amostra.filter(a=>a.nsp).length, fora_tamanho: foraTamanho, area_ref: area };
-    m.rs_anuncio_ajust = m.rs_anuncio ? Math.round(m.rs_anuncio*m.idx_pedido_fechado) : null;     // pedido → fechado esperado
-    // VENDAS NO PRÓPRIO PRÉDIO (05/10/2026): com 3+ vendas registradas no mesmo endereço, o corretor pode usar o preço delas
-    // (mesma planta) — a área útil estimada pelo cadastro erra em prédio novo (Aracoiaba 30: 64 m² úteis = 134 m² no cadastro)
-    const ruaKey=t=>{ const w=_avNorm(t).toUpperCase().replace(/[^A-Z0-9 ]/g,' ').trim().split(/\s+/).filter(x=>x.length>=3); return w[w.length-1]||''; };
-    const nums=[String(_avForm.num||''), _avForm.iptuVizinho?String(_avForm.iptuVizinho.numero):''].map(n=>n.replace(/\D/g,'').replace(/^0+/,'')).filter(Boolean);
-    const rk=ruaKey(_avForm.rua);
-    const mp=(grupo==='apto' && rk && nums.length) ? compsItbiAtivos.filter(c=>ruaKey(c.logradouro)===rk && nums.includes(String(c.numero||'').replace(/\D/g,'').replace(/^0+/,''))) : [];
-    if(mp.length>=3){
-      const pv=mp.map(c=>Number(c.valor)).filter(v=>v>0).sort((a,b)=>a-b), ult=[...mp].sort((a,b)=>String(b.data).localeCompare(String(a.data)))[0];
-      m.mesmo_predio={ n:pv.length, min:pv[0], max:pv[pv.length-1], mediana:Math.round(mediana(pv)), ultima:{valor:Number(ult.valor), data:ult.data, unidade:ult.complemento||null},
-                       valor_ajust:Math.round(mediana(pv)*(1+AV_INDICES.itbi_subdeclaracao)), endereco:`${mp[0].logradouro}, ${mp[0].numero}` };
-      m.usar_predio=!!_avForm.usarPredio;
-    }
-    m.rs_itbi_ajust    = m.rs_itbi_util ? Math.round(m.rs_itbi_util*(1+m.sub_itbi)) : null;         // declarado → negociado
-    const partes=[m.rs_anuncio_ajust, m.rs_itbi_ajust].filter(x=>x>0);
-    m.rs_final = partes.length ? Math.round(partes.reduce((a,b)=>a+b,0)/partes.length) : null;
-    m.divergencia = (m.rs_anuncio_ajust && m.rs_itbi_ajust) ? Math.round((m.rs_anuncio_ajust/m.rs_itbi_ajust-1)*100) : null;
-    m.valor_anuncio = m.rs_anuncio_ajust ? Math.round(area*m.rs_anuncio_ajust) : null;
-    m.valor_itbi    = m.rs_itbi_ajust ? Math.round(area*m.rs_itbi_ajust) : null;
-    m.valor_final   = m.rs_final ? Math.round(area*m.rs_final) : null;
-    return m; })();
-  _avForm.metodoUnico=metodoUnico;
+  _avForm.cache={precos:(recalc?_avForm.cache.precos:dados.precos), semMotor, compsItbi:dados.compsItbi, nsp, entorno, refs:recalc?_avForm.cache.refs:undefined, fpInfo:recalc?_avForm.cache.fpInfo:undefined};
+  _avForm.metodoUnico=r.metodo_unico;
+  _avForm.evolutivo=r.evolutivo;
 
   const dossie={
     fonte:'ondemand', codigo:'OD'+Date.now(),
     tipo, bairro, endereco:`${_avForm.rua||''}${_avForm.num?', '+_avForm.num:''}`.trim(),
-    area_util:area, terreno, frente, dorm, suite, vaga, preco_pedido:preco,
-    zona:geo.zona||null, ca:geo.ca_maximo?Number(geo.ca_maximo):null,
-    mercado_rs_m2:rs_tipo||null,
-    anuncios_usados: ehcasa ? (precos.n_casa||precos.n_apto||0) : (precos.n_apto||0),
-    valor_mercado:null, faixa_min:null, faixa_max:null, metodo:null,
+    area_util:r.area_util, terreno:r.terreno, frente:r.frente, dorm:r.dorm, suite:r.suite, vaga:r.vaga, preco_pedido:preco,
+    zona:r.zona, ca:r.ca, mercado_rs_m2:r.mercado_rs_m2, anuncios_usados:r.anuncios_usados,
+    valor_mercado:r.valor_mercado, faixa_min:r.faixa_min, faixa_max:r.faixa_max, metodo:r.metodo,
     incorp_aplicavel:false, incorp_area_constr:null, incorp_lancamento_rs_m2:null,
     incorp_vgv:null, incorp_valor_terreno:null, incorp_ganho_pct:null,
-    comparaveis: JSON.stringify(amostraTodos.map(a=>({k:a._k,excluido:!!a.excluido,tipo:a.tipo,area:a.area,preco:a.preco,rs_m2:a.rs_m2,dorm:a.dorm,vaga:a.vaga,endereco:[a.rua,a.bairro].filter(Boolean).join(', '),aprox:!!a.aprox,url:(a.manual||a.nsp)?(a.url||null):null,dist_m:a.dist_m!=null?a.dist_m:null,manual:!!a.manual,por:a.por||null,nsp:!!a.nsp,ref:a.ref||null,lat:a.lat||null,lng:a.lng||null,origem:a.manual?('anúncio · incluído'+(a.por?' por '+a.por:'')):a.nsp?('anúncio Nova SP'+(a.ref?' · '+a.ref:'')):(a.lancamento?'lançamento':'anúncio')}))
-                  .concat(compsItbi.map(c=>({k:c._k,excluido:!!c.excluido,tipo:grupo==='com'?'Venda real (ref. residencial)':'Venda real',area:c.area_constr,area_util_est:Math.round(c.area_util_est||0),preco:c.valor,rs_m2:c.rs_m2,rs_util:c.rs_util,endereco:`${c.logradouro||''}${c.numero?', '+c.numero:''}`,data:c.data,lat:c.lat||null,lng:c.lng||null,origem:'Venda real '+(c.data||'')})))),
+    comparaveis: JSON.stringify(r.comparaveis||[]),
     lat:_avPino?_avPino.lat:null, lng:_avPino?_avPino.lng:null,
     entorno: Object.assign({}, entorno||{}, {iptu: _avIptuResumo(tipo)}),
     memoria: null,
     metodo_unico: null
   };
-  dossie.memoria={ metodo_unico: metodoUnico||null, indices:{fonte:AV_INDICES.fonte}, incorp:null, param:{cub_ref:AV_PARAM.cub_ref, calibracao:AV_PARAM.calibracao, obra_sobre_cub:AV_PARAM.obra_sobre_cub, priv_sobre_construida:AV_PARAM.priv_sobre_construida, despesas:AV_PARAM.despesas, projetos_sobre_obra:AV_PARAM.projetos_sobre_obra, comissao:AV_PARAM.comissao, ret:AV_PARAM.ret, financiamento:AV_PARAM.financiamento, margem:AV_PARAM.margem, custo_aquisicao:AV_PARAM.custo_aquisicao} };
-  if(/comercial|loja|galp|sala/i.test(tipo) && metodoUnico) metodoUnico.aviso='Imóvel comercial: o valor como imóvel pronto usa referências residenciais do bairro (o coletor ainda não busca anúncios comerciais); trate como ordem de grandeza.';
-  // ── EVOLUTIVO: casas (e comerciais com terreno) — terreno + construção depreciada ──
-  let evolutivo=null;
-  // casa: terreno + construção calibrado (preço local do terreno pelas vendas do ITBI); sem base suficiente, a conta antiga
-  let tlocal=null;
-  if(grupo==='casa' && terreno && area){ try{ const r=await _avRpc('aval_terreno_local',{p_lat:_avPino.lat,p_lng:_avPino.lng}); tlocal=Array.isArray(r)?r[0]:r; }catch(_){} }
-  if(grupo==='casa' && terreno && area && tlocal && tlocal.n>=10 && Number(tlocal.rs_terreno_ref)>300){
-    evolutivo=_avContaCasaCalibrada({terreno, constr:area, idade:+g('av-idade')||0, padrao:g('av-padrao-casa')||'medio', padraoIptu:(_avForm.iptuSel||{}).padrao, estado:g('av-estado')||'bom', tl:tlocal, rs_lote, lote_origem:loteOrigem});
-    if(metodoUnico && metodoUnico.valor_final){ evolutivo.comparativo=metodoUnico.valor_final; evolutivo.divergencia=Math.round((metodoUnico.valor_final/evolutivo.total-1)*100); }
-  }else if((grupo==='casa'||grupo==='com') && terreno && area && rs_terreno){
-    // comercial (galpão/loja): o terreno vale como LOTE para construir; na casa, o terreno "dentro" da casa
-    const rsT = (grupo==='com' && rs_lote) ? rs_lote : rs_terreno, rsTO = (grupo==='com' && rs_lote) ? loteOrigem : rsTerrenoOrigem;
-    evolutivo=_avContaEvolutivo({terreno, rs_terreno:rsT, rs_terreno_origem:rsTO, constr:area, padrao:g('av-padrao-casa')||'medio', idade:+g('av-idade')||0, estado:g('av-estado')||'bom', rs_lote, lote_origem:loteOrigem, ref:tb});
-    if(metodoUnico && metodoUnico.valor_final){ evolutivo.comparativo=metodoUnico.valor_final; evolutivo.divergencia=Math.round((evolutivo.total/metodoUnico.valor_final-1)*100); }
-  }
-  dossie.memoria.evolutivo=evolutivo; _avForm.evolutivo=evolutivo;
-  if(grupo==='terreno'){
-    if(rs_lote){
-      const vm=Math.round(terreno*rs_lote);
-      dossie.valor_mercado=vm; dossie.faixa_min=Math.round(vm*0.9); dossie.faixa_max=Math.round(vm*1.1); dossie.mercado_rs_m2=rs_lote;
-      dossie.metodo=`terreno nu: ${terreno} m² × R$ ${rs_lote.toLocaleString('pt-BR')}/m² de lote (${loteOrigem})`;
-      // recuos: lote pequeno só vira prédio somado a um vizinho (Rodrigo, 07/10/2026)
-      const rec=_avRecuos({zona:geo.zona, terreno, frente, area_comput: terreno*(Number(geo.ca_maximo)||1)});
-      dossie.memoria.evolutivo={terreno, rs_terreno:rs_lote, rs_terreno_origem:loteOrigem, v_terreno:vm, total:vm, so_terreno:true, ref:tb, recuos:rec};
-    }
-  }else if(grupo==='casa' && evolutivo && evolutivo.calibrado && _avForm.usarComparativo && metodoUnico && metodoUnico.valor_final){
-    // CASA COM O COMPARATIVO ADOTADO PELO CORRETOR (23/10/2026): o valor segue os comparáveis (anúncios + vendas reais,
-    // com as exclusões dele); terreno + construção fica como referência. Escolha registrada no dossiê.
-    const mu=metodoUnico, ev=evolutivo, vm=mu.valor_final;
-    dossie.valor_mercado=vm; dossie.faixa_min=Math.round(vm*0.93); dossie.faixa_max=Math.round(vm*1.07); dossie.mercado_rs_m2=mu.rs_final;
-    dossie.metodo=`valor comparativo adotado pelo corretor: ${area} m² × R$ ${mu.rs_final.toLocaleString('pt-BR')}/m² = média de [anúncios ${mu.rs_anuncio?mu.rs_anuncio.toLocaleString('pt-BR'):'—'} × ${mu.idx_pedido_fechado}`+
-      (mu.rs_itbi_ajust?` ; vendas reais ${mu.rs_itbi_util.toLocaleString('pt-BR')}/m² × ${(1+mu.sub_itbi).toFixed(3)}`:'')+`]`+
-      ` · terreno + construção daria ${_avR$(ev.total)}`+(nExcl?` · ${nExcl} comparável(is) excluído(s) pelo corretor`:'');
-    dossie.memoria.comparativo_adotado={ por:(typeof CUR!=='undefined'&&CUR&&CUR.nome)||null, em:new Date().toISOString(), evolutivo:ev.total, comparativo:vm };
-  }else if(grupo==='casa' && evolutivo && evolutivo.calibrado){
-    const ev=evolutivo, vm=ev.total;
-    dossie.valor_mercado=vm; dossie.faixa_min=Math.round(vm*0.9); dossie.faixa_max=Math.round(vm*1.1); dossie.mercado_rs_m2=Math.round(vm/area);
-    dossie.metodo=`terreno ${terreno} m² × R$ ${ev.rs_terreno.toLocaleString('pt-BR')}/m² + construção ${area} m² × R$ ${ev.custo_m2.toLocaleString('pt-BR')}/m² × ${Math.round(ev.fator_idade*ev.fator_estado*100)}% (idade e estado)`+
-      (ev.comparativo?` · referência comparativa: ${_avR$(ev.comparativo)} (${ev.divergencia>0?'+':''}${ev.divergencia}%)`:'')+(nExcl?` · ${nExcl} comparável(is) excluído(s)`:'');
-  }else if(grupo==='com' && evolutivo){
-    // comercial: as referências de venda e anúncio são residenciais (o coletor não busca comercial) — o valor é
-    // terreno a preço de lote + construção depreciada; o residencial fica como referência (04/10/2026: o galpão da
-    // R. Alba saía 50% acima do parecer manual com a média; assim fica perto)
-    const vm=evolutivo.total;
-    dossie.valor_mercado=vm; dossie.faixa_min=Math.round(vm*0.9); dossie.faixa_max=Math.round(vm*1.1); dossie.mercado_rs_m2=Math.round(vm/area);
-    dossie.metodo=`terreno ${terreno} m² × R$ ${evolutivo.rs_terreno.toLocaleString('pt-BR')}/m² de lote + construção ${area} m² depreciada ${Math.round(evolutivo.dep*100)}%`+
-      (metodoUnico&&metodoUnico.valor_final?` · referência residencial do entorno: ${_avR$(metodoUnico.valor_final)}`:'');
-  }else if(metodoUnico && metodoUnico.valor_final && evolutivo){
-    const mu=metodoUnico, vm=Math.round((mu.valor_final+evolutivo.total)/2);
-    dossie.valor_mercado=vm; dossie.faixa_min=Math.round(vm*0.93); dossie.faixa_max=Math.round(vm*1.07); dossie.mercado_rs_m2=mu.rs_final;
-    dossie.metodo=`média de [comparação ${area} m² × R$ ${mu.rs_final.toLocaleString('pt-BR')}/m² = ${_avR$(mu.valor_final)} ; terreno ${terreno} m² × R$ ${evolutivo.rs_terreno.toLocaleString('pt-BR')} + construção ${area} m² depreciada ${Math.round(evolutivo.dep*100)}% = ${_avR$(evolutivo.total)}]`+
-      (evolutivo.divergencia!=null?` · métodos divergem ${evolutivo.divergencia}%`:'')+(nExcl?` · ${nExcl} comparável(is) excluído(s)`:'');
-  }else if(grupo==='apto' && metodoUnico && metodoUnico.usar_predio && metodoUnico.mesmo_predio){
-    const mp=metodoUnico.mesmo_predio, vm=mp.valor_ajust;
-    dossie.valor_mercado=vm; dossie.faixa_min=Math.round(vm*0.95); dossie.faixa_max=Math.round(vm*1.05); dossie.mercado_rs_m2=Math.round(vm/area);
-    dossie.metodo=`vendas no próprio prédio (mesma planta, confirmado pelo corretor): mediana de ${mp.n} vendas ${_avR$(mp.mediana)} × ${(1+AV_INDICES.itbi_subdeclaracao).toFixed(3)} = ${_avR$(vm)}`+
-      (metodoUnico.valor_final?` · referência pelo m² do bairro: ${_avR$(metodoUnico.valor_final)}`:'');
-  }else if(metodoUnico && metodoUnico.valor_final){
-    const mu=metodoUnico;
-    dossie.valor_mercado=mu.valor_final; dossie.faixa_min=Math.round(mu.valor_final*0.93); dossie.faixa_max=Math.round(mu.valor_final*1.07);
-    dossie.mercado_rs_m2=mu.rs_final;
-    dossie.metodo=`${area} m² × R$ ${mu.rs_final.toLocaleString('pt-BR')}/m² = média de [anúncios ${mu.rs_anuncio?mu.rs_anuncio.toLocaleString('pt-BR'):'—'} × ${mu.idx_pedido_fechado} (pedido→fechado, ${mu.idx_origem})`+
-      (mu.rs_itbi_ajust?` ; ITBI ${mu.rs_itbi_util.toLocaleString('pt-BR')}/m² útil est. × ${(1+mu.sub_itbi).toFixed(3)} (subdeclaração)`:'')+
-`]`+(mu.divergencia!=null?` · fontes divergem ${mu.divergencia}%`:'')+(nExcl?` · ${nExcl} comparável(is) excluído(s) pelo corretor`:'')+(precos.base==='ITBI'?' · sem anúncios ao vivo nesta avaliação (só vendas reais)':'');
-  }else if(evolutivo){
-    const vm=evolutivo.total;
-    dossie.valor_mercado=vm; dossie.faixa_min=Math.round(vm*0.9); dossie.faixa_max=Math.round(vm*1.1);
-    dossie.metodo=`terreno ${terreno} m² × R$ ${evolutivo.rs_terreno.toLocaleString('pt-BR')} + construção ${area} m² depreciada ${Math.round(evolutivo.dep*100)}% (sem vendas e anúncios suficientes por perto para comparar)`;
-  }else if(rs_tipo && area){
-    const vm=area*rs_tipo;
-    dossie.valor_mercado=Math.round(vm); dossie.faixa_min=Math.round(vm*0.9); dossie.faixa_max=Math.round(vm*1.1);
-    dossie.metodo=`${area} m² × R$ ${rs_tipo.toLocaleString('pt-BR')}/m² (anúncios ${bairro}, sem ajuste)`;
-  }
+  dossie.memoria={ metodo_unico: r.metodo_unico||null, evolutivo: r.evolutivo||null, nucleo: r.versao, indices:{fonte:A.AV_INDICES.fonte}, incorp:null,
+    param:{cub_ref:AV_PARAM.cub_ref, calibracao:AV_PARAM.calibracao, obra_sobre_cub:AV_PARAM.obra_sobre_cub, priv_sobre_construida:AV_PARAM.priv_sobre_construida, despesas:AV_PARAM.despesas, projetos_sobre_obra:AV_PARAM.projetos_sobre_obra, comissao:AV_PARAM.comissao, ret:AV_PARAM.ret, financiamento:AV_PARAM.financiamento, margem:AV_PARAM.margem, custo_aquisicao:AV_PARAM.custo_aquisicao} };
+  if(r.comparativo_adotado) dossie.memoria.comparativo_adotado=r.comparativo_adotado;
+  if(r.lote_local) dossie.memoria.lote_local=r.lote_local;
   delete dossie.metodo_unico;
   // ── Incorporação: etapa à parte (botão "Avaliar para incorporadora"); aqui só guardamos o contexto ──
   const ca=dossie.ca;
