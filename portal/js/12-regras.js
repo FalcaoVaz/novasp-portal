@@ -5,7 +5,7 @@
 // ════════════════════════════════════════════════════════
 
 const REGRAS_META = {
-  vendas:     { titulo:'Vendas',     icone:'💼', cor:'#3B82F6', bg:'#dbeafe', txt:'#1d4ed8', atualizado:'Junho/2026' },
+  vendas:     { titulo:'Vendas',     icone:'💼', cor:'#3B82F6', bg:'#dbeafe', txt:'#1d4ed8', atualizado:'Outubro/2026' },
   locacao:    { titulo:'Locação',    icone:'🏠', cor:'#10B981', bg:'#d1fae5', txt:'#047857', atualizado:'Março/2026' },
   financeiro: { titulo:'Financeiro', icone:'💰', cor:'#F59E0B', bg:'#fef3c7', txt:'#92400e', atualizado:'Março/2026' },
   rh:         { titulo:'RH',         icone:'👥', cor:'#8B5CF6', bg:'#ede9fe', txt:'#6d28d9', atualizado:'Junho/2026' },
@@ -286,10 +286,46 @@ const REGRAS_DATA = {
       { texto:'Pedidos de alteração no NIDO (parâmetros, atualizações): centralizados em Marketing e T.I.' },
       { texto:'<b>Falsificação</b> de visitas, follow-ups, atualizações de imóveis ou outras atividades: descredenciamento imediato.' },
     ]},
-    { titulo:'Terrenos para Incorporação', itens:[
-      { texto:'Todos os terrenos novos cadastrados no NIDO + KMZ (polígono Google Earth) + documentos enviados para <b>renan@novasaopaulo.com.br</b>.' },
-      { texto:'Terreno já no NIDO: enviar código de cadastro para Novos Negócios.' },
-      { num:'112', texto:'Setor de Novos Negócios analisa e retorna status para o corretor responsável.' },
+    { titulo:'Parcerias — Área do Parceiro (site)', itens:[
+      { num:'113', texto:'Área do Parceiro. As parcerias com incorporadoras, imobiliárias e corretores são cadastradas pela Área do Parceiro do site (novasaopaulo.com.br/parceiro). Cada corretor tem um link pessoal de convite (Área do Corretor → Parcerias). Parcerias fora da Área do Parceiro não geram divisão de comissão, salvo contrato específico aprovado pela diretoria.' },
+      { num:'113.1', texto:'<b>Frentes:</b> (a) Lançamentos – incorporadoras e construtoras; (b) Novos negócios – incorporadoras que compram terrenos; (c) Venda em parceria – imobiliárias e corretores com cliente para imóvel da Nova São Paulo; (d) Rede de locação – imobiliárias (PJ) que trocam carteira de locação.' },
+      { num:'113.2', texto:'<b>Área de atuação:</b> vale o distrito oficial do endereço. Área Moema: Moema, Itaim Bibi, Jardim Paulista, Campo Belo, Santo Amaro, Bela Vista, Consolação e Pinheiros. Área Saúde (Matriz e Biobedas): Vila Mariana, Saúde, Jabaquara, Cursino, Ipiranga, Liberdade, Cambuci e Sacomã.' },
+    ]},
+    { titulo:'Parcerias — Lançamentos – embaixador', itens:[
+      { num:'114', texto:'<b>Comissão mínima da incorporadora:</b> 4% sobre o valor de venda. Abaixo disso o empreendimento não é divulgado.' },
+      { num:'115', texto:'<b>Café da manhã com a incorporadora:</b> às sextas, das 8h30 às 10h30, na agência; um café por agência por sexta. O 1º café em até 60 dias do cadastro da parceria; depois, um a cada até 90 dias. Não há café em feriados nem no recesso (de 18/12 a 08/01).' },
+      { num:'116', texto:'<b>Embaixador:</b> o corretor que trouxe a incorporadora é o candidato e vira embaixador quando o gerente confirma o 1º café no site. O embaixador recebe 8% da comissão das vendas dos empreendimentos daquela parceria, calculados após os descontos da cabeça (documentação, zelador/portaria e demais despesas), enquanto for embaixador; vale a data da proposta aceita. Máximo de 5 incorporadoras por embaixador.' },
+      { num:'117', texto:'<b>Vaga aberta (\"Assumir\"):</b> quando a parceria está sem embaixador, com embaixador provisório de outra agência ou com o 1º café vencido (60 dias), o primeiro corretor da agência que tocar em \"Assumir\" fica com ela. O gerente também pode designar.' },
+      { num:'118', texto:'Obrigações do embaixador (página \"Obrigações e ferramentas\" da parceria): (a) material do mês – o parceiro envia até o dia 5 e o embaixador revisa e atualiza site e Imoview até o dia 10; (b) cafés (item 115); (c) resumo do mês para o time até o dia 10; (d) uma visita ao decorado por trimestre com os corretores da agência; (e) vídeo de até 2 minutos de cada empreendimento novo, em até 30 dias; (f) relatório trimestral à incorporadora, entregue no café; (g) ficha do empreendimento completa e revisão antes de publicar no site (o prédio só aparece no site depois que o embaixador aprova). Opcional: responder às perguntas dos colegas (\"Pergunte ao embaixador\").' },
+      { num:'119', texto:'<b>Avaliação trimestral:</b> ao fim de cada trimestre civil, o gerente da equipe avalia as obrigações e marca \"Manteve\" ou \"Perdeu a vaga\" (até o dia 15 do mês seguinte). Quem perde a vaga deixa de receber os 8% dali em diante e a vaga abre para a agência. Durante o trimestre o sistema só avisa.' },
+      { num:'120', texto:'<b>Leads de lançamento:</b> o cliente que pede contato pela ficha do lançamento no site entra no Imoview direto com o embaixador, na campanha \"Lançamento parceiro – [incorporadora]\". Se o cliente veio pelo link de outro corretor, o atendimento é desse corretor e o embaixador é avisado.' },
+      { num:'121', texto:'Parceria sem material por 2 meses fica pausada (sai do site), sem punir o embaixador.' },
+    ]},
+    { titulo:'Parcerias — Venda em parceria (cliente do parceiro, imóvel da Nova São Paulo)', itens:[
+      { num:'122', texto:'Só para imóveis a partir de R$ 800 mil, com comissão mínima de 6%. Divisão após os descontos da cabeça: imobiliária 50% / 50%; corretor autônomo 30% / Nova São Paulo 70%. O corretor da Nova São Paulo acompanha sempre.' },
+      { num:'123', texto:'A indicação traz só o primeiro nome e os 4 últimos dígitos do telefone do cliente; a Nova São Paulo confere em até 1 dia útil se ele já é cliente (cliente da Nova São Paulo não gera divisão). A divisão só vale com contrato de parceria assinado antes da visita.' },
+    ]},
+    { titulo:'Parcerias — Rede de locação entre imobiliárias', itens:[
+      { num:'124', texto:'<b>Só imobiliárias (PJ) aprovadas. Locação cruzada:</b> 90% do 1º aluguel para quem trouxe o inquilino e 10% para quem captou. A administração fica com a imobiliária captadora; se ela não administra, a Nova São Paulo administra. Registro na Área do Parceiro antes da visita. Imóveis da rede aparecem no site com o selo \"Imobiliária parceira\".' },
+    ]},
+    { titulo:'Parcerias — Novos negócios (incorporadora compradora de terreno)', itens:[
+      { num:'125', texto:'<b>Comissão de 6%:</b> na compra em dinheiro, paga pelo vendedor; na permuta (física, financeira ou mista), paga pela incorporadora, sobre o valor atribuído ao terreno no contrato. A incorporadora não pode negociar direto com o proprietário apresentado por 24 meses (termo aceito na vitrine).' },
+    ]},
+    { titulo:'Parcerias — Cadastro de parceiro e dados (LGPD)', itens:[
+      { num:'126', texto:'Os termos de parceria estão em novasaopaulo.com.br/parceiro/termos (versão provisória, sujeita à revisão do jurídico). O parceiro aceita no cadastro.' },
+      { num:'127', texto:'Nenhum imóvel de parceiro é cadastrado no Imoview como se fosse captação própria (mantém a regra atual de parcerias comerciais).' },
+    ]},
+    { titulo:'Terrenos para Incorporação — Banco de Terrenos', itens:[
+      { num:'128', texto:'Todo terreno para incorporação é cadastrado no Banco de Terrenos da Área do Corretor (mapa com os lotes da Prefeitura e o zoneamento). Não se usa mais o NIDO, KMZ ou e-mail para o setor de Novos Negócios.' },
+      { num:'128.1', texto:'<b>Área e lotes:</b> o corretor monta uma área juntando lotes vizinhos. Cada lote entra como possibilidade (não exclusivo) e passa a autorizado quando o proprietário assina o Termo de Autorização.' },
+      { num:'128.2', texto:'<b>Termo de Autorização:</b> gerado pelo próprio sistema, com o valor em dinheiro e/ou em permuta (total ou por m²). O proprietário autoriza a Nova São Paulo a ofertar o terreno para fins de incorporação pelo valor exposto e declara-se ciente do comissionamento (6% na venda em dinheiro, pago pelo vendedor; na permuta, pago pela incorporadora). Prazo de 180 dias, renovável. O termo assinado é anexado no sistema; só o corretor, o gerente da equipe e a diretoria têm acesso, e ele nunca vai para a incorporadora. Não valem prints de anúncio ou anotação do corretor.' },
+      { num:'128.3', texto:'<b>Exclusividade:</b> o lote autorizado é exclusivo do corretor que anexou o termo, sem prazo, enquanto a área não for descartada. Dois corretores não autorizam o mesmo lote (o sistema bloqueia). Possibilidade não gera exclusividade.' },
+      { num:'128.4', texto:'<b>Área cadastrada e vitrine:</b> com 1 lote autorizado a área fica \"cadastrada\" e entra na vitrine das incorporadoras parceiras (frente Novos negócios), só em faixas de valor e com localização aproximada. A incorporadora pede o dossiê aceitando o termo de confidencialidade e não intermediação (24 meses); o corretor e o gerente da equipe liberam (os dois). O dossiê não contém o termo nem o contato do proprietário.' },
+      { num:'128.5', texto:'<b>Conferência:</b> o gerente da equipe confere o termo de cada lote autorizado no sistema (aba Equipe).' },
+      { num:'128.6', texto:'Comissão de terreno, sobre a comissão recebida pela Nova São Paulo após os descontos da cabeça (documentação, zelador/portaria e demais despesas): corretor que autorizou o lote 45%; gerente da equipe do corretor 10%; jurídico 1%; Nova São Paulo 44% (restante).' },
+      { num:'128.6.1', texto:'<b>Área com lotes de mais de um corretor:</b> cada corretor recebe os 45% referentes aos lotes que ele autorizou (e o gerente de cada um, os 10% correspondentes).' },
+      { num:'128.6.2', texto:'<b>Exemplo (sem descontos da cabeça):</b> terreno vendido por R$ 5.000.000 em dinheiro → comissão de 6% = R$ 300.000 → corretor R$ 135.000; gerente R$ 30.000; jurídico R$ 3.000; Nova São Paulo R$ 132.000.' },
+      { num:'128.7', texto:'<b>Descarte:</b> o corretor pode descartar a área; os lotes autorizados ficam livres para outros corretores.' },
     ]},
   ],
 
