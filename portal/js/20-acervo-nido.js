@@ -56,6 +56,7 @@
             <option value="referencia">Referência (ex.: MO19108)</option>
             <option value="proprietario">Nome do proprietário</option>
             <option value="documento">CPF / CNPJ do proprietário</option>
+            <option value="captador">Captador (corretor)</option>
             <option value="cep">CEP</option>
           </select>
           <input type="text" id="an-busca" placeholder="🔍 Digite e pressione Enter…" style="flex:1;min-width:220px;padding:8px 12px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px">
@@ -106,6 +107,7 @@
         else if (tipo === 'referencia')   q += `&chave_imovel=ilike.${encodeURIComponent(termo.toUpperCase().replace(/\s+/g, '') + '*')}`;
         else if (tipo === 'proprietario') q += `&proprietario_nome=ilike.${encodeURIComponent(ilike(termo))}`;
         else if (tipo === 'cep')          q += `&cep=like.${encodeURIComponent(termo.replace(/\D/g, '') + '*')}`;
+        else if (tipo === 'captador')     q += `&captadores=ilike.${encodeURIComponent(ilike(termo))}`;
         else if (tipo === 'documento') {
           const dig = termo.replace(/\D/g, '');
           const pat = encodeURIComponent('*' + dig.split('').join('*') + '*');
@@ -114,7 +116,9 @@
           q += `&chave_pessoa_fj=in.(${ps.map(p => '"' + p.chave_pessoa_fj + '"').join(',')})`;
         }
       }
-      const dados = await db.get('nido_v_imoveis', q);
+      let dados;
+      try { dados = await db.get('nido_v_imoveis', q.replace(`select=${COLS_V}`, `select=${COLS_V},captadores`)); }
+      catch (e) { if (!/captadores/i.test(e.message) || tipo === 'captador') throw new Error(/captadores/i.test(e.message) ? 'a busca por captador ainda não está liberada no banco' : e.message); dados = await db.get('nido_v_imoveis', q); }
       renderResultados(dados || [], res);
     } catch (e) { res.innerHTML = `<div class="card cb" style="color:#dc2626">Erro na busca: ${esc(e.message)}</div>`; }
   }
@@ -130,13 +134,14 @@
     res.innerHTML = `
       <div style="font-size:13px;color:var(--muted);margin-bottom:8px">${lista.length} imóvel(is)${lista.length >= LIMITE ? ' (limite atingido — refine a busca)' : ''}</div>
       <div class="card"><div class="tw tbl"><table>
-        <thead><tr><th>Ref.</th><th>Sit.</th><th>Tipo</th><th>Imóvel</th><th>Proprietário</th><th style="text-align:center">Área útil</th><th style="text-align:center">Dorm/Vg</th><th style="text-align:right">Venda</th><th style="text-align:right">Locação</th><th>Atualizado</th></tr></thead>
+        <thead><tr><th>Ref.</th><th>Sit.</th><th>Tipo</th><th>Imóvel</th><th>Proprietário</th><th>Captador</th><th style="text-align:center">Área útil</th><th style="text-align:center">Dorm/Vg</th><th style="text-align:right">Venda</th><th style="text-align:right">Locação</th><th>Atualizado</th></tr></thead>
         <tbody>${lista.map((i, k) => `<tr class="an-row" data-i="${k}" style="cursor:pointer">
           <td style="font-weight:700;font-family:monospace">${esc(i.chave_imovel)}</td>
           <td>${badge(i.situacao)}${i.situacao_detalhe ? '<br><small style="color:var(--muted)">' + esc(i.situacao_detalhe) + '</small>' : ''}</td>
           <td>${esc(i.tipo_imovel || '—')}</td>
           <td>${esc(endereco(i) || '—')}<br><small style="color:var(--muted)">${esc([i.edificio || i.condominio, i.bairro].filter(Boolean).join(' · '))}</small></td>
           <td>${esc(i.proprietario_nome || '—')}</td>
+          <td style="font-size:12px">${esc(i.captadores || '—')}</td>
           <td style="text-align:center">${fmtNum(i.area_util_construida)}</td>
           <td style="text-align:center">${i.dormitorio || '—'}/${i.vaga || '—'}</td>
           <td style="text-align:right;white-space:nowrap">${i.disponivel_venda === 'Sim' || Number(i.valor_venda) > 0 ? fmtVal(i.valor_venda) : '—'}</td>
@@ -171,10 +176,11 @@
     try {
       const [i] = await db.get('nido_imoveis', `?select=${COLS_I}&chave_imovel=eq.${encodeURIComponent(chave)}&limit=1`);
       if (!i) { mb.textContent = 'Imóvel não encontrado.'; return; }
-      const [prop, props, fechs] = await Promise.all([
+      const [prop, props, fechs, capt] = await Promise.all([
         i.chave_pessoa_fj ? db.get('nido_pessoas', `?select=${COLS_P}&chave_pessoa_fj=eq.${encodeURIComponent(i.chave_pessoa_fj)}&limit=1`).then(r => r && r[0]) : null,
         db.get('nido_propostas', `?select=${COLS_PR}&chave_imovel=eq.${encodeURIComponent(chave)}&order=data_cadastro.desc&limit=100`),
         db.get('nido_fechamentos', `?select=${COLS_F}&chave_imovel=eq.${encodeURIComponent(chave)}&order=data_fechamento.desc&limit=50`),
+        db.get('nido_captadores', `?select=captadores&chave_imovel=eq.${encodeURIComponent(chave)}&limit=1`).then(r => (r && r[0] && r[0].captadores) || null).catch(() => undefined),
       ]);
       const chavesProp = [...new Set((props || []).map(p => p.chave_pessoa_fj).filter(Boolean))];
       const proponentes = chavesProp.length ? await db.get('nido_pessoas', `?select=${COLS_P}&chave_pessoa_fj=in.(${chavesProp.map(c => '"' + c + '"').join(',')})`) : [];
@@ -183,12 +189,14 @@
         secao('Imóvel', `<div style="font-size:14px;margin-bottom:8px"><strong>${esc(endereco(i) || '—')}</strong> · ${esc(i.bairro || '')} · ${esc(i.cidade || '')}/${esc(i.estado || '')} · CEP ${esc(i.cep || '—')}</div>` +
           grade(i, ['chave_imovel', 'codigo_anterior', 'tipo_imovel', 'classificacao', 'situacao', 'situacao_detalhe', 'origem', 'data_cadastro', 'data_atualizacao', 'data_ativo', 'locado_ate', 'edificio', 'condominio', 'construtora', 'ano_construcao', 'zoneamento', 'regiao'])) +
         secao('Características e valores pedidos', grade(i, ['area_util_construida', 'area_total_terreno', 'dormitorio', 'suite', 'vaga', 'banheiro', 'sala', 'disponivel_venda', 'valor_venda', 'disponivel_locacao', 'valor_locacao', 'valor_condominio', 'valor_iptu', 'exclusividade', 'placa', 'contribuinte', 'matricula', 'registro'])) +
+        secao('Captação', capt ? `<div style="font-size:14px"><strong>${esc(capt)}</strong></div><div style="font-size:12px;color:var(--muted);margin-top:4px">Captador (angariador) registrado no Nido, com a equipe da época.</div>`
+          : `<div style="font-size:13px;color:var(--muted)">${capt === undefined ? 'Captadores ainda não carregados no acervo.' : 'Sem captador registrado no Nido.'}</div>`) +
         secao('Proprietário', pessoaHTML(prop)) +
         secao(`Propostas (${(props || []).length})`, tabela(['Data', 'Tipo', 'Negócio', 'Proponente', 'Valor', 'Situação', 'Encerrada em', 'Motivo'], props || [], p =>
           `<tr><td style="white-space:nowrap">${fmtData(p.data_cadastro)}</td><td>${esc(p.tipo_proposta || '')}</td><td>${esc(p.tipo_negocio || '')}</td><td>${nomeDe(p.chave_pessoa_fj)}</td><td style="white-space:nowrap">${fmtVal(p.valor_atual_proposta || p.valor_proposta)}</td><td>${esc(p.situacao || '')}${p.detalhe_situacao ? '<br><small>' + esc(p.detalhe_situacao) + '</small>' : ''}</td><td style="white-space:nowrap">${fmtData(p.data_encerramento)}</td><td><small>${esc(p.motivo_recusa || '')}</small></td></tr>`)) +
         secao(`Negócios fechados (${(fechs || []).length})`, tabela(['Data', 'Negócio', 'Valor fechado', 'Comissão', 'Situação', 'Pós-venda', 'Parceria', 'Obs.'], fechs || [], f =>
           `<tr><td style="white-space:nowrap">${fmtData(f.data_fechamento)}</td><td>${esc(f.negocio || '')}</td><td style="white-space:nowrap;font-weight:600">${fmtVal(f.valor_fechamento)}</td><td style="white-space:nowrap">${fmtVal(f.valor_comissao)}</td><td>${esc(f.situacao || '')}</td><td>${esc(f.situacao_posvenda || '')}</td><td>${esc(f.parceria || '')}</td><td><small>${esc(f.obs || '')}</small></td></tr>`)) +
-        `<div style="font-size:12px;color:var(--muted);margin-top:14px">Telefones, e-mails e endereço das pessoas ficam fora da consulta até a regra de retenção e acesso do Jurídico. Corretor angariador e fotos: próxima versão.</div>`;
+        `<div style="font-size:12px;color:var(--muted);margin-top:14px">Telefones, e-mails e endereço das pessoas ficam fora da consulta até a regra de retenção e acesso do Jurídico. Fotos originais: Skybox, pasta “arquivos fotos nido”, pelo código do imóvel.</div>`;
     } catch (e) { mb.innerHTML = `<span style="color:#dc2626">Erro: ${esc(e.message)}</span>`; }
   }
 
