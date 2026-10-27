@@ -51,7 +51,15 @@ print('exemplos:', [l[:2] for l in linhas[:3]])
 
 if '--gravar' not in sys.argv:
     sys.exit('(sem --gravar: nada foi gravado)')
+SQL = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'portal', 'sql', '2026-10-27-acervo-nido-captadores.sql')
 with con, con.cursor() as cur:
+    cur.execute("select to_regclass('public.nido_captadores')")
+    if cur.fetchone()[0] is None:      # tabela ainda não criada: roda o SQL do repositório (mesma transação da carga)
+        ddl = open(SQL, encoding='utf-8').read()
+        ddl = ddl.replace('begin;', '').replace('commit;', '')
+        ddl = ddl[:ddl.rfind("select 'ok")]
+        cur.execute(ddl)
+        print('Tabela nido_captadores e view nido_v_imoveis criadas.')
     cur.execute('truncate nido_captadores')
     psycopg2.extras.execute_values(cur, 'insert into nido_captadores (chave_imovel, captadores, chaves) values %s', linhas, page_size=2000)
     cur.execute("select count(*), pg_size_pretty(pg_total_relation_size('nido_captadores')), pg_size_pretty(pg_database_size(current_database())) from nido_captadores")
