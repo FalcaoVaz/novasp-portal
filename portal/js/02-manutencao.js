@@ -563,7 +563,7 @@ const VENDAS_USUARIOS = [
   // Gerentes
   'Renata','Felippe','Christiane','Emilia',
   // Assistentes
-  'Leticia','Thais','Camille','Amanda','Karina','Jean','Anderson',
+  'Leticia','Thais','Camille','Amanda','Karina','Juliana','Anderson',   // Juliana (Moema) no lugar do Jean, 28/10/2026
   // Consultor externo (visao geral dos modulos dos lideres)
   'Telmo'
 ];
@@ -696,7 +696,7 @@ const GESTAO_CORRETORES_EXTRA = ['Camille','Thais'];
 // Quem importa/exclui a Planilha Mensal por EQUIPE: quem gerencia corretores
 // (admin, acesso total, gerentes de vendas, GESTAO_CORRETORES_EXTRA) + marketing
 // + as assistentes de vendas (Rodrigo liberou em 06/10/2026: cada uma grava a planilha da sua equipe).
-const PLANILHA_VENDAS_IMPORTADORES = ['Anderson','Gabriela','Thais','Camille','Leticia','Amanda','Karina','Jean'];
+const PLANILHA_VENDAS_IMPORTADORES = ['Anderson','Gabriela','Thais','Camille','Leticia','Amanda','Karina','Juliana'];
 // Piloto Claude (16/09 a 14/10/2026): os 8 participantes, por e-mail (mesma lista do sandbox, 02-piloto-acessos.sql).
 // Abre o card "Pré-análise de certidões e matrícula" (frente da Renata), ainda em construção.
 const PILOTO_CLAUDE_EMAILS = ['rodrigo@novasaopaulo.com.br','anderson.lucchi@novasaopaulo.com.br','cpd@novasaopaulo.com.br',
