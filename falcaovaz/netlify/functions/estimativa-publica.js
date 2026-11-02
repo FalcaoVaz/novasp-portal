@@ -66,8 +66,8 @@ function confianca(r) {
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') return json(405, { ok: false, motivo: 'use_post' });
-  const segredo = process.env.AVAL_SITE_KEY || '', key = process.env.SUPABASE_KEY || '';
-  const enviado = String((event.headers || {})['x-site-key'] || '');
+  const segredo = String(process.env.AVAL_SITE_KEY || '').trim(), key = process.env.SUPABASE_KEY || '';   // trim: valor colado com quebra de linha
+  const enviado = String((event.headers || {})['x-site-key'] || '').trim();
   const a = Buffer.from(enviado), b = Buffer.from(segredo);
   if (!segredo || a.length !== b.length || !crypto.timingSafeEqual(a, b)) return json(401, { ok: false, motivo: 'nao_autorizado' });
   if (!key) return json(500, { ok: false, motivo: 'configuracao' });
