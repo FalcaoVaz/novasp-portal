@@ -65,6 +65,11 @@ function confianca(r) {
 }
 
 exports.handler = async (event) => {
+  // diagnóstico da chave (02/11/2026): mostra só o tamanho e 6 caracteres do SHA-256 — não revela a chave
+  if (event.httpMethod === 'GET' && (event.queryStringParameters || {}).diag === '1') {
+    const k = String(process.env.AVAL_SITE_KEY || '').trim();
+    return json(200, { configurada: !!k, tamanho: k.length, impressao: k ? crypto.createHash('sha256').update(k).digest('hex').slice(0, 6) : null });
+  }
   if (event.httpMethod !== 'POST') return json(405, { ok: false, motivo: 'use_post' });
   const segredo = String(process.env.AVAL_SITE_KEY || '').trim(), key = process.env.SUPABASE_KEY || '';   // trim: valor colado com quebra de linha
   const enviado = String((event.headers || {})['x-site-key'] || '').trim();
