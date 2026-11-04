@@ -5,7 +5,7 @@
 // ════════════════════════════════════════════════════════
 
 const REGRAS_META = {
-  vendas:     { titulo:'Vendas',     icone:'💼', cor:'#3B82F6', bg:'#dbeafe', txt:'#1d4ed8', atualizado:'Outubro/2026' },
+  vendas:     { titulo:'Vendas',     icone:'💼', cor:'#3B82F6', bg:'#dbeafe', txt:'#1d4ed8', atualizado:'Novembro/2026' },
   locacao:    { titulo:'Locação',    icone:'🏠', cor:'#10B981', bg:'#d1fae5', txt:'#047857', atualizado:'Março/2026' },
   financeiro: { titulo:'Financeiro', icone:'💰', cor:'#F59E0B', bg:'#fef3c7', txt:'#92400e', atualizado:'Março/2026' },
   rh:         { titulo:'RH',         icone:'👥', cor:'#8B5CF6', bg:'#ede9fe', txt:'#6d28d9', atualizado:'Junho/2026' },
@@ -326,6 +326,15 @@ const REGRAS_DATA = {
       { num:'128.6.1', texto:'<b>Área com lotes de mais de um corretor:</b> cada corretor recebe os 45% referentes aos lotes que ele autorizou (e o gerente de cada um, os 10% correspondentes).' },
       { num:'128.6.2', texto:'<b>Exemplo (sem descontos da cabeça):</b> terreno vendido por R$ 5.000.000 em dinheiro → comissão de 6% = R$ 300.000 → corretor R$ 135.000; gerente R$ 30.000; jurídico R$ 3.000; Nova São Paulo R$ 132.000.' },
       { num:'128.7', texto:'<b>Descarte:</b> o corretor pode descartar a área; os lotes autorizados ficam livres para outros corretores.' },
+    ]},
+    { titulo:'Cadastro de Imóveis no Imoview — Padrão de Endereço', itens:[
+      { num:'129', texto:'Para o Imoview, dois endereços só são o mesmo imóvel quando estão escritos <b>exatamente iguais</b> ("Rua Itapiru" e "R Itapiru" viram duas fichas). <b>Ficha com endereço fora do padrão não é aprovada.</b>' },
+      { num:'129.1', texto:'<b>CEP primeiro:</b> o cadastro começa pela busca do CEP do imóvel; a rua e o bairro ficam <b>exatamente como o CEP preencheu</b>, sem redigitar (hoje a carteira está como "R Itapiru", "AV Ibirapuera", "AL dos Jurupis"). Rua que o CEP não encontra: mesmo formato (tipo abreviado R, AV, AL, PÇ, TRAV + nome com iniciais maiúsculas e acentos).' },
+      { num:'129.2', texto:'Proibido: trocar "R" por "Rua" (ou o contrário), escrever tudo em maiúsculas, omitir o tipo do logradouro, colocar apelido de região no campo bairro (vai no texto do anúncio).' },
+      { num:'129.3', texto:'<b>Cada informação no seu campo:</b> número só com dígitos (1166, sem "nº" nem ponto); complemento no formato <b>Apto 171 · Casa 2 · Sala 52 · Conj 52 · Loja 1</b>; bloco no campo Bloco, só a letra ou o número (A); nome do prédio no campo de condomínio.' },
+      { num:'129.4', texto:'<b>Antes de cadastrar</b>, pesquisar pelo <b>CEP e número</b> (nunca só pelo nome da rua). Existindo ficha do mesmo imóvel, atualiza-se essa ficha e corrige-se o endereço dela; não se abre outra.' },
+      { num:'129.5', texto:'<b>Na aprovação</b>, o gerente/assistente confere: CEP do imóvel com rua e bairro do CEP; tipo do logradouro, sem erro de digitação e sem maiúsculas; número, complemento e bloco nos campos certos; nenhuma outra ficha do mesmo imóvel. Um item fora do padrão → a ficha volta ao corretor, com 48 h para corrigir (regra das fichas sem requisitos mínimos).' },
+      { num:'129.6', texto:'Fichas antigas fora do padrão são corrigidas por quem abrir ou atualizar a ficha.' },
     ]},
   ],
 
