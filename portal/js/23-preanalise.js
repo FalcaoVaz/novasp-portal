@@ -7,6 +7,8 @@
    04/11/2026: melhorias da versão local da Renata trazidas para cá (painel, prazos, conferência obrigatória, mensagens,
    certidão refeita substitui a antiga, revisão jurídica registrada, parecer em PDF, uso da semana). Minuta e Imoview: depois.
    Banco: sql/2026-11-04-preanalise-painel.sql (colunas novas da venda).
+   06/11/2026: acompanhamento da venda (etapas, emissão assistida, protocolos, pós-venda, linha do tempo) em js/24-preanalise-acompanhamento.js
+   (sql/2026-11-06-preanalise-acompanhamento.sql); dados da proposta ganharam compradores e versão do contrato.
    Banco: sql/2026-10-07-preanalise.sql (tabelas preanalise_*, bucket privado "preanalise", acesso só do piloto).
    Motor: função preanalise-background do site do jurídico (lê os PDFs com o Claude; o status sai das regras no código).
    ===================================================================== */
@@ -69,7 +71,7 @@
   }
 
   // ── PAINEL (tela inicial) ──
-  let _lista = { vendas: [], ult: new Map(), ndocs: new Map() };
+  let _lista = { vendas: [], ult: new Map(), ndocs: new Map(), protos: new Map() };
   function prazosDe(v) {
     const p = (v.prazos || []).filter(x => x && x.data).map(x => ({ titulo: x.titulo || 'Prazo', data: x.data, feito: !!x.feito }));
     if (v.data_compromisso && v.prazo_escritura_dias) p.push({ titulo: 'Escritura', data: somaDias(v.data_compromisso, Number(v.prazo_escritura_dias)), feito: !!v.escritura_feita, escritura: true });
@@ -113,10 +115,13 @@
     } catch (e) { el.innerHTML = `<div class="card"><div class="cb" style="color:#dc2626">Erro ao ler: ${esc(e.message)}<br><small>As tabelas já foram criadas? (sql/2026-10-07-preanalise.sql e sql/2026-11-04-preanalise-painel.sql)</small></div></div>`; return; }
     const ult = new Map(); execs.forEach(x => { if (!ult.has(x.venda_id)) ult.set(x.venda_id, x); });
     const nd = new Map(); docs.forEach(d => nd.set(d.venda_id, (nd.get(d.venda_id) || 0) + 1));
-    _lista = { vendas, ult, ndocs: nd };
+    const protosTodos = window.PAAcomp ? (await PAAcomp.carregarPainel()) || [] : [];
+    const pm = new Map(); protosTodos.forEach(p => { if (!pm.has(p.venda_id)) pm.set(p.venda_id, []); pm.get(p.venda_id).push(p); });
+    _lista = { vendas, ult, ndocs: nd, protos: pm };
     // alertas no topo
     const al = [];
-    vendas.forEach(v => {
+    if (window.PAAcomp) al.push(...PAAcomp.alertasPainel(vendas, protosTodos));
+    vendas.filter(v => !v.arquivada_em).forEach(v => {
       const e = ult.get(v.id), t = esc(v.titulo);
       prazosDe(v).filter(p => !p.feito).forEach(p => { const n = diasEntre(hojeIso(), p.data); if (n != null && n <= 7) al.push([n < 0 ? 0 : 1, `<b>${t}</b>: ${esc(p.titulo)} em ${dia(p.data)} (${diaSem(p.data)}) — ${falta(p.data)}${fimDeSemana(p.data) ? ' · <b>cai no fim de semana</b>' : ''}`]); });
       const mi = matInfo(e); if (mi && mi.vencida) al.push([2, `<b>${t}</b>: matrícula emitida há ${mi.idade} dias — pedir atualizada`]);
@@ -131,6 +136,8 @@
         <input id="pa-busca" placeholder="Buscar venda, matrícula ou vendedor…" oninput="PreAnalise.filtrar()" style="flex:1;min-width:200px;padding:8px 10px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px">
         <select id="pa-fst" onchange="PreAnalise.filtrar()" style="padding:8px 10px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px">
           <option value="">Todos os status</option>${Object.keys(STATUS).map(k => `<option value="${k}">${STATUS[k].lb}</option>`).join('')}<option value="sem">Sem análise</option><option value="juridico">Aguardando jurídico</option></select>
+        <label style="font-size:13px"><input type="checkbox" id="pa-ver-arq" onchange="PreAnalise.filtrar()"> arquivadas</label>
+        ${window.PAAcomp ? `<label style="font-size:13px"><input type="checkbox" id="pa-quadro" onchange="try{localStorage.setItem('pa_quadro',this.checked?'1':'')}catch(_){};PreAnalise.filtrar()" ${(() => { try { return localStorage.getItem('pa_quadro') ? 'checked' : ''; } catch (_) { return ''; } })()}> quadro por etapas</label>` : ''}
         <button class="btn btn-o" onclick="PreAnalise.semana()">📊 Uso da semana</button>
         <button class="btn btn-p" onclick="PreAnalise.nova()">+ Nova venda</button>
       </div></div>
@@ -143,22 +150,26 @@
     const box = document.getElementById('pa-tabela'); if (!box) return;
     const q = ((document.getElementById('pa-busca') || {}).value || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     const fs = (document.getElementById('pa-fst') || {}).value || '';
-    const { vendas, ult, ndocs } = _lista;
+    const { ult, ndocs, protos } = _lista, verArq = !!(document.getElementById('pa-ver-arq') || {}).checked;
+    const vendas = _lista.vendas.filter(v => verArq ? !!v.arquivada_em : !v.arquivada_em);
     const lista = vendas.filter(v => {
       if (q && ![v.titulo, v.matricula, v.cartorio, v.vendedores].join(' ').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').includes(q)) return false;
       if (fs === 'sem') return !v.status; if (fs === 'juridico') return v.encaminhado_juridico && !v.revisao_status;
       return !fs || v.status === fs;
     });
     const cont = s => vendas.filter(v => v.status === s).length;
-    if (!vendas.length) { box.innerHTML = '<div class="card"><div class="cb" style="color:var(--muted)">Nenhuma venda ainda. Clique em "Nova venda" e suba a matrícula.</div></div>'; return; }
+    if (!vendas.length) { box.innerHTML = `<div class="card"><div class="cb" style="color:var(--muted)">${verArq ? 'Nenhuma venda arquivada.' : 'Nenhuma venda ainda. Clique em "Nova venda" e suba a matrícula.'}</div></div>`; return; }
+    if (window.PAAcomp && (document.getElementById('pa-quadro') || {}).checked) {
+      box.innerHTML = `<div style="font-size:12px;color:var(--muted);margin:0 0 6px 2px">${lista.length} venda(s) no quadro${verArq ? ' (arquivadas)' : ''}</div>` + PAAcomp.quadroHTML(lista, ult, ndocs, protos, proximaAcao); return; }
     box.innerHTML = `<div style="font-size:12px;color:var(--muted);margin:0 0 6px 2px">${vendas.length} venda(s) · ${Object.keys(STATUS).map(s => `${STATUS[s].lb}: ${cont(s)}`).join(' · ')}${lista.length !== vendas.length ? ` · mostrando ${lista.length}` : ''}</div>
-      <div class="card"><div class="tw tbl"><table><thead><tr><th>Venda</th><th>Status</th><th>Matrícula</th><th>Certidões</th><th>Próximo prazo</th><th>Próxima ação</th></tr></thead><tbody>
+      <div class="card"><div class="tw tbl"><table><thead><tr><th>Venda</th><th>Status</th>${window.PAAcomp ? '<th>Etapa</th>' : ''}<th>Matrícula</th><th>Certidões</th><th>Próximo prazo</th><th>Próxima ação</th></tr></thead><tbody>
       ${lista.map(v => {
         const e = ult.get(v.id), mi = matInfo(e), ci = certInfo(e), pp = proximoPrazo(v);
         const n = pp ? diasEntre(hojeIso(), pp.data) : null;
         return `<tr style="cursor:pointer" onclick="PreAnalise.venda('${v.id}')">
           <td style="font-weight:600">${esc(v.titulo)}${v.matricula ? `<br><small style="color:var(--muted);font-weight:400">mat. ${esc(v.matricula)}${v.cartorio ? ' · ' + esc(v.cartorio) : ''}</small>` : ''}</td>
           <td>${badge(v.status)}${v.encaminhado_juridico ? `<br><small style="color:${v.revisao_status ? '#047857' : '#b45309'}">${v.revisao_status ? 'jurídico: ' + REV[v.revisao_status] : 'no jurídico'}</small>` : ''}</td>
+          ${window.PAAcomp ? (() => { const et = PAAcomp.etapas(v, e, ndocs.get(v.id) || 0, protos.get(v.id) || []); return `<td style="font-size:12px">${v.arquivada_em ? 'Arquivada' : esc(et.atual.nome)}<br><small style="color:var(--muted)">${et.atual.feitas}/${et.atual.total}</small></td>`; })() : ''}
           <td style="font-size:12px">${mi ? `<span style="color:${mi.vencida ? '#b91c1c' : '#047857'}">${mi.idade} dias${mi.vencida ? ' · vencida' : ''}</span>` : (ndocs.get(v.id) ? '—' : '<span style="color:var(--muted)">sem PDF</span>')}
             ${e && v.leitura_conferida_exec !== e.id ? '<br><small style="color:#b45309">leitura não conferida</small>' : ''}</td>
           <td style="font-size:12px">${ci ? `${ci.n} lida(s)${ci.vencidas ? `<br><span style="color:#b91c1c">${ci.vencidas} vencida(s)</span>` : ''}${ci.faltando ? `<br><span style="color:#475569">${ci.faltando} faltando</span>` : ''}${ci.positivas ? `<br><span style="color:#b45309">${ci.positivas} positiva(s)</span>` : ''}` : '—'}</td>
@@ -213,6 +224,10 @@
           <textarea id="pa-vendedores" rows="3" style="padding:8px 10px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px">${esc(v.vendedores || '')}</textarea></label>
         <label style="font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px">Área e descrição da proposta
           <textarea id="pa-area" rows="3" style="padding:8px 10px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px" placeholder="Ex.: apto 41, 64 m² úteis, 1 vaga">${esc(v.area_proposta || '')}</textarea></label>
+        <label style="font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px">Compradores (um por linha, com cônjuge se houver) — vão para protocolos e recibos
+          <textarea id="pa-compradores" rows="3" style="padding:8px 10px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px">${esc(v.compradores || '')}</textarea></label>
+        <label style="font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px">Versão do contrato
+          <select id="pa-versao" style="padding:8px 10px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px"><option value="">(não definida)</option>${Object.entries((window.PAAcomp || {}).VERSOES || {}).map(([k, t]) => `<option value="${k}" ${v.versao_contrato === k ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></label>
       </div>
       <div style="margin-top:10px;font-size:13px;display:flex;gap:16px;flex-wrap:wrap">
         <label><input type="radio" name="pa-escopo" value="matricula" ${v.escopo !== 'completo' ? 'checked' : ''}> Só a matrícula (teste)</label>
@@ -223,7 +238,8 @@
     const g = id => (document.getElementById(id) || {}).value || '';
     const esco = (document.querySelector('input[name="pa-escopo"]:checked') || {}).value || 'matricula';
     return { titulo: g('pa-titulo').trim(), matricula: g('pa-matricula').trim() || null, cartorio: g('pa-cartorio').trim() || null, sql_contribuinte: g('pa-sql').trim() || null,
-             vendedores: g('pa-vendedores').trim() || null, area_proposta: g('pa-area').trim() || null, escopo: esco };
+             vendedores: g('pa-vendedores').trim() || null, area_proposta: g('pa-area').trim() || null, escopo: esco,
+             ...(document.getElementById('pa-versao') ? { compradores: g('pa-compradores').trim() || null, versao_contrato: g('pa-versao') || null } : {}) };
   }
   function nova() {
     const box = document.getElementById('pa-nova'); if (!box) return;
@@ -248,6 +264,8 @@
       _execs = await db.get('preanalise_execucao', `?venda_id=eq.${id}&select=id,iniciado_em,concluido_em,situacao,erro,status,pedido_por,modelo,custo_usd,resultado,config,documentos&order=iniciado_em.desc&limit=10`);
     } catch (e) { el.innerHTML = `<div class="card"><div class="cb" style="color:#dc2626">Erro: ${esc(e.message)}</div></div>`; return; }
     if (!_venda) { abrir(); return; }
+    let ac = null, acErro = '';
+    if (window.PAAcomp) { try { ac = await PAAcomp.carregar(_venda, _docs, _execs); } catch (e) { acErro = e.message; } }
     const v = _venda, ult = _execs.find(x => x.situacao === 'ok');
     _pz = (v.prazos || []).map(x => Object.assign({}, x));
     const conferida = ult && v.leitura_conferida_exec === ult.id;
@@ -263,7 +281,9 @@
           <div style="margin-top:10px">${campos(v)}<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-o bsm" onclick="PreAnalise.salvar()">Salvar dados</button>
           <button class="btn btn-o bsm" style="color:#dc2626" onclick="PreAnalise.excluir()">Excluir venda e PDFs</button></div></div></details>
       </div></div>
+      ${ac ? PAAcomp.etapasHTML() : acErro ? `<div class="card" style="margin-bottom:12px"><div class="cb" style="font-size:13px;color:#b45309">Acompanhamento (etapas, protocolos, pós-venda) indisponível: ${esc(acErro)}. O SQL 2026-11-06-preanalise-acompanhamento.sql já rodou?</div></div>` : ''}
       <div id="pa-prazos">${prazosHTML()}</div>
+      ${ac ? PAAcomp.emissaoHTML() : ''}
       <details class="card" style="margin-bottom:12px" ${_docs.length ? '' : 'open'}><summary class="cb" style="cursor:pointer;font-weight:700">Documentos (PDF) · ${_docs.length}</summary><div class="cb" style="padding-top:0">
         ${_docs.length ? `<table style="width:100%;border-collapse:collapse;font-size:13px"><tbody>${_docs.map(d => `<tr style="border-top:1px solid var(--borda,#e2e8f0)">
           <td style="padding:5px 6px;white-space:nowrap">${TIPOS[d.tipo] || d.tipo}</td><td style="padding:5px 6px">${esc(d.nome_arquivo)}</td>
@@ -290,6 +310,7 @@
       ${ult ? `<details class="card" style="margin-bottom:12px" ${conferida ? 'open' : ''}><summary class="cb" style="cursor:pointer;font-weight:700">✉️ Mensagens de pendências</summary>
         <div class="cb" style="padding-top:0" id="pa-msgs">${mensagensHTML(ult, v)}</div></details>` : ''}
       ${v.encaminhado_juridico || v.revisao_status ? revisaoHTML(v) : ''}
+      ${ac ? PAAcomp.protocolosHTML() + PAAcomp.posVendaHTML() + PAAcomp.timelineHTML() : ''}
       ${_execs.length ? `<details style="margin-top:12px"><summary style="cursor:pointer;color:var(--muted);font-size:13px">Histórico de análises (${_execs.length})</summary>
         <table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:6px"><tbody>${_execs.map(x => `<tr style="border-top:1px solid var(--borda,#e2e8f0)"><td style="padding:4px 6px">${dt(x.iniciado_em)}</td><td style="padding:4px 6px">${x.situacao === 'ok' ? badge(x.status) : esc(x.situacao)}</td><td style="padding:4px 6px">${esc(x.pedido_por || '')}</td><td style="padding:4px 6px">${x.id === v.leitura_conferida_exec ? '✓ leitura conferida' : ''}</td><td style="padding:4px 6px;color:var(--muted)">${x.custo_usd != null ? 'US$ ' + Number(x.custo_usd).toFixed(2) : ''}</td></tr>`).join('')}</tbody></table></details>` : ''}
       ${notaPiloto()}`;
@@ -433,7 +454,7 @@
   }
   async function excluir() {
     if (!confirm(`Excluir a venda "${_venda.titulo}", os PDFs e as análises? Não dá para desfazer.`)) return;
-    try { await apagarPdfs(_docs.map(d => d.caminho)); await db.del('preanalise_venda', _venda.id); aviso('Venda excluída.', 'ok'); abrir(); } catch (e) { aviso('Erro: ' + e.message, 'err'); }
+    try { await apagarPdfs(_docs.map(d => d.caminho).concat(window.PAAcomp ? PAAcomp.caminhosAnexos() : [])); await db.del('preanalise_venda', _venda.id); aviso('Venda excluída.', 'ok'); abrir(); } catch (e) { aviso('Erro: ' + e.message, 'err'); }
   }
   async function subir() {
     const inp = document.getElementById('pa-arq'), tipo = (document.getElementById('pa-tipo') || {}).value || 'outro', st = document.getElementById('pa-sub');
@@ -571,6 +592,8 @@
     } catch (e) { aviso('Erro no PDF: ' + e.message + '. Use "Imprimir" → Salvar como PDF.', 'err'); }
   }
 
-  window.PreAnalise = { abrir, filtrar, semana, nova, criar, venda, salvar, excluir, subir, ver, tirar, analisar, encaminhar, imprimir, baixarPdf,
+  const _u = { BUCKET, STATUS, badge, esc, dia, dt, hojeIso, diasEntre, somaDias, diaSem, falta, fimDeSemana, aviso, quem, uuid, linkPdf, apagarPdfs, carregarHtml2pdf,
+    prazosDe, proximoPrazo, matInfo, certInfo };
+  window.PreAnalise = { _u, abrir, filtrar, semana, nova, criar, venda, salvar, excluir, subir, ver, tirar, analisar, encaminhar, imprimir, baixarPdf,
     calcEscritura, addPrazo, tirarPrazo, salvarPrazos, confirmarLeitura, refazerMsgs, copiar, csvEquipe, revisar };
 })();
