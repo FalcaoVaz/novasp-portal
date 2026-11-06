@@ -9,12 +9,15 @@ fiscal. Nunca centro de CEP. No fim recria aval_rua_geo (localizador de endereç
 
 Uso:  python3 sandbox/posicionar_itbi_lotes.py            (só mostra o que faria)
       python3 sandbox/posicionar_itbi_lotes.py --gravar   (grava; salva a lista das vendas posicionadas)
-      python3 sandbox/posicionar_itbi_lotes.py --desfazer (volta a deixar sem posição as vendas da lista)
+      python3 sandbox/posicionar_itbi_lotes.py --desfazer ARQUIVO.csv (volta a deixar sem posição as vendas daquela lista)
 """
 import csv, glob, io, json, os, re, sys, psycopg2
 from pyproj import Transformer
 D = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lotes_geosampa')
-LISTA = os.path.join(D, 'posicionadas_20261004.csv')
+import datetime
+# cada gravação tem a SUA lista (06/11/2026: rodar sem nada a posicionar apagou a lista de 04/10)
+LISTA = os.path.join(D, f'posicionadas_{datetime.date.today():%Y%m%d}.csv')
+LISTA_DESFAZER = sys.argv[sys.argv.index('--desfazer') + 1] if '--desfazer' in sys.argv and len(sys.argv) > sys.argv.index('--desfazer') + 1 else LISTA
 c = psycopg2.connect(open(os.path.expanduser('~/.config/novasp/prod-pooler.dsn')).read().strip(), connect_timeout=30)
 cur = c.cursor(); cur.execute("set statement_timeout=0")
 
@@ -32,7 +35,7 @@ def recria_rua_geo():
 
 if '--desfazer' in sys.argv:
     cur.execute("create temp table _ids (id bigint)")
-    with open(LISTA) as f: next(f); cur.copy_expert("copy _ids from stdin with csv", io.StringIO(''.join(l.split(',')[0] + '\n' for l in f)))
+    with open(LISTA_DESFAZER) as f: next(f); cur.copy_expert("copy _ids from stdin with csv", io.StringIO(''.join(l.split(',')[0] + '\n' for l in f)))
     cur.execute("update aval_itbi i set geom = null from _ids x where i.id = x.id"); print('voltaram a ficar sem posição:', cur.rowcount)
     recria_rua_geo(); c.commit(); sys.exit()
 
@@ -66,6 +69,8 @@ if '--gravar' not in sys.argv:
     print('Nada gravado. Para gravar: python3 sandbox/posicionar_itbi_lotes.py --gravar'); sys.exit()
 
 # 3) grava
+if not saida: print('Nada para posicionar: nada gravado.'); sys.exit()
+if os.path.exists(LISTA): LISTA = LISTA[:-4] + datetime.datetime.now().strftime('-%H%M%S') + '.csv'
 with open(LISTA, 'w', newline='') as f:
     w = csv.writer(f); w.writerow(['id', 'lat', 'lng', 'via']); w.writerows(saida)
 cur.execute("create temp table _p (id bigint, lat float8, lng float8, via text)")
