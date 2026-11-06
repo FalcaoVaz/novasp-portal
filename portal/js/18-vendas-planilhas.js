@@ -129,6 +129,15 @@
       });
     });
 
+    // Aba de cota faltando BLOQUEIA: senão a equipe fica zerada sem ninguém perceber
+    // (equipe Chris, nov/2026: gravou só a aba de captação e as 4 de cota ficaram em 0).
+    const cotaFaltando = SUBMODULOS.filter(sm => sm.tipo === 'cota' && out.abasFaltando.includes(sm.aba)).map(sm => sm.aba);
+    if (cotaFaltando.length) out.bloqueios.push(`Faltam as abas ${cotaFaltando.join(', ')}. Use o modelo oficial de 6 abas, sem renomear as abas.`);
+    out.abasFaltando.filter(a => !cotaFaltando.includes(a)).forEach(a => out.avisos.push(`Aba ${a} não encontrada.`));
+    SUBMODULOS.filter(sm => sm.tipo === 'cota' && !out.abasFaltando.includes(sm.aba)).forEach(sm => {
+      if (!out.linhas.some(l => l.submodulo === sm.key)) out.avisos.push(`A aba ${sm.aba} está vazia: a equipe vai ficar com 0 nesse sub-módulo.`);
+    });
+
     // Cruzamento: cota extra só para quem tem >= 5 captações na aba CAPTAÇÃO E PLACAS
     const capt = {};
     out.linhas.filter(l => l.submodulo === 'captacao_placas').forEach(l => { capt[norm(l.corretor)] = l.captacoes; });
@@ -394,7 +403,7 @@
       SUBMODULOS.map(s => `<tr><td style="font-family:monospace;font-size:12px">${s.aba}</td><td>${esc(s.nome)}</td><td style="text-align:center">${parsed.abasFaltando.includes(s.aba) ? '<b style="color:#dc2626">aba não encontrada</b>' : parsed.linhas.filter(l => l.submodulo === s.key).length}</td></tr>`).join('') +
       `</tbody></table></div>` +
       (parsed.bloqueios.length
-        ? `<details open style="margin-top:10px"><summary style="cursor:pointer;color:#dc2626;font-weight:600">${parsed.bloqueios.length} referência(s) a corrigir no Excel antes de gravar</summary><ul style="margin:6px 0;padding-left:18px;font-size:13px;color:#dc2626">${parsed.bloqueios.map(a => `<li>${esc(a)}</li>`).join('')}</ul></details>`
+        ? `<details open style="margin-top:10px"><summary style="cursor:pointer;color:#dc2626;font-weight:600">${parsed.bloqueios.length} problema(s) a corrigir no Excel antes de gravar</summary><ul style="margin:6px 0;padding-left:18px;font-size:13px;color:#dc2626">${parsed.bloqueios.map(a => `<li>${esc(a)}</li>`).join('')}</ul></details>`
         : '') +
       (parsed.avisos.length
         ? `<details open style="margin-top:10px"><summary style="cursor:pointer;color:#b45309;font-weight:600">${parsed.avisos.length} aviso(s) — conferir antes de gravar</summary><ul style="margin:6px 0;padding-left:18px;font-size:13px">${parsed.avisos.map(a => `<li>${esc(a)}</li>`).join('')}</ul></details>`
