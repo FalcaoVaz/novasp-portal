@@ -63,7 +63,8 @@ ids=[r[0] for r in cur.fetchall()]; print('inseridas:', len(ids))
 cur.execute("select count(*), max(data) from aval_itbi"); print('aval_itbi agora:', cur.fetchone())
 # zona e distrito por interseção espacial (quando a venda já tem posição; as sem posição recebem depois do posicionador)
 cur.execute("update aval_itbi i set zona=z.zona from aval_zona z where i.id = any(%s) and i.zona is null and i.geom is not null and st_contains(z.geom, i.geom)", (ids,))
+if gravar and not ids: con.rollback(); print('Nada novo: nada gravado.'); sys.exit()
 if gravar:
-    lista=os.path.join(os.path.dirname(os.path.abspath(__file__)), f'itbi_carga_{datetime.date.today():%Y%m%d}_ids.csv')
+    lista=os.path.join(os.path.dirname(os.path.abspath(__file__)), f'itbi_carga_{datetime.datetime.now():%Y%m%d-%H%M%S}_ids.csv')   # nunca sobrescreve outra carga
     open(lista,'w').write('id\n'+''.join(f'{i}\n' for i in ids)); con.commit(); print('GRAVADO · ids em', lista, '(para desfazer: delete from aval_itbi where id in (...))')
 else: con.rollback(); print('simulação: desfeito, nada gravado')
