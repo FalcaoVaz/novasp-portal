@@ -14,7 +14,7 @@
 const crypto = require('crypto');
 const SB = process.env.SUPABASE_URL || 'https://mqcduyvpuxdweqesgwrq.supabase.co';
 const NUCLEO_URL = 'https://nspintel.netlify.app/nsp-avalia-core.js';
-const NUCLEO_MIN = '2026-10-26.1';
+const NUCLEO_MIN = '2026-11-06.1';   // 06/11/2026: apartamento ajustado pela idade do prédio
 const LIMITE_MIN = 30;                 // pedidos por minuto (todos os clientes somados)
 const TIPOS = ['Apartamento', 'Cobertura', 'Studio', 'Casa térrea', 'Sobrado', 'Casa de vila', 'Casa em condomínio', 'Terreno', 'Comercial'];
 
@@ -81,6 +81,18 @@ async function localizar(key, rua, num, bairro) {
     const c = await osm(`${nomeRuaIptu(r.logradouro)}${num ? ', ' + num : ''}, São Paulo, SP`); if (c) return c;
   }
   return null;
+}
+// ano de construção do prédio (apartamento) pelo cadastro do IPTU do endereço digitado: o mais comum entre as unidades achadas
+async function anoPredio(key, rua, num) {
+  if (!rua || !num) return null;
+  try {
+    const ruas = (await rpc(key, 'iptu_ruas', { p_logradouro: rua, p_numero: num, p_lim: 4 })) || [];
+    const r = ruas.find(x => x.tem_numero && x.sim >= 0.5); if (!r) return null;
+    const rows = (await rpc(key, 'iptu_por_rua', { p_logradouro_norm: r.logradouro_norm, p_numero: num, p_lim: 20 })) || [];
+    const cont = {}; rows.forEach(x => { const a = Number(x.ano_construcao); if (a > 1800) cont[a] = (cont[a] || 0) + 1; });
+    const a = Object.keys(cont).sort((x, y) => cont[y] - cont[x])[0];
+    return a ? Number(a) : null;
+  } catch (_) { return null; }
 }
 const coord = v => { const n = Number(v); return v != null && v !== '' && isFinite(n) && n !== 0 ? n : null; };
 const num = v => { const n = Number(String(v == null ? '' : v).replace(',', '.')); return isFinite(n) && n > 0 ? n : null; };
@@ -204,18 +216,20 @@ exports.handler = async (event) => {
     const bairro = entrada.bairro || (geo.distrito ? A.cap(String(geo.distrito).toLowerCase()) : '');
     if (!bairro && !geo.zona) return await falha('fora_da_area');
 
-    const [nsp, comps, tlocal] = await Promise.all([
+    const [nsp, comps, tlocal, ano] = await Promise.all([
       rpc(key, 'aval_anuncios_nsp_perto', { p_lat: lat, p_lng: lng, p_grupo: grupo === 'terreno' ? 'terreno' : (A.ehCasa(tipo) ? 'casa' : 'apto'), p_lim: 30 }),
       grupo === 'terreno' ? rpc(key, 'aval_comps_itbi_terreno_raio', { p_lat: lat, p_lng: lng, p_lim: 20 })
                           : rpc(key, 'aval_comps_itbi_raio', { p_lat: lat, p_lng: lng, p_tipo: A.ehCasa(tipo) ? 'casa' : 'apto', p_lim: 40 }),
-      grupo === 'casa' ? rpc(key, 'aval_terreno_local', { p_lat: lat, p_lng: lng }) : null
+      grupo === 'casa' ? rpc(key, 'aval_terreno_local', { p_lat: lat, p_lng: lng }) : null,
+      grupo === 'apto' ? anoPredio(key, entrada.rua, entrada.numero) : null
     ]);
     let compsItbi = comps || [];
     if (!compsItbi.length && grupo !== 'terreno' && bairro) compsItbi = (await rpc(key, 'aval_comps_itbi', { p_bairro: bairro, p_lim: 20 })) || [];
 
     const inp = { tipo, bairro: bairro || 'São Paulo', rua: entrada.rua, numero: entrada.numero, numeros_predio: [entrada.numero],
       area: entrada.area_util, terreno: entrada.area_terreno, dorm: entrada.quartos, vaga: entrada.vagas,
-      padrao: A.padraoSugerido(bairro), estado: entrada.estado, usar_predio: false, usar_comparativo: false };
+      padrao: A.padraoSugerido(bairro), estado: entrada.estado, usar_predio: false, usar_comparativo: false,
+      ...(ano ? { ano_construcao: ano } : {}) };
     const dados = { precos: {}, semMotor: true, nsp: nsp || [], compsItbi, geo, tlocal: um(tlocal), excl: [], manuais: [] };
     const sel = A.selecionarComparaveis(inp, dados);
     A.ordenarAmostra(sel.amostraTodos);

@@ -14,7 +14,7 @@
 // Sem DOM, sem rede: roda igual no navegador e no servidor.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-export const VERSAO = '2026-10-26.1';
+export const VERSAO = '2026-11-06.1';
 
 export const AV_CASA = ['CASA','CASA TÉRREA','CASA ASSOBRADADA','CASA DE VILA','CASA EM CONDOMÍNIO','SOBRADO','CONDOMÍNIO'];
 export const AV_TIPOS = ['Apartamento','Studio','Cobertura','Casa térrea','Sobrado','Casa de vila','Casa em condomínio','Terreno','Comercial'];
@@ -66,9 +66,24 @@ export const AV_CASA_CAL = { c0:3500, lote_ref:154, beta:0.5, vida:100, piso:0.5
   estado:{ novo:[1.05,'novo'], bom:[1,'bom'], regular:[0.85,'regular'], reforma:[0.65,'precisa de reforma'], ruim:[0.45,'ruim'] },
   fonte:'10.585 vendas de casas registradas no ITBI nos últimos 24 meses (Zona Sul e entorno); erro mediano de 23% na validação' };
 
+// ── APARTAMENTO: IDADE DO PRÉDIO (06/11/2026; retorno da corretora: "prédio antigo fica muito alto pelo m² atual da região") ──
+// R$/m² das vendas de apartamento (ITBI jan/2025–dez/2025, 47.607 vendas) ÷ mediana do mesmo setor fiscal, pela idade do prédio na
+// data da venda (ano de construção do cadastro), controlada pelo padrão do IPTU. Faixas de 5 anos, interpoladas no meio de cada faixa.
+// Teste em 6.000 vendas de 2026 (comparáveis = até 20 vendas anteriores mais perto, mesmo setor, área ±50%): erro mediano 16,0% → 14,9%;
+// prédio com 25 anos ou mais saía ~3,5% acima do preço real e passou a ~0%; prédio novo saía ~4% abaixo e passou a ~2%.
+// Anúncios não trazem o ano do prédio: recebem um fator só, pela idade típica das vendas por perto (no teste: 16,0% → 15,5%).
+export const AV_IDADE_APTO = { passo:5, fator:[1.163,1.073,1.073,1.062,0.936,0.858,0.816,0.839,0.818,0.853,0.898,0.916,0.912],
+  fonte:'47.607 vendas de apartamento registradas no ITBI em 2025 (R$/m² × mediana do setor fiscal, por idade do prédio); teste em 6.000 vendas de 2026: erro mediano 16,0% → 14,9%' };
+/** Fator de preço por m² de apartamento pela idade do prédio (1 ≈ média do setor; prédio novo ~1,16; 30–45 anos ~0,82). */
+export function fatorIdadeApto(idade){
+  const F=AV_IDADE_APTO.fator, x=(Math.max(0, Number(idade)||0)-AV_IDADE_APTO.passo/2)/AV_IDADE_APTO.passo;
+  if(x<=0) return F[0]; if(x>=F.length-1) return F[F.length-1];
+  const k=Math.floor(x), t=x-k; return F[k]*(1-t)+F[k+1]*t;
+}
+
 // campos que valem para cada grupo (campo de outro tipo não entra na conta)
 export const CAMPOS = {
-  apto: ['area','dorm','suite','vaga'],
+  apto: ['area','dorm','suite','vaga','idade'],
   casa: ['area','terreno','frente','dorm','suite','vaga','padrao','idade','estado','rs_terreno'],
   terreno: ['terreno','frente','rs_terreno'],
   com: ['area','terreno','frente','vaga','padrao','idade','estado','rs_terreno'],
@@ -157,6 +172,10 @@ export function lerEntrada(inp){
     area:+g('area')||null, terreno:+g('terreno')||null, frente:+g('frente')||null,
     dorm:+g('dorm')||null, suite:+g('suite')||null, vaga:+g('vaga')||null,
     padrao:g('padrao')||'medio', idade:+g('idade')||0, estado:g('estado')||'bom', rs_terreno:+g('rs_terreno')||null,
+    // apartamento: idade do prédio em anos (ou o ano de construção); vazio = sem ajuste de idade
+    idade_apto: grupo!=='apto' ? null
+      : (inp.idade!=null && String(inp.idade).trim()!=='' && isFinite(+inp.idade)) ? Math.max(0, Math.round(+inp.idade))
+      : (+inp.ano_construcao>1800 ? Math.max(0, new Date().getFullYear() - +inp.ano_construcao) : null),
     bairro:String(inp.bairro||'').trim() };
 }
 
@@ -299,15 +318,27 @@ export function calcularValor(inp, sel, dados){
     : loteLocal ? `mediana de ${loteLocal.n} lotes de tamanho parecido por perto: ${loteLocal.n_anuncio} anunciados pela Nova SP (pedido × ${idxPF.idx} pedido→fechado) e ${loteLocal.n_itbi} vendas reais de terreno registradas (× ${(1+AV_INDICES.itbi_subdeclaracao).toFixed(3)})`+(loteBairro?` · referência do bairro: R$ ${loteBairro.toLocaleString('pt-BR')}/m²`:'')
     : (tb&&tb.lote ? `mediana de ${tb.lote_n} lotes anunciados pela NSP em ${bairro}, ${tb.lote_per||'2018–2026'} (R$ ${tb.lote.toLocaleString('pt-BR')}/m² pedido × ${idxPF.idx} pedido→fechado)` : (rs_casa ? `estimado: ${Math.round(AV_PARAM.lote_sobre_casa*100)}% do R$/m² de casa do bairro` : null));
 
+  // ── IDADE DO PRÉDIO (apartamento, 06/11/2026): cada venda real ajustada pela diferença de idade; anúncios por um fator só ──
+  let ajIdade=null;
+  if(grupo==='apto' && e.idade_apto!=null){
+    const fS=fatorIdadeApto(e.idade_apto), r3=x=>Math.round(x*1000)/1000;
+    const idadeVenda=c=>{ const a=Number(c.acc), y=Number(String(c.data||'').slice(0,4)); return a>1800 && y>1800 ? Math.max(0, y-a) : null; };
+    compsItbi.forEach(c=>{ c.idade_predio=idadeVenda(c); c.fator_idade=c.idade_predio!=null ? r3(fS/fatorIdadeApto(c.idade_predio)) : null; });
+    const idades=compsItbiAtivos.map(c=>c.idade_predio).filter(x=>x!=null).sort((a,b)=>a-b);
+    const idadeRef=idades.length>=3 ? (idades.length%2 ? idades[(idades.length-1)/2] : Math.round((idades[idades.length/2-1]+idades[idades.length/2])/2)) : null;
+    const fAn=idadeRef!=null ? r3(fS/fatorIdadeApto(idadeRef)) : 1;
+    compsItbi.forEach(c=>{ if(c.fator_idade==null && idadeRef!=null) c.fator_idade=fAn; c.rs_util_aj=c.rs_util ? Math.round(c.rs_util*(c.fator_idade||1)) : null; });
+    ajIdade={ idade:e.idade_apto, fator_predio:r3(fS), idade_ref:idadeRef, n_com_ano:idades.length, fator_anuncio:fAn, fonte:AV_IDADE_APTO.fonte };
+  }
   // ── MÉTODO ÚNICO: macro (índices do bairro) aplicado no micro (este imóvel) ──
-  const rsItbiUtil=(()=>{ const v=compsItbiAtivos.map(c=>c.rs_util).filter(x=>x>0); return v.length>=3?mediana(v):null; })();
+  const rsItbiUtil=(()=>{ const v=compsItbiAtivos.map(c=>ajIdade&&c.rs_util_aj?c.rs_util_aj:c.rs_util).filter(x=>x>0); return v.length>=3?mediana(v):null; })();
   const metodoUnico = (()=>{
     if(!area) return null;
     const m={ idx_pedido_fechado:idxPF.idx, idx_origem:idxPF.origem, sub_itbi:AV_INDICES.itbi_subdeclaracao,
               rs_anuncio: rs_tipo||null, n_anuncio: ehcasa?(precos.n_casa||0):(precos.n_apto||0),
               rs_itbi_util: rsItbiUtil, n_itbi: compsItbiAtivos.filter(c=>c.rs_util>0).length, excluidos:nExcl,
-              incluidos: amostra.filter(a=>a.manual).length, n_nsp: amostra.filter(a=>a.nsp).length, fora_tamanho: foraTamanho, area_ref: area };
-    m.rs_anuncio_ajust = m.rs_anuncio ? Math.round(m.rs_anuncio*m.idx_pedido_fechado) : null;
+              incluidos: amostra.filter(a=>a.manual).length, n_nsp: amostra.filter(a=>a.nsp).length, fora_tamanho: foraTamanho, area_ref: area, idade: ajIdade };
+    m.rs_anuncio_ajust = m.rs_anuncio ? Math.round(m.rs_anuncio*m.idx_pedido_fechado*(ajIdade?ajIdade.fator_anuncio:1)) : null;
     // VENDAS NO PRÓPRIO PRÉDIO (05/10/2026): 3+ vendas no mesmo endereço → o corretor pode usar o preço delas
     const ruaKey=t=>{ const w=norm(t).toUpperCase().replace(/[^A-Z0-9 ]/g,' ').trim().split(/\s+/).filter(x=>x.length>=3); return w[w.length-1]||''; };
     const nums=(inp.numeros_predio||[inp.numero]).map(n=>String(n||'').replace(/\D/g,'').replace(/^0+/,'')).filter(Boolean);
@@ -346,7 +377,7 @@ export function calcularValor(inp, sel, dados){
     anuncios_usados: grupo==='terreno' ? ((loteLocal&&loteLocal.n_anuncio)||0) : ehcasa ? (precos.n_casa||0) : (precos.n_apto||0), lote_local:loteLocal,
     valor_mercado:null, faixa_min:null, faixa_max:null, metodo:null, regra:null, comparativo_adotado:null, aviso,
     metodo_unico:metodoUnico, evolutivo, idx_pedido_fechado:idxPF.idx, precos, rs_apto, rs_casa, rs_terreno, rs_terreno_origem:rsTerrenoOrigem,
-    rs_lote, lote_origem:loteOrigem, terreno_bairro:tb, padrao_sugerido:padraoSugerido(bairro), n_excluidos:nExcl };
+    rs_lote, lote_origem:loteOrigem, terreno_bairro:tb, padrao_sugerido:padraoSugerido(bairro), n_excluidos:nExcl, ajuste_idade:ajIdade };
   // faixa com os mesmos multiplicadores do portal (0,93/1,07 · 0,9/1,1 · 0,95/1,05), para arredondar igual
   const FX={0.07:[0.93,1.07],0.1:[0.9,1.1],0.05:[0.95,1.05]};
   const set=(vm, f)=>{ r.valor_mercado=vm; r.faixa_min=Math.round(vm*FX[f][0]); r.faixa_max=Math.round(vm*FX[f][1]); };
@@ -382,9 +413,10 @@ export function calcularValor(inp, sel, dados){
       (metodoUnico.valor_final?` · referência pelo m² do bairro: ${R$(metodoUnico.valor_final)}`:'');
   }else if(metodoUnico && metodoUnico.valor_final){
     const mu=metodoUnico; set(mu.valor_final, 0.07); r.mercado_rs_m2=mu.rs_final; r.regra='metodo_unico';
-    r.metodo=`${area} m² × R$ ${mu.rs_final.toLocaleString('pt-BR')}/m² = média de [anúncios ${mu.rs_anuncio?mu.rs_anuncio.toLocaleString('pt-BR'):'—'} × ${mu.idx_pedido_fechado} (pedido→fechado, ${mu.idx_origem})`+
-      (mu.rs_itbi_ajust?` ; ITBI ${mu.rs_itbi_util.toLocaleString('pt-BR')}/m² útil est. × ${(1+mu.sub_itbi).toFixed(3)} (subdeclaração)`:'')+
-      `]`+(mu.divergencia!=null?` · fontes divergem ${mu.divergencia}%`:'')+(nExcl?` · ${nExcl} comparável(is) excluído(s) pelo corretor`:'')+(precos.base==='ITBI'?' · sem anúncios ao vivo nesta avaliação (só vendas reais)':'');
+    const ai=mu.idade, fi=ai&&ai.fator_anuncio!==1?` × ${ai.fator_anuncio} (idade)`:'';
+    r.metodo=`${area} m² × R$ ${mu.rs_final.toLocaleString('pt-BR')}/m² = média de [anúncios ${mu.rs_anuncio?mu.rs_anuncio.toLocaleString('pt-BR'):'—'} × ${mu.idx_pedido_fechado} (pedido→fechado, ${mu.idx_origem})${fi}`+
+      (mu.rs_itbi_ajust?` ; ITBI ${mu.rs_itbi_util.toLocaleString('pt-BR')}/m² útil est.${ai?' (cada venda ajustada pela idade do prédio)':''} × ${(1+mu.sub_itbi).toFixed(3)} (subdeclaração)`:'')+
+      `]`+(ai?` · prédio de ${ai.idade} ano(s)${ai.idade_ref!=null?`, vendas por perto com prédios de ~${ai.idade_ref} anos`:''}`:'')+(mu.divergencia!=null?` · fontes divergem ${mu.divergencia}%`:'')+(nExcl?` · ${nExcl} comparável(is) excluído(s) pelo corretor`:'')+(precos.base==='ITBI'?' · sem anúncios ao vivo nesta avaliação (só vendas reais)':'');
   }else if(evolutivo){
     const vm=evolutivo.total; set(vm, 0.1); r.regra='evolutivo';
     r.metodo=`terreno ${terreno} m² × R$ ${evolutivo.rs_terreno.toLocaleString('pt-BR')} + construção ${area} m² depreciada ${Math.round(evolutivo.dep*100)}% (sem vendas e anúncios suficientes por perto para comparar)`;
@@ -397,7 +429,8 @@ export function calcularValor(inp, sel, dados){
   r.comparaveis=amostraTodos.map(a=>({k:a._k,excluido:!!a.excluido,tipo:a.tipo,area:a.area,preco:a.preco,rs_m2:a.rs_m2,dorm:a.dorm,vaga:a.vaga,endereco:[a.rua,a.bairro].filter(Boolean).join(', '),aprox:!!a.aprox,url:(a.manual||a.nsp)?(a.url||null):null,dist_m:a.dist_m!=null?a.dist_m:null,manual:!!a.manual,por:a.por||null,nsp:!!a.nsp,ref:a.ref||null,lat:a.lat||null,lng:a.lng||null,origem:a.manual?('anúncio · incluído'+(a.por?' por '+a.por:'')):a.nsp?('anúncio Nova SP'+(a.ref?' · '+a.ref:'')):(a.lancamento?'lançamento':'anúncio')}))
     .concat(compsItbi.map(c=>grupo==='terreno'
       ? ({k:c._k,excluido:!!c.excluido,tipo:'Venda real (terreno)',area:Number(c.area_terreno),area_util_est:0,preco:c.valor,rs_m2:c.rs_util,rs_util:null,endereco:`${c.logradouro||''}${c.numero&&!/^9{4,}$/.test(String(c.numero))?', '+c.numero:''}`,data:c.data,lat:c.lat||null,lng:c.lng||null,dist_m:c.dist_m!=null?c.dist_m:null,origem:'Venda real de terreno '+(c.data||'')})
-      : ({k:c._k,excluido:!!c.excluido,tipo:grupo==='com'?'Venda real (ref. residencial)':'Venda real',area:c.area_constr,area_util_est:Math.round(c.area_util_est||0),preco:c.valor,rs_m2:c.rs_m2,rs_util:c.rs_util,endereco:`${c.logradouro||''}${c.numero?', '+c.numero:''}`,data:c.data,lat:c.lat||null,lng:c.lng||null,origem:'Venda real '+(c.data||'')})));
+      : ({k:c._k,excluido:!!c.excluido,tipo:grupo==='com'?'Venda real (ref. residencial)':'Venda real',area:c.area_constr,area_util_est:Math.round(c.area_util_est||0),preco:c.valor,rs_m2:c.rs_m2,rs_util:c.rs_util,
+         ...(ajIdade?{idade_predio:c.idade_predio, fator_idade:c.fator_idade, rs_util_aj:c.rs_util_aj}:{}),endereco:`${c.logradouro||''}${c.numero?', '+c.numero:''}`,data:c.data,lat:c.lat||null,lng:c.lng||null,origem:'Venda real '+(c.data||'')})));
   r.n_itbi_total=compsItbiTodos.length;
   return r;
 }
