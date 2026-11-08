@@ -11,6 +11,10 @@
      da notificação e da autorização é da Fernanda).
    • Pós-venda (contas de consumo, condomínio, recibos e notas fiscais, arquivos) e arquivamento da venda.
    • Linha do tempo da venda.
+   08/11/2026 (pacote da Renata de 07/11): marcos "proposta enviada" e "documentos enviados ao banco" com prazos do banco
+     (Modelos 1, 3 e 4); procuração, declarações e formulários da NSP; chaves, documentos e declarações saem no modelo
+     Word da NSP (modelos-nsp/) preenchido no navegador (JSZip) e o PDF é desenhado a partir dele (docx-preview);
+     cartório por extenso com "de/da/do" em minúsculas. SQL: sql/2026-11-08-preanalise-responsaveis-banco-modelos.sql.
    Banco: sql/2026-11-06-preanalise-acompanhamento.sql. Usa os utilitários de js/23-preanalise.js (PreAnalise._u).
    ===================================================================== */
 (function () {
@@ -46,14 +50,48 @@
   ];
   const ST = { pendente: ['Pendente', '#475569', '#f1f5f9'], andamento: ['Em andamento', '#1d4ed8', '#eff6ff'], concluida: ['Concluída', '#047857', '#ecfdf5'],
                divergencia: ['Com divergência', '#b91c1c', '#fef2f2'], desativada: ['Desativada', '#94a3b8', '#f8fafc'] };
-  const MARCOS = [['inicio', 'Início'], ['contrato_assinado', 'Contrato assinado'], ['financiamento', 'Financiamento'], ['comissao', 'Comissão'], ['registro', 'Registro'], ['entrega_chaves', 'Entrega de chaves']];
+  const MARCOS = [['inicio', 'Início'], ['proposta_enviada', 'Proposta enviada'], ['contrato_assinado', 'Contrato assinado'], ['docs_banco', 'Documentos enviados ao banco'],
+                  ['financiamento', 'Financiamento'], ['comissao', 'Comissão'], ['registro', 'Registro'], ['entrega_chaves', 'Entrega de chaves']];
   const VERSOES = { '1': 'Modelo 1 — financiamento + FGTS (imóvel vendido ao locatário)', '2': 'Modelo 2 — à vista',
                     '3': 'Modelo 3 — financiamento/alienação fiduciária + FGTS, vendedor pessoa jurídica', '4': 'Modelo 4 — à vista com FGTS' };
+
+  // ── BANCO (pacote da Renata de 07/11): vendas com financiamento/FGTS passam pelo banco (Modelos 1, 3 e 4).
+  // Prazos: dias para enviar os documentos (contados do contrato assinado) e dias para o banco devolver (contados do envio).
+  // Vazio = padrão do modelo (Modelo 3: 20 e 90; Modelo 4: 30 e 60; Modelo 1: sem padrão).
+  const PRAZO_BANCO_PAD = { '3': [20, 90], '4': [30, 60] };
+  const usaBanco = v => ['1', '3', '4'].includes(String((v || {}).versao_contrato || ''));
+  function prazosBanco(v) {
+    const p = PRAZO_BANCO_PAD[v.versao_contrato] || [null, null], n = (x, d) => Number(x) > 0 ? Math.round(Number(x)) : d;
+    return [n(v.prazo_docs_banco_dias, p[0]), n(v.prazo_retorno_banco_dias, p[1])];
+  }
+  function prazosBancoDe(v) {                          // entra na lista de prazos da venda (painel, alertas, tarefa "Verificação de prazos")
+    if (!usaBanco(v)) return [];
+    const u = U(), mk = v.marcos || {}, [dd, db] = prazosBanco(v), out = [];
+    if (mk.contrato_assinado && dd) out.push({ titulo: `Enviar os documentos ao banco (${dd} dias do contrato)`, data: u.somaDias(mk.contrato_assinado, dd), feito: !!mk.docs_banco, banco: true });
+    if (mk.docs_banco && db) out.push({ titulo: `Retorno do banco (${db} dias do envio)`, data: u.somaDias(mk.docs_banco, db), feito: !!mk.financiamento, banco: true });
+    return out;
+  }
   const REV = { aprovado: 'aprovado', aprovado_ressalvas: 'aprovado com ressalvas', nao_aprovado: 'não aprovado' };
 
   // ── PROTOCOLOS ──
   const PTIPO = { chaves: 'Protocolo de entrega de chaves', documentos: 'Protocolo de entrega de documentos', escritura: 'Protocolo de entrega de escritura / contrato bancário',
-                  autorizacao: 'Autorização', notificacao: 'Notificação extrajudicial', recibo: 'Recibo de comissão' };
+                  autorizacao: 'Autorização', notificacao: 'Notificação extrajudicial', recibo: 'Recibo de comissão',
+                  procuracao: 'Procuração', atual_proprietario: 'Declaração de atual proprietário', chaves_proprietario: 'Declaração de entrega de chaves e atual proprietário',
+                  declaracao_uniao_estavel: 'Declaração de estado civil e inexistência de união estável', declaracao_patrimonio: 'Termo de declaração de patrimônio',
+                  direito_preferencia: 'Desistência do direito de preferência (locatário)', proposta: 'Proposta de compra', exclusividade: 'Autorização de venda com exclusividade',
+                  corretagem: 'Contrato de corretagem e intermediação', parceria_autonomo: 'Parceria de comissão — corretor autônomo', parceria_pj: 'Parceria de comissão — pessoa jurídica' };
+  // grupos do seletor "+ Novo" (recibo sai pelo Pós-venda)
+  const PGRUPOS = [['Protocolos, autorizações e notificações', ['chaves', 'documentos', 'escritura', 'autorizacao', 'procuracao', 'notificacao']],
+                   ['Declarações (modelo da NSP, preenchido)', ['atual_proprietario', 'chaves_proprietario', 'declaracao_uniao_estavel', 'declaracao_patrimonio']],
+                   ['Formulários da NSP (Word em branco)', ['proposta', 'exclusividade', 'corretagem', 'direito_preferencia', 'parceria_autonomo', 'parceria_pj']]];
+  // modelos Word da NSP (pasta modelos-nsp/, vindos do pacote da Renata de 07/11). Campos {{...}} preenchidos no navegador.
+  const MODELO = { chaves: 'NSP_Doc_chaves.docx', documentos: 'NSP_Doc_documentos.docx', atual_proprietario: 'NSP_Doc_atual_proprietario.docx',
+                   chaves_proprietario: 'NSP_Doc_chaves_proprietario.docx', declaracao_uniao_estavel: 'NSP_Doc_declaracao_uniao_estavel.docx',
+                   declaracao_patrimonio: 'NSP_Doc_declaracao_patrimonio.docx', proposta: 'NSP_Doc_proposta.docx', exclusividade: 'NSP_Doc_exclusividade.docx',
+                   corretagem: 'NSP_Doc_corretagem.docx', direito_preferencia: 'NSP_Doc_direito_preferencia.docx', parceria_autonomo: 'NSP_Doc_parceria_autonomo.docx',
+                   parceria_pj: 'NSP_Doc_parceria_pj.docx' };
+  const EM_BRANCO = new Set(['proposta', 'exclusividade', 'corretagem', 'direito_preferencia', 'parceria_autonomo', 'parceria_pj']);
+  const MODELOS_V = '20261108';
   const PST = { emitido: 'Emitido', assinado: 'Assinado / recebido', enviado: 'Enviado', recebido: 'Recebido pelo notificado', cumprido: 'Obrigação cumprida', descumprido: 'Obrigação descumprida', cancelado: 'Cancelado' };
   const PST_TIPO = { notificacao: ['emitido', 'enviado', 'recebido', 'cumprido', 'descumprido', 'cancelado'] };
   const pstDo = t => PST_TIPO[t] || ['emitido', 'assinado', 'cancelado'];
@@ -63,7 +101,18 @@
     escritura: ['Entregue por', 'Recebido por', 'Instrumento entregue'],
     autorizacao: ['Autorizante', 'Autorizado', 'O que fica autorizado'],
     notificacao: ['Notificante', 'Notificado(a)', 'Obrigação a cumprir'],
-    recibo: ['Quem paga a comissão', 'Beneficiário', 'Referência']
+    recibo: ['Quem paga a comissão', 'Beneficiário', 'Referência'],
+    procuracao: ['Outorgante', 'Outorgado(a)', 'Poderes (para que fim)'],
+    atual_proprietario: ['Vendedores', 'Compradores', 'Observação interna'],
+    chaves_proprietario: ['Vendedores', 'Compradores', 'Observação interna'],
+    declaracao_uniao_estavel: ['Declarante (nome, nacionalidade, profissão, RG, CPF e endereço)', 'Estado civil (ex.: solteiro, divorciado, viúvo)', 'Observação interna'],
+    declaracao_patrimonio: ['Vendedores', 'Compradores', 'Patrimônio que garante (imóvel: endereço, cartório, matrícula e valor aproximado)'],
+    proposta: ['Proponente (comprador)', 'Destinatário', 'Resumo (interno)'],
+    exclusividade: ['Proprietário(s)', 'Imobiliária', 'Resumo (interno)'],
+    corretagem: ['Contratante', 'Imobiliária', 'Resumo (interno)'],
+    direito_preferencia: ['Locatário', 'Proprietário(s)', 'Resumo (interno)'],
+    parceria_autonomo: ['Imobiliária', 'Corretor parceiro', 'Resumo (interno)'],
+    parceria_pj: ['Imobiliária', 'Empresa parceira', 'Resumo (interno)']
   };
 
   // ── EMISSÃO ASSISTIDA (links da lista da Renata, 06/11/2026) ──
@@ -179,7 +228,17 @@
     A.prazos = !todos.length ? ['pendente', 'nenhum prazo cadastrado'] : venc.length ? ['divergencia', `${venc.length} prazo(s) vencido(s)`]
       : abertos.length ? ['andamento', `próximo: ${abertos[0].titulo} em ${u.dia(abertos[0].data)}`] : ['concluida', 'todos cumpridos'];
 
-    A.banco = mk.financiamento ? ['concluida', 'em ' + u.dia(mk.financiamento)] : v.versao_contrato === '2' ? ['desativada', 'venda à vista'] : ['pendente', ''];
+    if (mk.financiamento) A.banco = ['concluida', 'em ' + u.dia(mk.financiamento)];
+    else if (v.versao_contrato === '2') A.banco = ['desativada', 'venda à vista'];
+    else if (!usaBanco(v)) A.banco = ['pendente', ''];
+    else {
+      const [dd, db] = prazosBanco(v), hoje = u.hojeIso();
+      if (mk.docs_banco) { const lim = db ? u.somaDias(mk.docs_banco, db) : null;
+        A.banco = lim && lim < hoje ? ['divergencia', `banco passou do prazo (${u.dia(lim)})`] : ['andamento', `documentos enviados em ${u.dia(mk.docs_banco)}${lim ? '; retorno até ' + u.dia(lim) : ''}`]; }
+      else if (mk.contrato_assinado && dd) { const lim = u.somaDias(mk.contrato_assinado, dd);
+        A.banco = lim < hoje ? ['divergencia', `documentos ao banco: prazo venceu em ${u.dia(lim)}`] : ['andamento', `enviar os documentos ao banco até ${u.dia(lim)}`]; }
+      else A.banco = ['pendente', mk.contrato_assinado ? 'informe o prazo para enviar os documentos ao banco' : ''];
+    }
     const doTipo = t => (protos || []).filter(p => p.tipo === t && p.status !== 'cancelado');
     const protoSt = t => { const ps = doTipo(t), ok = ps.find(p => p.status === 'assinado' || p.status === 'recebido');
       return ok ? ['concluida', ok.numero + ' assinado'] : ps.length ? ['andamento', ps[ps.length - 1].numero + ' emitido'] : ['pendente', 'sem protocolo']; };
@@ -218,9 +277,13 @@
 
   function etapasHTML() {
     const { v, docs, ult, protos } = C, u = U(), et = etapas(v, eDe(ult), docs.length, protos), mk = v.marcos || {};
-    const marcos = MARCOS.map(([k, rot]) => { const d = mk[k] || (k === 'inicio' ? String(v.criado_em || '').slice(0, 10) : ''); const n = d ? u.diasEntre(d, u.hojeIso()) : null;
+    const banco = usaBanco(v), [pdd, pdb] = prazosBanco(v), pad = PRAZO_BANCO_PAD[v.versao_contrato] || [];
+    const marcos = MARCOS.filter(([k]) => k !== 'docs_banco' || banco).map(([k, rot]) => { const d = mk[k] || (k === 'inicio' ? String(v.criado_em || '').slice(0, 10) : ''); const n = d ? u.diasEntre(d, u.hojeIso()) : null;
+      const sub = k === 'docs_banco' && d && pdb ? ` · retorno até ${u.dia(u.somaDias(d, pdb))}` : k === 'docs_banco' && !d && mk.contrato_assinado && pdd ? `enviar até ${u.dia(u.somaDias(mk.contrato_assinado, pdd))}` : '';
       return `<label style="font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:2px">${rot}<input type="date" id="pa-mk-${k}" value="${esc(d)}" style="${INP};padding:4px 6px;font-size:12px">
-        <small style="color:${d ? '#047857' : '#94a3b8'}">${d ? (n > 0 ? `há ${n} dia(s)` : n === 0 ? 'hoje' : `em ${-n} dia(s)`) : '—'}</small></label>`; }).join('');
+        <small style="color:${d ? '#047857' : sub ? '#b45309' : '#94a3b8'}">${d ? (n > 0 ? `há ${n} dia(s)` : n === 0 ? 'hoje' : `em ${-n} dia(s)`) : sub ? '' : '—'}${sub}</small></label>`; }).join('')
+      + (banco ? `<label style="font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:2px">Prazo p/ enviar docs ao banco (dias do contrato)<input type="number" min="1" id="pa-pz-docsbanco" value="${esc(v.prazo_docs_banco_dias || '')}" placeholder="${pad[0] ? 'padrão ' + pad[0] : 'sem padrão'}" style="${INP};padding:4px 6px;font-size:12px"></label>
+        <label style="font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:2px">Prazo do banco p/ devolver (dias do envio)<input type="number" min="1" id="pa-pz-retbanco" value="${esc(v.prazo_retorno_banco_dias || '')}" placeholder="${pad[1] ? 'padrão ' + pad[1] : 'sem padrão'}" style="${INP};padding:4px 6px;font-size:12px"></label>` : '');
     const sel = t => `<select id="pa-et-st-${t.id}" style="${INP};padding:4px 6px;font-size:12px"><option value="">automático (${esc(ST[t.sugerido][0].toLowerCase())})</option>
       ${Object.keys(ST).map(k => `<option value="${k}" ${t.manual && t.status === k ? 'selected' : ''}>${ST[k][0]}</option>`).join('')}</select>`;
     return `<details class="card" style="margin-bottom:12px" open id="pa-etapas"><summary class="cb" style="cursor:pointer;font-weight:700">🧭 Andamento da venda · etapa atual: ${esc(et.atual.nome)} <small style="font-weight:400;color:var(--muted)">(${et.atual.feitas}/${et.atual.total})</small>${v.arquivada_em ? ' · <span style="color:#475569">arquivada</span>' : ''}</summary>
@@ -255,9 +318,18 @@
   }
   async function salvarMarcos() {
     const ant = C.v.marcos || {}, novo = {}, mudou = [];
-    MARCOS.forEach(([k, rot]) => { const d = (document.getElementById('pa-mk-' + k) || {}).value || ''; if (d) novo[k] = d; if ((ant[k] || '') !== d && !(k === 'inicio' && !ant[k] && d === String(C.v.criado_em || '').slice(0, 10))) mudou.push(`${rot}: ${d ? U().dia(d) : 'apagado'}`); });
-    try { await db.patch('preanalise_venda', C.v.id, { marcos: novo }); if (mudou.length) await evento('Marcos', mudou.join('; ')); U().aviso('Marcos salvos.', 'ok'); recarregar(); }
-    catch (e) { U().aviso('Erro: ' + e.message + ' (o SQL 2026-11-06 já rodou?)', 'err'); }
+    MARCOS.forEach(([k, rot]) => { const el = document.getElementById('pa-mk-' + k);
+      if (!el) { if (ant[k]) novo[k] = ant[k]; return; }                       // campo escondido (ex.: banco em venda à vista): mantém o que havia
+      const d = el.value || ''; if (d) novo[k] = d; if ((ant[k] || '') !== d && !(k === 'inicio' && !ant[k] && d === String(C.v.criado_em || '').slice(0, 10))) mudou.push(`${rot}: ${d ? U().dia(d) : 'apagado'}`); });
+    const d = { marcos: novo };
+    if (document.getElementById('pa-pz-docsbanco')) {
+      const n = id => { const x = Number((document.getElementById(id) || {}).value); return x > 0 ? Math.round(x) : null; };
+      d.prazo_docs_banco_dias = n('pa-pz-docsbanco'); d.prazo_retorno_banco_dias = n('pa-pz-retbanco');
+      if (d.prazo_docs_banco_dias !== (C.v.prazo_docs_banco_dias || null) || d.prazo_retorno_banco_dias !== (C.v.prazo_retorno_banco_dias || null))
+        mudou.push(`Prazos do banco: ${d.prazo_docs_banco_dias || 'padrão'} / ${d.prazo_retorno_banco_dias || 'padrão'} dias`);
+    }
+    try { await db.patch('preanalise_venda', C.v.id, d); if (mudou.length) await evento('Marcos', mudou.join('; ')); U().aviso('Marcos salvos.', 'ok'); recarregar(); }
+    catch (e) { U().aviso('Erro: ' + e.message + ' (o SQL 2026-11-08 já rodou?)', 'err'); }
   }
 
   // ══════════════ EMISSÃO DE CERTIDÕES (modo assistido) ══════════════
@@ -321,7 +393,18 @@
       escritura: { de: atual, para: novo, descricao: fin ? 'contrato bancário de compra e venda com alienação fiduciária, registrado na matrícula' : 'escritura pública de venda e compra, registrada na matrícula' },
       autorizacao: { de: atual, para: 'Imobiliária Nova São Paulo', descricao: '' },
       notificacao: { de: '', para: '', descricao: '', prazo_dias: 15 },
-      recibo: { de: novo, para: NSP, descricao: 'comissão pela assessoria e intermediação da venda' }
+      recibo: { de: novo, para: NSP, descricao: 'comissão pela assessoria e intermediação da venda' },
+      procuracao: { de: atual, para: '', descricao: '' },
+      atual_proprietario: { de: atual, para: novo, descricao: '' },
+      chaves_proprietario: { de: atual, para: novo, descricao: '' },
+      declaracao_uniao_estavel: { de: titulares(v, ult)[0] || '', para: '', descricao: '' },
+      declaracao_patrimonio: { de: atual, para: novo, descricao: '' },
+      proposta: { de: novo, para: NSP, descricao: '' },
+      exclusividade: { de: atual, para: NSP, descricao: '' },
+      corretagem: { de: atual, para: NSP, descricao: '' },
+      direito_preferencia: { de: '', para: atual, descricao: '' },
+      parceria_autonomo: { de: NSP, para: '', descricao: '' },
+      parceria_pj: { de: NSP, para: '', descricao: '' }
     }[tipo] || {};
   }
   function vencNotif(p) {
@@ -339,15 +422,15 @@
           ${p.tipo === 'notificacao' ? `<br><small style="color:${vn && vn.n < 0 ? '#b91c1c' : 'var(--muted)'}">${p.prazo_dias ? p.prazo_dias + ' dia(s)' : ''}${p.recebido_em ? ` · recebida ${u.dia(p.recebido_em)}` : ' · sem data de recebimento'}${vn ? ` · ${vn.n < 0 ? 'VENCEU' : 'vence'} ${u.dia(vn.ate)}` : ''}</small>` : ''}</td>
         <td style="padding:5px 6px">${(p.anexos || []).map((a, i) => `<a href="#" onclick="event.preventDefault();PAAcomp.verAnexo('p','${p.id}',${i})" style="color:var(--pri,#0088CC)">${esc(a.nome)}</a>`).join('<br>') || '<small style="color:var(--muted)">—</small>'}
           <br><label class="btn btn-o bsm" style="cursor:pointer;margin-top:3px">+ anexo<input type="file" accept="application/pdf,image/jpeg,image/png" style="display:none" onchange="PAAcomp.anexarProto('${p.id}',this)"></label></td>
-        <td style="padding:5px 6px;white-space:nowrap;text-align:right"><button class="btn btn-o bsm" onclick="PAAcomp.docPdf('${p.id}')">PDF</button> <button class="btn btn-o bsm" onclick="PAAcomp.docWord('${p.id}')">Word</button> <button class="btn btn-o bsm" onclick="PAAcomp.editarProto('${p.id}')">Editar</button></td></tr>`; }).join('')}
+        <td style="padding:5px 6px;white-space:nowrap;text-align:right">${EM_BRANCO.has(p.tipo) ? '' : `<button class="btn btn-o bsm" onclick="PAAcomp.docPdf('${p.id}')">PDF</button> `}<button class="btn btn-o bsm" onclick="PAAcomp.docWord('${p.id}')" title="${MODELO[p.tipo] ? (EM_BRANCO.has(p.tipo) ? 'Formulário da NSP em branco' : 'Modelo da NSP preenchido') : 'Modelo básico'}">Word</button> <button class="btn btn-o bsm" onclick="PAAcomp.editarProto('${p.id}')">Editar</button></td></tr>`; }).join('')}
       </tbody></table></div>` : '<div style="font-size:13px;color:var(--muted)">Nenhum protocolo ainda.</div>';
     const abertos = protos.filter(p => p.status !== 'cancelado' && !['assinado', 'recebido', 'cumprido', 'descumprido'].includes(p.status)).length;
     return `<details class="card" style="margin-bottom:12px" id="pa-protocolos" ${abertos || _ed ? 'open' : ''}><summary class="cb" style="cursor:pointer;font-weight:700">📑 Protocolos, autorizações e notificações · ${protos.length}</summary>
       <div class="cb" style="padding-top:0">${lista}
         <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <select id="pa-pt-novo" style="${INP}">${Object.keys(PTIPO).filter(k => k !== 'recibo').map(k => `<option value="${k}">${PTIPO[k]}</option>`).join('')}</select>
+          <select id="pa-pt-novo" style="${INP}">${PGRUPOS.map(([g, ks]) => `<optgroup label="${esc(g)}">${ks.map(k => `<option value="${k}">${esc(PTIPO[k])}</option>`).join('')}</optgroup>`).join('')}</select>
           <button class="btn btn-o bsm" onclick="PAAcomp.novoProto()">+ Novo</button>
-          <small style="color:var(--muted)">Recibo de comissão: pelo Pós-venda. Documentos em modelo básico; os textos jurídicos (notificação e autorização) são do jurídico.</small></div>
+          <small style="color:var(--muted)">Recibo de comissão: pelo Pós-venda. Chaves, documentos e declarações saem no modelo Word da NSP, já preenchido: confira antes de imprimir. Escritura, autorização, procuração e notificação ainda em modelo básico (texto jurídico com o jurídico).</small></div>
         <div id="pa-pt-form">${_ed ? formProtoHTML() : ''}</div>
       </div></details>`;
   }
@@ -369,7 +452,9 @@
       <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-p bsm" onclick="PAAcomp.gravarProto()">${p.id ? 'Salvar' : 'Registrar'}</button>
         <button class="btn btn-o bsm" onclick="PAAcomp.fecharProto()">Cancelar</button>
         ${p.id && typeof CUR !== 'undefined' && CUR && CUR.admin ? `<span style="flex:1"></span><button class="btn btn-o bsm" style="color:#dc2626" onclick="PAAcomp.excluirProto()">Excluir (admin)</button>` : ''}</div>
-      ${p.id ? '' : '<div style="font-size:12px;color:var(--muted);margin-top:6px">O número sai na hora de registrar (NSP-ano-sequência). Para anular depois, use o status "Cancelado".</div>'}</div>`;
+      ${p.id ? '' : '<div style="font-size:12px;color:var(--muted);margin-top:6px">O número sai na hora de registrar (NSP-ano-sequência). Para anular depois, use o status "Cancelado".</div>'}
+      ${EM_BRANCO.has(p.tipo) ? '<div style="font-size:12px;color:#b45309;margin-top:6px">Formulário da NSP ainda sem campos marcados: o Word sai em branco, para preencher. Registrar aqui serve para numerar e anexar o documento assinado.</div>'
+        : MODELO[p.tipo] ? `<div style="font-size:12px;color:var(--muted);margin-top:6px">Sai no modelo Word da NSP: "${esc(ROT[p.tipo][0])}" e "${esc(ROT[p.tipo][1])}" entram no texto como estão aqui; imóvel, SQL, cartório e data vêm da venda e da matrícula.</div>` : ''}</div>`;
   }
   function redesenharProtos() { const el = document.getElementById('pa-protocolos'); if (el) { el.outerHTML = protocolosHTML(); ir('pa-pt-form'); } }
   function novoProto() { const tipo = (document.getElementById('pa-pt-novo') || {}).value || 'chaves'; _ed = Object.assign({ tipo }, padrao(tipo)); redesenharProtos(); }
@@ -421,7 +506,8 @@
   // documento (modelo básico): HTML → PDF (html2pdf) ou Word (.doc)
   function docHTML(p) {
     const { v } = C, u = U(), atual = juntar(titulares(v, C.ult)), novo = juntar(linhas(v.compradores));
-    const imovel = `${esc(v.titulo)}${v.matricula ? ` (matrícula nº ${esc(v.matricula)}${v.cartorio ? ' do ' + esc(v.cartorio) : ''})` : ''}`;
+    const cart = cartorioTitulo(v.cartorio || matDa().cartorio);
+    const imovel = `${esc(v.titulo)}${v.matricula ? ` (matrícula nº ${esc(v.matricula)}${cart ? ' do ' + esc(cart) : ''})` : ''}`;
     const cidadeData = `São Paulo, ${dataExtenso(p.data_doc)}.`, b = s => `<b>${esc(s || '____________________')}</b>`;
     const assin = nomes => `<table style="width:100%;margin-top:48px"><tr>${nomes.map(n => `<td style="text-align:center;padding:0 12px;vertical-align:top">______________________________<br>${esc(n || '')}</td>`).join('')}</tr></table>`;
     const partes = `<p>Imóvel: ${imovel}.</p>${atual ? `<p>Atual proprietário: ${esc(atual)}</p>` : ''}${novo ? `<p>Novo proprietário: ${esc(novo)}</p>` : ''}`;
@@ -439,6 +525,10 @@
       const n = Number(p.prazo_dias) || 0;
       corpo = `<p>Notificante: ${b(p.de)}</p><p>Notificado(a): ${b(p.para)}</p><p>Imóvel: ${imovel}.</p>
         <p>Fica o(a) notificado(a) comunicado(a) de que deve cumprir a seguinte obrigação no prazo de ${n ? `${n} (${extenso(n)})` : '___'} dias, contados do recebimento desta notificação: ${esc(p.descricao || '____________________')}.</p>${obs}<p>${cidadeData}</p>${assin([p.de])}`;
+    } else if (p.tipo === 'procuracao') {
+      titulo = 'PROCURAÇÃO';
+      corpo = `<p>OUTORGANTE: ${b(p.de)}</p><p>OUTORGADO(A): ${b(p.para)}</p>
+        <p>Pelo presente instrumento, o(a) outorgante nomeia e constitui o(a) outorgado(a) seu(sua) procurador(a), para o fim de: ${esc(p.descricao || '____________________')}, relativamente ao imóvel ${imovel}.</p>${obs}<p>${cidadeData}</p>${assin([p.de])}`;
     } else {
       titulo = 'RECIBO DE COMISSÃO';
       corpo = `<p>Recebi de ${b(p.de)} a quantia de <b>${moeda(p.valor)}</b> (${esc(reaisExtenso(p.valor || 0))}), referente à ${esc(p.descricao || 'comissão pela assessoria e intermediação da venda')} do imóvel ${imovel}.</p>${obs}<p>${cidadeData}</p>${assin([p.para])}`;
@@ -448,18 +538,100 @@
       <div style="text-align:center;font-weight:bold;margin:12px 0 18px">${titulo} Nº ${esc(p.numero || '')}</div>${corpo.replace(/<p>/g, '<p style="margin:0 0 12px">')}</div>`;
   }
   const nomeArq = (p, ext) => `${(p.numero || 'documento')}-${p.tipo}.${ext}`;
+  const baixar = (blob, nome) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); };
   async function docPdf(id) {
     const p = C.protos.find(x => x.id === id); if (!p) return;
     U().aviso('Gerando o PDF…');
+    if (MODELO[p.tipo] && !EM_BRANCO.has(p.tipo)) {
+      try { await pdfDoModelo(await docxPreenchido(p), nomeArq(p, 'pdf')); return; }
+      catch (e) { U().aviso('Não consegui montar o PDF pelo modelo da NSP (' + e.message + '). Use o botão Word.', 'err'); return; }
+    }
     try { await U().carregarHtml2pdf(); const el = document.createElement('div'); el.style.cssText = 'width:690px;background:#fff;padding:10px'; el.innerHTML = docHTML(p);
       await window.html2pdf().set({ margin: [18, 18, 18, 18], filename: nomeArq(p, 'pdf'), image: { type: 'jpeg', quality: 0.95 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(el).save(); }
     catch (e) { U().aviso('Erro no PDF: ' + e.message, 'err'); }
   }
-  function docWord(id) {
+  async function docWord(id) {
     const p = C.protos.find(x => x.id === id); if (!p) return;
+    if (MODELO[p.tipo]) {
+      try { U().aviso('Preparando o Word…'); baixar(await docxPreenchido(p), nomeArq(p, 'docx')); }
+      catch (e) { U().aviso('Erro no Word: ' + e.message, 'err'); }
+      return;
+    }
     const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>${esc(PTIPO[p.tipo])}</title>
       <style>@page{size:21cm 29.7cm;margin:2.5cm}body{font-family:Arial}</style></head><body>${docHTML(p)}</body></html>`;
-    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + html], { type: 'application/msword' })); a.download = nomeArq(p, 'doc'); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    baixar(new Blob(['﻿' + html], { type: 'application/msword' }), nomeArq(p, 'doc'));
+  }
+
+  // ── modelos Word da NSP: preenche os campos {{...}} (document, cabeçalhos e rodapés) com JSZip ──
+  const matDa = () => ((((C || {}).ult || {}).resultado) || {}).matricula || {};
+  // "14º RI" → "14º Oficial de Registro de Imóveis da Comarca de São Paulo"; "de/da/do" em minúsculas (pacote de 07/11, item 8)
+  function cartorioTitulo(s) {
+    s = String(s || '').trim(); if (!s) return '';
+    const n = s.match(/^(\d{1,2})\s*[º°ªo]?\.?\s*(?:RI|CRI|R\.I\.|cart[óo]rio|oficial|registro)\b/i);
+    if (n && !/oficial de registro de im[óo]veis/i.test(s)) s = `${n[1]}º Oficial de Registro de Imóveis da Comarca de São Paulo`;
+    s = s.replace(/\s*[-–]\s*SP\s*$/i, '').toLowerCase().replace(/(^|[\s(/-])(\p{L})/gu, (_, a, c) => a + c.toUpperCase());
+    return s.replace(/ (De|Da|Do|Das|Dos|E) /g, x => x.toLowerCase());
+  }
+  const VAZIO = '________________';
+  function valoresDoc(p) {
+    const { v, ult } = C, m = matDa(), r = (ult || {}).resultado || {};
+    const nomeFonte = id => (FONTES.find(f => f.id === id) || {}).nome || id;
+    const positivas = (r.certidoes || []).filter(c => !c.substituida && c.resultado === 'positiva');
+    const dec = String(p.de || '').trim(), cpf = (dec.match(/CPF(?:\/MF)?\s*(?:n[º°o.]*\s*|sob\s*(?:o\s*)?n[º°o.]*\s*)?([\d.\-/]{11,18})/i) || [])[1] || '';
+    return {
+      cidade_data: `São Paulo, ${dataExtenso(p.data_doc)}`, data_protocolo: U().dia(p.data_doc), numero_protocolo: p.numero || '',
+      endereco_imovel: v.titulo || '', matricula_numero: v.matricula || m.numero || '', contribuinte: v.sql_contribuinte || m.sql_contribuinte || '',
+      cartorio_titulo: cartorioTitulo(v.cartorio || m.cartorio), descricao_imovel: String(m.descricao_imovel || v.area_proposta || '').trim().replace(/[.;,\s]+$/, ''),
+      partes_vendedoras: p.de || '', parte_compradora: p.para || '', nomes_vendedores: p.de || '', nomes_compradores: p.para || '',
+      atual_proprietario: p.de || '', novo_proprietario: p.para || '', entregue_por: p.de || '', recebido_por: p.para || '',
+      descricao_itens: p.descricao || '', patrimonio_descricao: p.descricao || '', observacoes: p.observacoes || '',
+      declarante_qualificacao: dec, declarante_nome: dec.split(',')[0].trim(), declarante_cpf: cpf, declarante_estado_civil: p.para || '',
+      apontamentos_certidoes: positivas.length ? positivas.map(c => `- ${nomeFonte(c.orgao)}, em nome de ${c.refere_a || '—'}: ${c.resumo || 'ver a certidão'}`).join('\n') : '(nenhum apontamento registrado)',
+      gerente_responsavel: (v.responsaveis || {}).gerente || '', assistente_responsavel: (v.responsaveis || {}).assistente || '', corretor: (v.responsaveis || {}).corretor || '',
+      data_proposta: (v.marcos || {}).proposta_enviada ? U().dia(v.marcos.proposta_enviada) : '', data_envio_banco: (v.marcos || {}).docs_banco ? U().dia(v.marcos.docs_banco) : ''
+    };
+  }
+  const xmlEsc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const xmlVal = s => xmlEsc(String(s == null ? '' : s).trim() || VAZIO).split(/\r?\n/).join('</w:t><w:br/><w:t xml:space="preserve">');
+  function preencherXml(xml, val) {
+    return xml.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (t, k) => Object.prototype.hasOwnProperty.call(val, k) ? xmlVal(val[k]) : t)
+              .replace(/<w:t>([^<]*<\/w:t><w:br\/>)/g, '<w:t xml:space="preserve">$1');
+  }
+  const _libs = {};
+  function carregarLib(url, global) {
+    if (window[global]) return Promise.resolve();
+    return _libs[url] || (_libs[url] = new Promise((ok, err) => { const sc = document.createElement('script'); sc.src = url; sc.onload = ok;
+      sc.onerror = () => { delete _libs[url]; err(new Error('não consegui carregar ' + global)); }; document.head.appendChild(sc); }));
+  }
+  const JSZIP_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js', DOCXPREV_URL = 'https://cdn.jsdelivr.net/npm/docx-preview@0.3.5/dist/docx-preview.min.js';
+  async function docxPreenchido(p) {
+    await carregarLib(JSZIP_URL, 'JSZip');
+    const r = await fetch(`modelos-nsp/${MODELO[p.tipo]}?v=${MODELOS_V}`); if (!r.ok) throw new Error('modelo não encontrado (' + r.status + ')');
+    const zip = await window.JSZip.loadAsync(await r.arrayBuffer());
+    if (!EM_BRANCO.has(p.tipo)) {
+      const val = valoresDoc(p);
+      for (const nome of Object.keys(zip.files).filter(n => /^word\/(document|header\d*|footer\d*)\.xml$/.test(n))) zip.file(nome, preencherXml(await zip.file(nome).async('string'), val));
+    }
+    return zip.generateAsync({ type: 'blob', compression: 'DEFLATE', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+  }
+  // PDF a partir do Word preenchido: desenha o .docx na página (docx-preview) e fotografa (html2pdf), uma folha por seção
+  async function pdfDoModelo(blob, nome, soPdf) {
+    await carregarLib(JSZIP_URL, 'JSZip'); await carregarLib(DOCXPREV_URL, 'docx'); await U().carregarHtml2pdf();
+    const fora = document.createElement('div'); fora.style.cssText = 'position:fixed;left:-20000px;top:0;width:820px;background:#fff';
+    const el = document.createElement('div'); el.style.background = '#fff'; fora.appendChild(el); document.body.appendChild(fora);
+    try {
+      await window.docx.renderAsync(blob, el, null, { inWrapper: false, breakPages: true, ignoreLastRenderedPageBreak: true, useBase64URL: true, renderHeaders: true, renderFooters: true });
+      const st = document.createElement('style'); st.textContent = 'section.docx{min-height:0!important;box-shadow:none!important;margin:0!important}'; el.appendChild(st);
+      // cada seção do Word = uma folha A4; o desenho do navegador sai um pouco maior que o do Word, então a seção que passa
+      // da folha em até 30% é reduzida para caber (assinatura e rodapé não pulam para uma folha a mais)
+      el.querySelectorAll('section.docx').forEach(sec => {
+        const folha = document.createElement('div'); folha.className = 'pa-folha'; sec.parentNode.insertBefore(folha, sec); folha.appendChild(sec);
+        const alt = sec.offsetWidth * 297 / 210 - 4, h = sec.offsetHeight;
+        if (h > alt && h < alt * 1.3) { sec.style.transform = `scale(${alt / h})`; sec.style.transformOrigin = 'top center'; folha.style.cssText = `height:${Math.floor(alt)}px;overflow:hidden`; }
+      });
+      return await window.html2pdf().set({ margin: 0, filename: nome, image: { type: 'jpeg', quality: 0.95 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['css'], before: '.pa-folha ~ .pa-folha' } }).from(el)[soPdf ? 'outputPdf' : 'save'](soPdf ? 'blob' : undefined);
+    } finally { fora.remove(); }
   }
 
   // ══════════════ PÓS-VENDA ══════════════
@@ -603,8 +775,8 @@
   }
   function caminhosAnexos() { if (!C) return []; return C.protos.flatMap(p => (p.anexos || []).map(a => a.caminho)).concat(((C.v.pos_venda || {}).anexos || []).map(a => a.caminho)); }
 
-  window.PAAcomp = { VERSOES, carregar, etapas, etapasHTML, emissaoHTML, protocolosHTML, posVendaHTML, timelineHTML, carregarPainel, alertasPainel, quadroHTML, caminhosAnexos,
+  window.PAAcomp = { VERSOES, usaBanco, prazosBancoDe, cartorioTitulo, carregar, etapas, etapasHTML, emissaoHTML, protocolosHTML, posVendaHTML, timelineHTML, carregarPainel, alertasPainel, quadroHTML, caminhosAnexos,
     ir, salvarEtapas, salvarMarcos, novoProto, editarProto, fecharProto, gravarProto, excluirProto, statusProto, anexarProto, verAnexo, docPdf, docWord,
     addLinha, tirarLinha, salvarPv, gerarRecibo, anexarPv, arquivar, reabrir,
-    _t: { extenso, reaisExtenso, mesmaPessoa, dataExtenso, numero } };
+    _t: { extenso, reaisExtenso, mesmaPessoa, dataExtenso, numero, cartorioTitulo, preencherXml, prazosBanco, valoresDoc, docxPreenchido, pdfDoModelo, _ctx: c => { C = c; } } };
 })();

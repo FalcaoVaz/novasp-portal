@@ -9,6 +9,8 @@
    Banco: sql/2026-11-04-preanalise-painel.sql (colunas novas da venda).
    06/11/2026: acompanhamento da venda (etapas, emissão assistida, protocolos, pós-venda, linha do tempo) em js/24-preanalise-acompanhamento.js
    (sql/2026-11-06-preanalise-acompanhamento.sql); dados da proposta ganharam compradores e versão do contrato.
+   08/11/2026: responsáveis da venda (gerente, assistente, corretor) com faixa no topo e "só as minhas" no painel;
+   prazos do banco entram nos prazos da venda (sql/2026-11-08-preanalise-responsaveis-banco-modelos.sql).
    Banco: sql/2026-10-07-preanalise.sql (tabelas preanalise_*, bucket privado "preanalise", acesso só do piloto).
    Motor: função preanalise-background do site do jurídico (lê os PDFs com o Claude; o status sai das regras no código).
    ===================================================================== */
@@ -75,6 +77,7 @@
   function prazosDe(v) {
     const p = (v.prazos || []).filter(x => x && x.data).map(x => ({ titulo: x.titulo || 'Prazo', data: x.data, feito: !!x.feito }));
     if (v.data_compromisso && v.prazo_escritura_dias) p.push({ titulo: 'Escritura', data: somaDias(v.data_compromisso, Number(v.prazo_escritura_dias)), feito: !!v.escritura_feita, escritura: true });
+    if (window.PAAcomp && PAAcomp.prazosBancoDe) p.push(...PAAcomp.prazosBancoDe(v));
     return p.sort((a, b) => String(a.data).localeCompare(String(b.data)));
   }
   const proximoPrazo = v => prazosDe(v).find(x => !x.feito) || null;
@@ -136,6 +139,7 @@
         <input id="pa-busca" placeholder="Buscar venda, matrícula ou vendedor…" oninput="PreAnalise.filtrar()" style="flex:1;min-width:200px;padding:8px 10px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px">
         <select id="pa-fst" onchange="PreAnalise.filtrar()" style="padding:8px 10px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px">
           <option value="">Todos os status</option>${Object.keys(STATUS).map(k => `<option value="${k}">${STATUS[k].lb}</option>`).join('')}<option value="sem">Sem análise</option><option value="juridico">Aguardando jurídico</option></select>
+        <label style="font-size:13px"><input type="checkbox" id="pa-minhas" onchange="try{localStorage.setItem('pa_minhas',this.checked?'1':'')}catch(_){};PreAnalise.filtrar()" ${(() => { try { return localStorage.getItem('pa_minhas') ? 'checked' : ''; } catch (_) { return ''; } })()}> só as minhas</label>
         <label style="font-size:13px"><input type="checkbox" id="pa-ver-arq" onchange="PreAnalise.filtrar()"> arquivadas</label>
         ${window.PAAcomp ? `<label style="font-size:13px"><input type="checkbox" id="pa-quadro" onchange="try{localStorage.setItem('pa_quadro',this.checked?'1':'')}catch(_){};PreAnalise.filtrar()" ${(() => { try { return localStorage.getItem('pa_quadro') ? 'checked' : ''; } catch (_) { return ''; } })()}> quadro por etapas</label>` : ''}
         <button class="btn btn-o" onclick="PreAnalise.semana()">📊 Uso da semana</button>
@@ -151,14 +155,15 @@
     const q = ((document.getElementById('pa-busca') || {}).value || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     const fs = (document.getElementById('pa-fst') || {}).value || '';
     const { ult, ndocs, protos } = _lista, verArq = !!(document.getElementById('pa-ver-arq') || {}).checked;
-    const vendas = _lista.vendas.filter(v => verArq ? !!v.arquivada_em : !v.arquivada_em);
+    const minhas = !!(document.getElementById('pa-minhas') || {}).checked;
+    const vendas = _lista.vendas.filter(v => (verArq ? !!v.arquivada_em : !v.arquivada_em) && (!minhas || ehMinha(v)));
     const lista = vendas.filter(v => {
-      if (q && ![v.titulo, v.matricula, v.cartorio, v.vendedores].join(' ').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').includes(q)) return false;
+      if (q && ![v.titulo, v.matricula, v.cartorio, v.vendedores, v.compradores, ...Object.values(v.responsaveis || {})].join(' ').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').includes(q)) return false;
       if (fs === 'sem') return !v.status; if (fs === 'juridico') return v.encaminhado_juridico && !v.revisao_status;
       return !fs || v.status === fs;
     });
     const cont = s => vendas.filter(v => v.status === s).length;
-    if (!vendas.length) { box.innerHTML = `<div class="card"><div class="cb" style="color:var(--muted)">${verArq ? 'Nenhuma venda arquivada.' : 'Nenhuma venda ainda. Clique em "Nova venda" e suba a matrícula.'}</div></div>`; return; }
+    if (!vendas.length) { box.innerHTML = `<div class="card"><div class="cb" style="color:var(--muted)">${minhas ? 'Nenhuma venda sua (responsável ou criada por você). Desmarque "só as minhas" para ver todas.' : verArq ? 'Nenhuma venda arquivada.' : 'Nenhuma venda ainda. Clique em "Nova venda" e suba a matrícula.'}</div></div>`; return; }
     if (window.PAAcomp && (document.getElementById('pa-quadro') || {}).checked) {
       box.innerHTML = `<div style="font-size:12px;color:var(--muted);margin:0 0 6px 2px">${lista.length} venda(s) no quadro${verArq ? ' (arquivadas)' : ''}</div>` + PAAcomp.quadroHTML(lista, ult, ndocs, protos, proximaAcao); return; }
     box.innerHTML = `<div style="font-size:12px;color:var(--muted);margin:0 0 6px 2px">${vendas.length} venda(s) · ${Object.keys(STATUS).map(s => `${STATUS[s].lb}: ${cont(s)}`).join(' · ')}${lista.length !== vendas.length ? ` · mostrando ${lista.length}` : ''}</div>
@@ -167,7 +172,7 @@
         const e = ult.get(v.id), mi = matInfo(e), ci = certInfo(e), pp = proximoPrazo(v);
         const n = pp ? diasEntre(hojeIso(), pp.data) : null;
         return `<tr style="cursor:pointer" onclick="PreAnalise.venda('${v.id}')">
-          <td style="font-weight:600">${esc(v.titulo)}${v.matricula ? `<br><small style="color:var(--muted);font-weight:400">mat. ${esc(v.matricula)}${v.cartorio ? ' · ' + esc(v.cartorio) : ''}</small>` : ''}</td>
+          <td style="font-weight:600">${esc(v.titulo)}${v.matricula ? `<br><small style="color:var(--muted);font-weight:400">mat. ${esc(v.matricula)}${v.cartorio ? ' · ' + esc(v.cartorio) : ''}</small>` : ''}${faixaResp(v, true) ? `<br><small style="color:#334155;font-weight:400">${faixaResp(v, true)}</small>` : ''}</td>
           <td>${badge(v.status)}${v.encaminhado_juridico ? `<br><small style="color:${v.revisao_status ? '#047857' : '#b45309'}">${v.revisao_status ? 'jurídico: ' + REV[v.revisao_status] : 'no jurídico'}</small>` : ''}</td>
           ${window.PAAcomp ? (() => { const et = PAAcomp.etapas(v, e, ndocs.get(v.id) || 0, protos.get(v.id) || []); return `<td style="font-size:12px">${v.arquivada_em ? 'Arquivada' : esc(et.atual.nome)}<br><small style="color:var(--muted)">${et.atual.feitas}/${et.atual.total}</small></td>`; })() : ''}
           <td style="font-size:12px">${mi ? `<span style="color:${mi.vencida ? '#b91c1c' : '#047857'}">${mi.idade} dias${mi.vencida ? ' · vencida' : ''}</span>` : (ndocs.get(v.id) ? '—' : '<span style="color:var(--muted)">sem PDF</span>')}
@@ -219,6 +224,7 @@
         ${inp('pa-cartorio', 'Cartório de registro', v.cartorio, 'Ex.: 14º RI')}
         ${inp('pa-sql', 'SQL (contribuinte)', v.sql_contribuinte)}
       </div>
+      ${respCampos(v.responsaveis || {})}
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-top:10px">
         <label style="font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px">Vendedores da proposta (um por linha) — para conferir com o proprietário da matrícula
           <textarea id="pa-vendedores" rows="3" style="padding:8px 10px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px">${esc(v.vendedores || '')}</textarea></label>
@@ -234,12 +240,38 @@
         <label><input type="radio" name="pa-escopo" value="completo" ${v.escopo === 'completo' ? 'checked' : ''}> Matrícula e certidões (falta de certidão fecha como Incompleto)</label>
       </div>`;
   }
+  // responsáveis da venda (pacote da Renata de 07/11): nomes das contas do portal (lista) ou digitados
+  const RESP = [['gerente', 'Gerente responsável'], ['assistente', 'Assistente'], ['corretor', 'Corretor']];
+  function respCampos(r) {
+    const nomes = (typeof USERS !== 'undefined' && Array.isArray(USERS) ? USERS : []).map(u => u.nome).filter(Boolean);
+    return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:10px">
+      ${RESP.map(([k, lb]) => `<label style="font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px">${lb}<input id="pa-resp-${k}" list="pa-resp-lista" value="${esc(r[k] || '')}" autocomplete="off" style="padding:8px 10px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px"></label>`).join('')}
+      <datalist id="pa-resp-lista">${nomes.map(n => `<option value="${esc(n)}">`).join('')}</datalist></div>`;
+  }
+  function lerResp() {
+    if (!document.getElementById('pa-resp-gerente')) return {};
+    const r = {}; RESP.forEach(([k]) => { const x = ((document.getElementById('pa-resp-' + k) || {}).value || '').trim(); if (x) r[k] = x; });
+    return { responsaveis: r };
+  }
+  const normNome = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+  function ehMinha(v) {
+    const eu = typeof CUR !== 'undefined' && CUR ? [normNome(CUR.nome), normNome(CUR.email)].filter(Boolean) : [];
+    if (!eu.length) return true;
+    const r = v.responsaveis || {}, deles = Object.values(r).map(normNome).filter(Boolean).concat(normNome(v.criado_por));
+    return deles.some(x => eu.some(e => x === e || (x.length > 3 && e.length > 3 && (x.startsWith(e + ' ') || e.startsWith(x + ' ')))));
+  }
+  function faixaResp(v, curta) {
+    const r = v.responsaveis || {}, pe = (v.marcos || {}).proposta_enviada;
+    const it = RESP.filter(([k]) => r[k]).map(([k, lb]) => curta ? esc(r[k]) : `<span style="color:var(--muted)">${lb.replace(' responsável', '')}:</span> <b>${esc(r[k])}</b>`);
+    if (pe) it.push(curta ? 'proposta ' + dia(pe) : `<span style="color:var(--muted)">Proposta enviada:</span> <b>${dia(pe)}</b> <small style="color:var(--muted)">(${(n => n > 0 ? 'há ' + n + ' dia(s)' : n === 0 ? 'hoje' : 'em ' + (-n) + ' dia(s)')(diasEntre(pe, hojeIso()))})</small>`);
+    return it.join(curta ? ' · ' : ' &nbsp;·&nbsp; ');
+  }
   function lerCampos() {
     const g = id => (document.getElementById(id) || {}).value || '';
     const esco = (document.querySelector('input[name="pa-escopo"]:checked') || {}).value || 'matricula';
     return { titulo: g('pa-titulo').trim(), matricula: g('pa-matricula').trim() || null, cartorio: g('pa-cartorio').trim() || null, sql_contribuinte: g('pa-sql').trim() || null,
              vendedores: g('pa-vendedores').trim() || null, area_proposta: g('pa-area').trim() || null, escopo: esco,
-             ...(document.getElementById('pa-versao') ? { compradores: g('pa-compradores').trim() || null, versao_contrato: g('pa-versao') || null } : {}) };
+             ...(document.getElementById('pa-versao') ? { compradores: g('pa-compradores').trim() || null, versao_contrato: g('pa-versao') || null } : {}), ...lerResp() };
   }
   function nova() {
     const box = document.getElementById('pa-nova'); if (!box) return;
@@ -273,7 +305,8 @@
       <div style="margin-bottom:10px"><a href="#" onclick="event.preventDefault();PreAnalise.abrir()" style="color:var(--pri,#0088CC);font-size:13px">← painel das vendas</a></div>
       <div class="card" style="margin-bottom:12px"><div class="cb">
         <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
-          <div><div style="font-size:17px;font-weight:700">${esc(v.titulo)}</div><div style="font-size:12px;color:var(--muted)">Aberta ${dt(v.criado_em)}${v.criado_por ? ' por ' + esc(v.criado_por) : ''}</div></div>
+          <div><div style="font-size:17px;font-weight:700">${esc(v.titulo)}</div><div style="font-size:12px;color:var(--muted)">Aberta ${dt(v.criado_em)}${v.criado_por ? ' por ' + esc(v.criado_por) : ''}</div>
+            ${faixaResp(v) ? `<div style="font-size:13px;margin-top:4px">${faixaResp(v)}</div>` : `<div style="font-size:12px;color:#b45309;margin-top:4px">Sem responsáveis: informe gerente, assistente e corretor em Dados da proposta.</div>`}</div>
           <div>${badge(v.status)}</div>
         </div>
         ${andamentoHTML(v, ult)}
