@@ -23,6 +23,7 @@ async function initApp() {
     show('nav-processos'); show('nav-prazos'); show('nav-calculo-prazos');
     show('nav-chamados-jur');   // Financeiro desativado (Rodrigo, 12/10/2026: não é usado; tabela fechada no banco)
     show('nav-acordos-jur');
+    show('nav-relatorios-jur');   // painel de relatórios da Dra. Fernanda (09/11/2026)
     show('nav-planilhas');   // Calculadora de Correção
   }
 
