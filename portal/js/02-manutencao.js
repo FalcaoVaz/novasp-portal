@@ -863,6 +863,7 @@ const TITLES={
   'vnd-foto-disp':'Minha Disponibilidade',
   'vnd-forum':'Fórum dos Representantes',
   'vnd-preanalise':'Pré-análise de certidões e matrícula',
+  'vnd-bussola':'Bússola NSP (em teste)',
   tarefas:'Tarefas',agenda:'Agenda',horarios:'Horários Livres',
   'ativ-semanais':'Atividades Semanais',
   'pauta-terca':'Pauta Mkt','pauta-quarta':'Pauta Adm','pauta-juridico':'Pauta Jurídico',

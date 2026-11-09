@@ -184,6 +184,7 @@ function setMod(mod){
 function goTo(pg){
   // Pré-análise (piloto): só os participantes do piloto
   if(pg==='vnd-preanalise' && !(typeof ehParticipantePiloto==='function' && ehParticipantePiloto())) pg='vendas-home';
+  // Bússola NSP (em teste): a própria página confere a liberação (bussola_acesso / admin)
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
   // req-ti e req-manut compartilham a mesma pagina p-requisicoes com modo fixo
@@ -211,10 +212,11 @@ function goTo(pg){
     if (cardFor) cardFor.style.display = (typeof podeAcessarForumVendas==='function' && podeAcessarForumVendas()) ? '' : 'none';
     const cardPre = document.getElementById('card-vnd-preanalise');
     if (cardPre) cardPre.style.display = (typeof ehParticipantePiloto==='function' && ehParticipantePiloto()) ? '' : 'none';
+    if (window.BussolaPortal) { window.BussolaPortal.mostrarCard(); window.BussolaPortal.checar(); }
     // Representante puro (corretor rep, nao gerente/admin) so ve o Forum.
     // Esconde todos os outros cards de Vendas.
     if (typeof ehRepresentantePuro === 'function' && ehRepresentantePuro()) {
-      ['card-vnd-selecao','card-vnd-presenca','card-vnd-fotografo','card-vnd-peneira','card-vnd-preanalise',
+      ['card-vnd-selecao','card-vnd-presenca','card-vnd-fotografo','card-vnd-peneira','card-vnd-preanalise','card-vnd-bussola',
        'card-vp-cota_anuncios_apto','card-vp-cota_extra_apto','card-vp-cota_anuncios_casas','card-vp-cota_extra_casas','card-vp-captacao_placas','card-vp-vendidos_selecao']
         .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
       // Redireciona direto pro forum (sem passar pelo home de Vendas)
@@ -228,6 +230,7 @@ function goTo(pg){
   if(pg==='vnd-cotas')     carregarVendasCotas?.();
   if(pg.startsWith('vp-')) window.VendasPlanilhas?.abrirPagina(pg.slice(3));   // Planilha Mensal por EQUIPE
   if(pg==='vnd-preanalise') window.PreAnalise?.abrir();                        // pré-análise de certidões (piloto)
+  if(pg==='vnd-bussola')    window.BussolaPortal?.abrir();                     // Bússola NSP (em teste)
   if(pg==='acervo-guess' && typeof podeAcervoItem==='function' && !podeAcervoItem(pg)) { goTo('acervo-nido'); return; }
   if(pg==='acervo-guess')  window.AcervoGuess?.abrir();                        // Acervo (frente 11)
   if(pg==='acervo-nido')   window.AcervoNido?.abrir();

@@ -423,7 +423,26 @@
             <div class="pcd">Matrícula e certidões de cada venda lidas por checklist: Liberado, Com ressalvas, Bloqueado ou Incompleto. Piloto Moema.</div>
             <div class="pcb" style="background:#fef3c7;color:#92400e">Em teste</div>
           </div>
+          <!-- Bússola NSP — projeto de Emilia Vitória e Camille Cassab (em teste desde 09/11/2026; quem vê: bussola_acesso + admins). js/25-bussola.js -->
+          <div class="pc" data-tone="teal" id="card-vnd-bussola" onclick="goTo('vnd-bussola')" style="display:none">
+            <div class="pci"><i data-icon="compass" data-size="32"></i></div>
+            <div class="pct">Bússola NSP</div>
+            <div class="pcd">Anúncio vira análise de moradia ou investimento: score, argumentos de negociação, oportunidades do portfólio, alertas e relatório em PDF.</div>
+            <div class="pcb" style="background:#fef3c7;color:#92400e">Em teste</div>
+          </div>
         </div>
+      </div>
+
+      <!-- Bússola NSP (em teste) — sistema da Emilia e da Camille em portal/bussola/, aberto aqui com o login do portal -->
+      <div class="page" id="p-vnd-bussola">
+        <div class="ph">
+          <div class="flex aic" style="gap:12px">
+            <div class="pci" style="width:42px;height:42px"><i data-icon="compass" data-size="24"></i></div>
+            <div><h1 class="pt">Bússola NSP</h1><div class="pst">Em teste · projeto de Emilia Vitória e Camille Cassab · análise, oportunidades, alertas e relatório</div></div>
+          </div>
+          <button class="btn btn-o bsm" onclick="window.BussolaPortal?.recarregar()">Recarregar</button>
+        </div>
+        <div id="bussola-box"></div>
       </div>
 
       <!-- Avaliação de Imóveis (motor em lote → dossiê + link) -->
@@ -1882,12 +1901,12 @@
 <!-- SheetJS para parsing de .xlsx/.xls/.csv no upload de seleção -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <!-- Versão dos scripts: bump pra forçar reload mesmo se o SW velho estiver servindo cache -->
-<script src="js/00-icons.js?v=20260911d"></script>
+<script src="js/00-icons.js?v=20261109a"></script>
 <script src="js/00-config.js?v=20261001b"></script>
 <script src="js/01-state.js?v=20260911d"></script>
 <script src="js/02-manutencao.js?v=20261109a"></script>
 <script src="js/03-auth.js?v=20261015a"></script>
-<script src="js/04-init.js?v=20261022b"></script>
+<script src="js/04-init.js?v=20261109a"></script>
 <script src="js/05-crud.js?v=20260911d"></script>
 <script src="js/06-tarefas.js?v=20260911d"></script>
 <script src="js/07-agenda.js?v=20261023a"></script>
@@ -1910,6 +1929,7 @@
 <script src="js/22-aval-cotas.js?v=20261005a"></script>
 <script src="js/23-preanalise.js?v=20261108a"></script>
 <script src="js/24-preanalise-acompanhamento.js?v=20261108a"></script>
+<script src="js/25-bussola.js?v=20261109a"></script>
 <script src="js/24-recrutamento.js?v=20261022a"></script>
 </body>
 </html>
