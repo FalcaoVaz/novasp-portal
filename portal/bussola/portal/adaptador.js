@@ -9,7 +9,7 @@
 (function () {
   'use strict';
   var REPO_DADOS = 'https://raw.githubusercontent.com/emiliavitoria27/radar-do-imovel/main/';
-  var ROTAS = { auth: './portal/auth.js?v=202611091711', alertas: './netlify/functions/alertas.js?v=202611091711', auditoria: './netlify/functions/auditoria.js?v=202611091711', 'ler-imovel': './netlify/functions/ler-imovel.js?v=202611091711' };
+  var ROTAS = { auth: './portal/auth.js?v=202611091742', alertas: './netlify/functions/alertas.js?v=202611091742', auditoria: './netlify/functions/auditoria.js?v=202611091742', 'ler-imovel': './netlify/functions/ler-imovel.js?v=202611091742' };
   var base = new URL('.', location.href);           // .../bussola/
   var original = window.fetch.bind(window);
 
@@ -30,7 +30,7 @@
   };
 
   // fora do portal (link aberto direto) só funciona o link de análise compartilhada, que não precisa de login
-  var noPortal = false; try { noPortal = window.parent !== window && !!window.parent.CUR; } catch (_) {}
+  var noPortal = false; try { noPortal = window.parent !== window && !!(window.parent.BussolaPortal && window.parent.BussolaPortal.usuario()); } catch (_) {}
   document.documentElement.setAttribute('data-portal', noPortal ? 'sim' : 'nao');
   // v9: ".aviso.on" vence ".faixa-compartilhada{display:none}" e a faixa de análise compartilhada aparecia sempre
   var st = document.createElement('style');

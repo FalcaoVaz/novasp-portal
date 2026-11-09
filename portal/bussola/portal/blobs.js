@@ -1,10 +1,10 @@
 // Bússola NSP no portal — substitui o "@netlify/blobs" (09/11/2026).
 // Mesma interface usada pelo código delas (getStore → get/set/setJSON/delete/list), gravando na tabela
 // bussola_blobs do Supabase do portal com o login de quem está usando (regras de acesso no banco).
-const P = () => window.parent;   // a Bússola abre dentro do portal (mesmo endereço)
+const P = () => window.parent.BussolaPortal;   // ponte do portal (js/25-bussola.js): usuario(), cabecalhos(), SBU
 
 function cab(extra) {
-  const h = Object.assign({}, P().hdr(), extra || {});
+  const h = Object.assign({}, P().cabecalhos(), extra || {});
   delete h.Prefer; return h;
 }
 async function rest(caminho, opts = {}) {

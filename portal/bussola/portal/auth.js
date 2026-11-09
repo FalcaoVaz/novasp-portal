@@ -7,7 +7,7 @@ export const DOMINIO = 'novasaopaulo.com.br';
 const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json; charset=utf-8' } });
 
 function usuarioPortal() {
-  let cur = null; try { cur = window.parent && window.parent !== window ? window.parent.CUR : null; } catch (_) {}
+  let cur = null; try { const ponte = window.parent !== window ? window.parent.BussolaPortal : null; cur = ponte ? ponte.usuario() : null; } catch (_) {}
   if (!cur || !cur.email) return null;
   return { id: String(cur.id), nome: cur.nome || cur.email, email: String(cur.email).toLowerCase(), papel: cur.admin ? 'admin' : 'corretor', status: 'ativo' };
 }

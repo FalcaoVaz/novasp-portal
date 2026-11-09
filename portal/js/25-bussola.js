@@ -40,5 +40,9 @@
     return r.json();
   }
   function recarregar() { const f = document.getElementById('bussola-frame'); if (f) f.src = 'bussola/index.html?t=' + Date.now(); }
-  window.BussolaPortal = { checar, abrir, recarregar, mostrarCard, referencias, pode: () => !!_pode };
+  // Ponte para a página da Bússola (iframe): CUR, SBU e db são "let/const" do portal e NÃO ficam em window,
+  // então a Bússola não consegue lê-los direto por window.parent.
+  const usuario = () => (typeof CUR !== 'undefined' && CUR) ? CUR : null;
+  const cabecalhos = extra => hdr(extra);
+  window.BussolaPortal = { checar, abrir, recarregar, mostrarCard, referencias, usuario, cabecalhos, SBU, pode: () => !!_pode };
 })();
