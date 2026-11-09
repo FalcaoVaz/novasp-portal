@@ -167,6 +167,28 @@
       <small>CPF/CNPJ ${docMask(p.cpf_cnpj)} · ${esc(p.bairro || '—')} · ${esc(p.cidade || '—')}${p.profissao ? ' · ' + esc(p.profissao) : ''}</small></div>` : '<div style="font-size:13px;color:var(--muted)">— pessoa não encontrada no recorte —</div>';
   const tabela = (cab, linhas, fn) => linhas.length ? `<div class="tw tbl"><table><thead><tr>${cab.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${linhas.map(fn).join('')}</tbody></table></div>` : '<div style="font-size:13px;color:var(--muted)">—</div>';
 
+  // ── documentos do NIDO (bucket privado nido-anexos; link assinado de 5 min com o login de quem consulta) ──
+  const kb = n => n == null ? '' : n > 1048576 ? (n / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+  function docsHTML(lista) {
+    if (lista === undefined) return '<div style="font-size:13px;color:var(--muted)">Documentos do Nido ainda não carregados no acervo.</div>';
+    if (!lista.length) return '<div style="font-size:13px;color:var(--muted)">Nenhum documento anexado a este imóvel no Nido.</div>';
+    return tabela(['Data', 'Tipo', 'Descrição', 'Arquivo', ''], lista, a => `<tr><td style="white-space:nowrap">${fmtData(a.data_inclusao)}</td>
+      <td>${esc(a.origem === 'proposta' ? 'Proposta ' + (a.chave || '') : a.tipo || '')}${a.protegido ? ' <small style="color:#b45309">protegido</small>' : ''}</td>
+      <td>${esc(a.descricao || '')}</td><td><small>${esc(a.nome_arquivo || a.caminho.split('/').pop())} · ${kb(a.tamanho)}</small></td>
+      <td style="text-align:right"><button class="btn btn-o bsm" data-doc="${esc(a.caminho)}" onclick="AcervoNido.abrirDoc(this.dataset.doc)">Abrir</button></td></tr>`)
+      + '<div style="font-size:12px;color:var(--muted);margin-top:4px">Cópia dos anexos do Nido feita em 09/11/2026 (backup de 06/11). Autorizações de publicidade costumam estar como "DOCUMENTO".</div>';
+  }
+  async function abrirDoc(caminho) {
+    const w = window.open('', '_blank');
+    try {
+      const h = hdr({ 'Content-Type': 'application/json' }); delete h.Prefer;
+      let r = await fetch(`${SBU}/storage/v1/object/sign/nido-anexos/${caminho.split('/').map(encodeURIComponent).join('/')}`, { method: 'POST', headers: h, body: JSON.stringify({ expiresIn: 300 }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.signedURL) throw new Error(j.message || j.error || 'sem permissão para este documento');
+      const u = SBU + '/storage/v1' + j.signedURL; if (w) w.location = u; else window.open(u, '_blank');
+    } catch (e) { if (w) w.close(); alert('Não consegui abrir o documento: ' + e.message); }
+  }
+
   async function abrirFicha(chave) {
     const old = document.getElementById('m-an-ficha'); if (old) old.remove();
     const ov = document.createElement('div'); ov.className = 'mo open'; ov.id = 'm-an-ficha';
@@ -182,6 +204,7 @@
         db.get('nido_fechamentos', `?select=${COLS_F}&chave_imovel=eq.${encodeURIComponent(chave)}&order=data_fechamento.desc&limit=50`),
         db.get('nido_captadores', `?select=captadores&chave_imovel=eq.${encodeURIComponent(chave)}&limit=1`).then(r => (r && r[0] && r[0].captadores) || null).catch(() => undefined),
       ]);
+      const anexos = await db.get('nido_anexos', `?select=caminho,origem,chave,tipo,descricao,nome_arquivo,data_inclusao,situacao,protegido,tamanho&chave_imovel=eq.${encodeURIComponent(chave)}&order=data_inclusao.desc`).catch(() => undefined);
       const chavesProp = [...new Set((props || []).map(p => p.chave_pessoa_fj).filter(Boolean))];
       const proponentes = chavesProp.length ? await db.get('nido_pessoas', `?select=${COLS_P}&chave_pessoa_fj=in.(${chavesProp.map(c => '"' + c + '"').join(',')})`) : [];
       const nomeDe = c => { const p = (proponentes || []).find(x => x.chave_pessoa_fj === c); return p ? esc(p.nome) + ' <small style="color:var(--muted)">' + docMask(p.cpf_cnpj) + '</small>' : '<small style="color:var(--muted)">' + esc(c || '—') + '</small>'; };
@@ -191,6 +214,7 @@
         secao('Características e valores pedidos', grade(i, ['area_util_construida', 'area_total_terreno', 'dormitorio', 'suite', 'vaga', 'banheiro', 'sala', 'disponivel_venda', 'valor_venda', 'disponivel_locacao', 'valor_locacao', 'valor_condominio', 'valor_iptu', 'exclusividade', 'placa', 'contribuinte', 'matricula', 'registro'])) +
         secao('Captação', capt ? `<div style="font-size:14px"><strong>${esc(capt)}</strong></div><div style="font-size:12px;color:var(--muted);margin-top:4px">Captador (angariador) registrado no Nido, com a equipe da época.</div>`
           : `<div style="font-size:13px;color:var(--muted)">${capt === undefined ? 'Captadores ainda não carregados no acervo.' : 'Sem captador registrado no Nido.'}</div>`) +
+        secao(`Documentos${anexos ? ' (' + anexos.length + ')' : ''}`, docsHTML(anexos)) +
         secao('Proprietário', pessoaHTML(prop)) +
         secao(`Propostas (${(props || []).length})`, tabela(['Data', 'Tipo', 'Negócio', 'Proponente', 'Valor', 'Situação', 'Encerrada em', 'Motivo'], props || [], p =>
           `<tr><td style="white-space:nowrap">${fmtData(p.data_cadastro)}</td><td>${esc(p.tipo_proposta || '')}</td><td>${esc(p.tipo_negocio || '')}</td><td>${nomeDe(p.chave_pessoa_fj)}</td><td style="white-space:nowrap">${fmtVal(p.valor_atual_proposta || p.valor_proposta)}</td><td>${esc(p.situacao || '')}${p.detalhe_situacao ? '<br><small>' + esc(p.detalhe_situacao) + '</small>' : ''}</td><td style="white-space:nowrap">${fmtData(p.data_encerramento)}</td><td><small>${esc(p.motivo_recusa || '')}</small></td></tr>`)) +
@@ -200,5 +224,5 @@
     } catch (e) { mb.innerHTML = `<span style="color:#dc2626">Erro: ${esc(e.message)}</span>`; }
   }
 
-  window.AcervoNido = { abrir, buscar, abrirFicha };
+  window.AcervoNido = { abrir, buscar, abrirFicha, abrirDoc };
 })();
