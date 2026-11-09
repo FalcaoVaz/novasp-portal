@@ -11,8 +11,30 @@ const _BCB_SERIES = {
   igpm:  '189',    // IGP-M - variação % mensal
   inpc:  '188',    // INPC - variação % mensal
   selic: '4390',   // ⚠️ SELIC acumulada NO MÊS em % — 4189 é % a.a. (Meta), NÃO usar
-  tr:    '226'     // TR - variação % mensal
+  tr:    '226',    // TR - variação % mensal
+  taxalegal: '29543' // Taxa legal (Lei 14.905/2024, art. 406 CC) - % ao mês, desde 08/2024
 };
+
+// Juros pela TAXA LEGAL (Lei 14.905/2024), como no painel da Dra. Fernanda (09/11/2026): juros simples, mês a mês,
+// proporcionais aos dias corridos no mês de início (a partir do dia seguinte) e no de fim; antes de 09/2024, 1% ao mês
+// (art. 406 CC, redação anterior). Mês ainda sem taxa publicada: repete a última conhecida e avisa.
+function _jurosTaxaLegal(inicio, fim, serieTL) {
+  if (!inicio || inicio >= fim) return { pct: 0, avisos: [] };
+  const tl = {}; (serieTL || []).forEach(x => { const [d, m, y] = x.data.split('/'); tl[`${y}-${m}`] = x.valor; });
+  const ult = Object.keys(tl).sort().pop();
+  const ym = s => s.slice(0, 7), soma = (k, n) => { let [y, m] = k.split('-').map(Number); m += n; while (m > 12) { m -= 12; y++; } return `${y}-${String(m).padStart(2, '0')}`; };
+  const diasMes = k => { const [y, m] = k.split('-').map(Number); return new Date(y, m, 0).getDate(); };
+  let total = 0, m = ym(inicio); const mf = ym(fim), avisos = [];
+  while (m <= mf) {
+    const dm = diasMes(m), d0 = m === ym(inicio) ? +inicio.slice(8, 10) : 0, d1 = m === mf ? +fim.slice(8, 10) : dm, dias = Math.max(0, d1 - d0);
+    let taxa;
+    if (m < '2024-09') taxa = 1;
+    else if (tl[m] != null) taxa = tl[m];
+    else { taxa = ult ? tl[ult] : 1; avisos.push(`Taxa legal de ${m.split('-').reverse().join('/')} ainda não publicada: repetida a de ${ult ? ult.split('-').reverse().join('/') : '—'}.`); }
+    total += taxa * dias / dm; m = soma(m, 1);
+  }
+  return { pct: total, avisos };
+}
 
 // EC 113/2021 — a partir de 09/12/2021 a Selic substitui IPCA-E + juros
 // nas dívidas da Fazenda Pública. A Tabela Prática TJSP segue essa regra.
@@ -174,9 +196,11 @@ async function calcularCorrecao() {
   if (indice === 'tjsp') seriesPrecisa.push('ipcae','selic');
   else if (['ipca','ipcae','igpm','inpc','selic','tr'].includes(indice)) seriesPrecisa.push(indice);
 
+  if (jurosTipo === 'taxa_legal' && dtFim >= '2024-09-01') seriesPrecisa.push('taxalegal');
   for (const ch of seriesPrecisa) {
     try {
-      const s = await _buscarSerieCoberta(ch, dtIniMin, dtFim);
+      const s = ch === 'taxalegal' ? await _buscarSerieBCB(_BCB_SERIES.taxalegal, dtIniMin > '2024-08-01' ? dtIniMin : '2024-08-01', dtFim)
+                                   : await _buscarSerieCoberta(ch, dtIniMin, dtFim);
       if (!s.length) {
         status.textContent = `⚠️ BCB não devolveu dados de ${_LABELS_INDICE[ch]||ch}. Tente outro índice ou "manual".`;
         return;
@@ -210,6 +234,8 @@ async function calcularCorrecao() {
   }
 
   // ── Calcula cada parcela individualmente
+  const avisosJuros = new Set();
+  const jurosRotulo = jurosTipo === 'taxa_legal' ? 'taxa legal, Lei 14.905/2024; 1% a.m. antes de 09/2024' : `${jurosPct.toLocaleString('pt-BR')}% a.m., ${jurosTipo}`;
   const detalhes = parcelas.map(p => {
     const meses = _mesesEntre(p.data, dtFim);
     let taxaCorrecao = 0;
@@ -224,6 +250,12 @@ async function calcularCorrecao() {
       taxaCorrecao = r.taxa; itens = r.itens;
     }
     const valorCorrigido = p.valor * (1 + taxaCorrecao);
+    if (jurosTipo === 'taxa_legal') {
+      const jl = _jurosTaxaLegal(p.data, dtFim, seriesFetch.taxalegal);
+      jl.avisos.forEach(a => avisosJuros.add(a));
+      const juros = valorCorrigido * jl.pct / 100;
+      return { valor: p.valor, data: p.data, nome: p.nome || '', meses, taxaCorrecao, valorCorrigido, juros, jurosPctPeriodo: jl.pct, subtotal: valorCorrigido + juros, serieItens: itens };
+    }
     const juros = (jurosTipo === 'composto')
       ? valorCorrigido * (Math.pow(1 + jurosPct/100, meses) - 1)
       : valorCorrigido * (jurosPct/100) * meses;
@@ -247,7 +279,7 @@ async function calcularCorrecao() {
   _calcUltimoResultado = {
     parcelas, dtFim, indice,
     indice_manual_pct: (indice==='manual') ? manualTaxa*100 : null,
-    jurosPct, jurosTipo, multaPct, honorPct,
+    jurosPct, jurosTipo, jurosRotulo, multaPct, honorPct,
     detalhes,
     somaOriginal, somaCorrigido, somaJuros, multa, honor, total,
     processoId: document.getElementById('calc-corr-processo')?.value || null,
@@ -299,7 +331,7 @@ async function calcularCorrecao() {
     { rot:'(+) Correção monetária',      v: somaCorrigido - somaOriginal,
         sub: `${_LABELS_INDICE[indice]}` },
     { rot:'= Valor corrigido',           v: somaCorrigido, cor:'#0f766e', bold:true },
-    { rot:`(+) Juros de mora (${jurosPct.toLocaleString('pt-BR')}% a.m., ${jurosTipo})`, v: somaJuros },
+    { rot:`(+) Juros de mora (${jurosRotulo})`, v: somaJuros, sub: [...avisosJuros].join(' ') },
     { rot:`(+) Multa (${multaPct.toLocaleString('pt-BR')}%)`, v: multa },
     { rot:`(+) Honorários (${honorPct.toLocaleString('pt-BR')}%)`, v: honor },
     { rot:'TOTAL ATUALIZADO', v: total, cor:'#dc2626', bold:true, big:true }
@@ -351,7 +383,7 @@ function copiarResultadoCalc() {
   }
   txt += `Soma original: R$ ${_calcFmtBR(r.somaOriginal)}\n`;
   txt += `Valor corrigido: R$ ${_calcFmtBR(r.somaCorrigido)}\n`;
-  txt += `Juros ${r.jurosPct}% a.m. (${r.jurosTipo}): R$ ${_calcFmtBR(r.somaJuros)}\n`;
+  txt += `Juros (${r.jurosRotulo || r.jurosPct + '% a.m., ' + r.jurosTipo}): R$ ${_calcFmtBR(r.somaJuros)}\n`;
   txt += `Multa ${r.multaPct}%: R$ ${_calcFmtBR(r.multa)}\n`;
   txt += `Honorários ${r.honorPct}%: R$ ${_calcFmtBR(r.honor)}\n`;
   txt += `TOTAL: R$ ${_calcFmtBR(r.total)}\n`;
@@ -432,7 +464,7 @@ function gerarPDFCalculo() {
   <div class="meta">
     <div>${periodo}</div>
     <div>Índice de correção: <b>${_LABELS_INDICE[r.indice]}</b></div>
-    <div>Juros de mora: <b>${r.jurosPct.toLocaleString('pt-BR')}% ao mês (${r.jurosTipo})</b></div>
+    <div>Juros de mora: <b>${r.jurosRotulo || (r.jurosPct.toLocaleString('pt-BR') + '% ao mês (' + r.jurosTipo + ')')}</b></div>
     ${r.multaPct ? `<div>Multa contratual: <b>${r.multaPct.toLocaleString('pt-BR')}%</b></div>` : ''}
     ${r.honorPct ? `<div>Honorários advocatícios: <b>${r.honorPct.toLocaleString('pt-BR')}%</b></div>` : ''}
   </div>
@@ -444,7 +476,7 @@ function gerarPDFCalculo() {
     ${linhaDeriv(multiplas ? 'Soma dos valores originais' : 'Valor original', r.somaOriginal)}
     ${linhaDeriv('(+) Correção monetária', r.somaCorrigido - r.somaOriginal, { sub: _LABELS_INDICE[r.indice] })}
     ${linhaDeriv('= Valor corrigido', r.somaCorrigido, { cor:'#0f766e', bold:true })}
-    ${linhaDeriv(`(+) Juros de mora (${r.jurosPct.toLocaleString('pt-BR')}% a.m., ${r.jurosTipo})`, r.somaJuros)}
+    ${linhaDeriv(`(+) Juros de mora (${r.jurosRotulo || (r.jurosPct.toLocaleString('pt-BR') + '% a.m., ' + r.jurosTipo)})`, r.somaJuros)}
     ${linhaDeriv(`(+) Multa (${r.multaPct.toLocaleString('pt-BR')}%)`, r.multa)}
     ${linhaDeriv(`(+) Honorários (${r.honorPct.toLocaleString('pt-BR')}%)`, r.honor)}
     ${linhaDeriv('TOTAL ATUALIZADO', r.total, { cor:'#dc2626', bold:true, big:true })}

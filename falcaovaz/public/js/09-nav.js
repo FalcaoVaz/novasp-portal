@@ -19,6 +19,8 @@ function goTo(page) {
   if (page === 'para-revisar') carregarParaRevisar();
   if (page === 'planilhas')    { if (typeof initCalculadora === 'function') initCalculadora(); }
   if (page === 'acordos')      carregarAcordos();
+  if (page === 'indicadores')  carregarIndicadores();
+  if (page === 'cobrancas')    carregarCobrancas();
 
   const titles = {
     dashboard:'Dashboard',
@@ -28,7 +30,7 @@ function goTo(page) {
     documentos:'Documentos', 'meus-docs':'Meus Documentos',
     chamados:'Chamados Jurídicos', usuarios:'Usuários & Tokens',
     'para-revisar':'Para Revisar', 'calculo-prazos':'Cálculo de Prazos',
-    acordos:'Acordos Extrajudiciais',
+    acordos:'Acordos Extrajudiciais', indicadores:'Indicadores do Jurídico', cobrancas:'Cobranças extrajudiciais',
     notificacoes:'Notificações'
   };
   document.getElementById('topbar-title').textContent = titles[page] || page;

@@ -105,9 +105,12 @@
     <div class="nav-item" id="nav-acordos-jur" style="display:none" onclick="goTo('acordos')">
       <span class="icon">🤝</span> Acordos Extrajudiciais
     </div>
-    <!-- Relatórios do jurídico: painel da Dra. Fernanda (artefato do Claude, dados próprios; 09/11/2026). Abre em outra aba. -->
-    <div class="nav-item" id="nav-relatorios-jur" style="display:none" onclick="window.open('https://claude.ai/artifact/Cr8f3H8cNQaZK6SZnpDPaK','_blank','noopener')" title="Painel de acompanhamento do jurídico (abre em outra aba; exige login no Claude da empresa)">
-      <span class="icon">📊</span> Relatórios
+    <!-- Indicadores e cobranças: trazidos do painel da Dra. Fernanda (09/11/2026), js/18-indicadores.js -->
+    <div class="nav-item" id="nav-relatorios-jur" style="display:none" onclick="goTo('indicadores')">
+      <span class="icon">📊</span> Indicadores
+    </div>
+    <div class="nav-item" id="nav-cobrancas-jur" style="display:none" onclick="goTo('cobrancas')">
+      <span class="icon">📋</span> Cobranças extrajudiciais
     </div>
 
     <!-- IA & DOCUMENTOS — todos os níveis -->
@@ -1028,6 +1031,7 @@
                   <select id="calc-corr-juros-tipo">
                     <option value="simples">Simples (padrão STJ)</option>
                     <option value="composto">Composto</option>
+                    <option value="taxa_legal">Taxa legal (Lei 14.905/2024) — ignora o % ao lado</option>
                   </select>
                 </div>
               </div>
@@ -1115,6 +1119,27 @@
       </div>
 
       <!-- ══ ACORDOS EXTRAJUDICIAIS (Jurídico) ══ -->
+      <div class="page" id="page-indicadores">
+        <div class="page-header flex justify-between items-center">
+          <div>
+            <h1>Indicadores do Jurídico</h1>
+            <p>Processos parados, prazos, êxito, custas e petições · <a href="https://claude.ai/artifact/Cr8f3H8cNQaZK6SZnpDPaK" target="_blank" rel="noopener">painel original da Dra. Fernanda</a></p>
+          </div>
+          <button class="btn btn-secondary" onclick="carregarIndicadores()">Atualizar</button>
+        </div>
+        <div id="ind-conteudo"></div>
+      </div>
+
+      <div class="page" id="page-cobrancas">
+        <div class="page-header flex justify-between items-center">
+          <div>
+            <h1>Cobranças extrajudiciais</h1>
+            <p>Contratos de locação em cobrança da reunião mensal, com dias em aberto, status e observação</p>
+          </div>
+        </div>
+        <div id="cob-conteudo"></div>
+      </div>
+
       <div class="page" id="page-acordos">
         <div class="page-header flex justify-between items-center">
           <div>
@@ -2131,21 +2156,22 @@
 <!-- Cachebuster: bump pra forcar pull do JS novo apos cada deploy -->
 <script src="js/00-config.js?v=20260805b"></script>
 <script src="js/01-auth.js?v=20260805b"></script>
-<script src="js/02-init.js?v=20261109a"></script>
+<script src="js/02-init.js?v=20261109b"></script>
 <script src="js/03-planilhas.js?v=20260805b"></script>
 <script src="js/04-processos.js?v=20260805b"></script>
 <script src="js/05-email.js?v=20260805b"></script>
 <script src="js/06-listas.js?v=20261016a"></script>
 <script src="js/07-meus-docs.js?v=20260805b"></script>
 <script src="js/08-chamados.js?v=20260805b"></script>
-<script src="js/09-nav.js?v=20260805b"></script>
+<script src="js/09-nav.js?v=20261109a"></script>
 <script src="js/10-dashboard.js?v=20261016a"></script>
 <script src="js/11-documentos.js?v=20260805b"></script>
 <script src="js/12-uploads.js?v=20260805b"></script>
 <script src="js/13-gerar-doc.js?v=20260805b"></script>
 <script src="js/14-modais.js?v=20260805b"></script>
 <script src="js/15-acordos.js?v=20260805b"></script>
-<script src="js/16-calc-correcao.js?v=20260805b"></script>
+<script src="js/16-calc-correcao.js?v=20261109a"></script>
+<script src="js/18-indicadores.js?v=20261109a"></script>
 <script src="js/17-relatorio-andamentos.js?v=20261016a"></script>
 </body>
 </html>
