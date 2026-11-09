@@ -63,4 +63,37 @@ create policy bussola_blobs_aud_inserir on bussola_blobs for insert to authentic
 create policy bussola_blobs_aud_ler on bussola_blobs for select to authenticated
   using (loja = 'radar-auditoria' and bussola_eh_admin());
 
-select 'ok — Bússola NSP (teste): bussola_acesso + bussola_blobs' as status;
+-- REFERÊNCIAS DOS ACERVOS POR BAIRRO, para a Bússola (09/11/2026):
+--   aluguel_fechado = aluguéis FECHADOS pela NovaSP no Nido (valor ÷ área útil), últimos 3 anos;
+--   venda_itbi_apto = preço PAGO por m² de apartamento (ITBI da Prefeitura, guias), últimos 2 anos.
+-- Só devolve números agregados (mediana, quartis, quantidade e período): nada de endereço, pessoa ou imóvel.
+create or replace function bussola_referencias(p_bairro text) returns json
+language plpgsql stable security definer set search_path = public, extensions as $$
+declare n text := upper(unaccent(trim(regexp_replace(coalesce(p_bairro, ''), '\(.*\)', '', 'g')))); r json;
+begin
+  if not bussola_pode() then raise exception 'sem acesso à Bússola'; end if;
+  if n = '' then return null; end if;
+  with loc as (
+    select f.data_fechamento d, f.valor_fechamento / i.area_util_construida m2
+      from nido_fechamentos f join nido_imoveis i using (chave_imovel)
+     where f.negocio ilike 'loca%' and f.situacao = 'Fechado' and i.area_util_construida > 15 and f.valor_fechamento between 300 and 60000
+       and f.data_fechamento >= current_date - 1095
+       and upper(unaccent(trim(regexp_replace(i.bairro, '\(.*\)', '', 'g')))) = n),
+  itbi as (
+    select p.data d, p.valor / p.area_constr m2 from aval_itbi_painel p
+     where p.bairro_norm = n and p.natureza ilike '%compra%' and p.uso ~* 'APARTAMENTO' and p.valor > 0 and p.area_constr > 15
+       and p.valor / p.area_constr between 1500 and 40000 and p.data >= current_date - 730)
+  select json_build_object('bairro', n,
+    'aluguel_fechado', (select json_build_object('n', count(*), 'mediana_m2', round(percentile_cont(.5) within group (order by m2)::numeric, 2),
+        'p25', round(percentile_cont(.25) within group (order by m2)::numeric, 2), 'p75', round(percentile_cont(.75) within group (order by m2)::numeric, 2),
+        'de', min(d), 'ate', max(d), 'confiavel', count(*) >= 10, 'fonte', 'Aluguéis fechados pela Nova São Paulo (acervo Nido), últimos 3 anos') from loc),
+    'venda_itbi_apto', (select json_build_object('n', count(*), 'mediana_m2', round(percentile_cont(.5) within group (order by m2)::numeric, 0),
+        'p25', round(percentile_cont(.25) within group (order by m2)::numeric, 0), 'p75', round(percentile_cont(.75) within group (order by m2)::numeric, 0),
+        'de', min(d), 'ate', max(d), 'confiavel', count(*) >= 30, 'fonte', 'ITBI da Prefeitura de São Paulo (valor pago), apartamentos, últimos 2 anos') from itbi))
+  into r;
+  return r;
+end $$;
+revoke all on function bussola_referencias(text) from public, anon;
+grant execute on function bussola_referencias(text) to authenticated;
+
+select 'ok — Bússola NSP (teste): bussola_acesso + bussola_blobs + bussola_referencias' as status;

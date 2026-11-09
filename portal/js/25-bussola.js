@@ -30,6 +30,15 @@
         + 'style="width:100%;height:calc(100vh - 150px);min-height:560px;border:1px solid var(--borda,#e2e8f0);border-radius:12px;background:#fff"></iframe>';
     }
   }
+  // referências dos acervos por bairro (aluguel fechado NSP + ITBI pago), para o código da Bússola usar:
+  //   const ref = await window.parent.BussolaPortal?.referencias('Saúde');
+  async function referencias(bairro) {
+    if (!(await checar())) return null;
+    const h = hdr(); delete h.Prefer;
+    const r = await fetch(SBU + '/rest/v1/rpc/bussola_referencias', { method: 'POST', headers: h, body: JSON.stringify({ p_bairro: String(bairro || '') }) });
+    if (!r.ok) return null;
+    return r.json();
+  }
   function recarregar() { const f = document.getElementById('bussola-frame'); if (f) f.src = 'bussola/index.html?t=' + Date.now(); }
-  window.BussolaPortal = { checar, abrir, recarregar, mostrarCard, pode: () => !!_pode };
+  window.BussolaPortal = { checar, abrir, recarregar, mostrarCard, referencias, pode: () => !!_pode };
 })();
