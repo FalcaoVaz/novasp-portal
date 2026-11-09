@@ -24,8 +24,10 @@ export function getStore({ name }) {
       return rows[0].valor;
     },
     async set(chave, texto) {
-      await rest('bussola_blobs?on_conflict=loja,chave', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-        body: JSON.stringify({ loja, chave, valor: String(texto), atualizado_em: new Date().toISOString() }) });
+      const corpo = JSON.stringify({ loja, chave, valor: String(texto), atualizado_em: new Date().toISOString() });
+      // auditoria só aceita inclusão (chave sempre nova); o resto grava ou substitui
+      if (loja === 'radar-auditoria') return void await rest('bussola_blobs', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: corpo });
+      await rest('bussola_blobs?on_conflict=loja,chave', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: corpo });
     },
     async setJSON(chave, obj) { return this.set(chave, JSON.stringify(obj)); },
     async delete(chave) { await rest(`bussola_blobs?loja=eq.${enc(loja)}&chave=eq.${enc(chave)}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } }); },
