@@ -185,11 +185,15 @@ async function indApagar(tabela, id) {
 
 // ═══════════════ COBRANÇAS EXTRAJUDICIAIS (planilha da reunião mensal) ═══════════════
 const COB_ST = ['Cobrança / Pagamento', 'Acordo', 'Sem atualização', 'Ação / Despejo', 'Procuração', 'Administrativo', 'Bonificação'];
-let _cob = [], _cobQ = '', _cobSt = '';
+let _cob = [], _cobQ = '', _cobSt = '', _cobAcordos = [];
+// liga a cobrança ao acordo já cadastrado em Acordos Extrajudiciais (mesmo número de contrato, sem zeros à esquerda)
+const cobNum = x => String(x || '').replace(/\D/g, '').replace(/^0+/, '');
+const cobAcordo = c => _cobAcordos.find(a => cobNum(a.contrato) && cobNum(a.contrato) === cobNum(c.contrato));
 async function carregarCobrancas() {
   const box = document.getElementById('cob-conteudo'); if (!box) return;
   box.innerHTML = '<div class="card"><div class="card-body text-gray">Carregando…</div></div>';
-  _cob = await db.get('juridico_cobrancas', '?ativo=eq.true&select=*&order=vencimento.asc.nullslast');
+  [_cob, _cobAcordos] = await Promise.all([db.get('juridico_cobrancas', '?ativo=eq.true&select=*&order=vencimento.asc.nullslast'),
+    db.get('acordos_extrajudiciais', '?select=id,contrato,status,parcelas_pagas,parcelas_total')]);
   if (db.lastError && /juridico_cobrancas/.test(db.lastError)) { box.innerHTML = '<div class="card"><div class="card-body" style="color:#b91c1c">Falta rodar o SQL sql/2026-11-09-painel-fernanda.sql.</div></div>'; return; }
   renderCobrancas();
 }
@@ -204,12 +208,14 @@ function renderCobrancas() {
       <input placeholder="Buscar contrato, locador, locatário ou observação" value="${indEsc(_cobQ)}" oninput="_cobQ=this.value;renderCobrancas()" style="flex:1;min-width:240px;padding:7px 10px">
       <button class="btn btn-secondary" onclick="document.getElementById('cob-imp').style.display='block'">Atualizar com a planilha do mês</button></div>
       <div id="cob-imp" class="card-body" style="display:none;border-top:1px solid var(--gray-100)">
+        <div style="font-size:12px;color:var(--gray-500);margin-bottom:6px">Esta lista é a etapa de cada contrato na cobrança. O acordo em si (parcelas, valores, pagamentos) continua em <a href="#" onclick="event.preventDefault();goTo('acordos')">Acordos Extrajudiciais</a>, ligado pelo nº do contrato.</div>
         <div style="font-size:12px;color:var(--gray-500);margin-bottom:6px">Copie da planilha da reunião as linhas (contrato, vencimento, status, locador, locatário, observação) e cole aqui. Contratos novos entram; os que já existem são atualizados; os que não vierem na planilha saem da lista (ficam guardados).</div>
         <textarea id="cob-txt" rows="6" style="width:100%;font-family:monospace;font-size:12px"></textarea>
         <div style="margin-top:6px;display:flex;gap:8px;align-items:center"><button class="btn btn-primary" onclick="cobImportar()">Atualizar</button><span id="cob-msg" style="font-size:12px"></span></div></div></div>
     <div class="card"><div class="table-wrap"><table><thead><tr><th>Contrato</th><th>Vencimento</th><th>Em aberto</th><th>Status</th><th>Locador × Locatário</th><th>Observação</th></tr></thead><tbody>
       ${lista.map(c => { const d = c.vencimento ? indDias(c.vencimento, hoje) : null; return `<tr>
-        <td><b>${indEsc(c.contrato)}</b></td><td>${indBr(c.vencimento)}</td>
+        <td><b>${indEsc(c.contrato)}</b>${(a => a ? `<br><a href="#" onclick="event.preventDefault();goTo('acordos')" style="font-size:11px;color:#047857" title="Acordo cadastrado em Acordos Extrajudiciais">acordo ${a.status === 'concluido' ? 'concluído' : (a.parcelas_pagas || 0) + '/' + (a.parcelas_total || '?') + ' pagas'}</a>`
+            : c.status === 'Acordo' ? '<br><a href="#" onclick="event.preventDefault();goTo(\'acordos\')" style="font-size:11px;color:#b45309" title="Status Acordo, mas não há acordo com este nº de contrato em Acordos Extrajudiciais">acordo não cadastrado</a>' : '')(cobAcordo(c))}</td><td>${indBr(c.vencimento)}</td>
         <td style="color:${d > 90 ? '#b91c1c' : d > 30 ? '#b45309' : 'inherit'};font-weight:600">${d == null ? '—' : d + ' dia(s)'}</td>
         <td><select onchange="cobSalvar('${indEsc(c.contrato)}',{status:this.value})" style="padding:4px 6px;font-size:12px">${COB_ST.concat(COB_ST.includes(c.status) || !c.status ? [] : [c.status]).map(s => `<option ${c.status === s ? 'selected' : ''}>${indEsc(s)}</option>`).join('')}</select></td>
         <td style="font-size:12px">${indEsc(c.locador || '')}<br><small style="color:var(--gray-500)">${indEsc(c.locatario || '')}</small></td>
