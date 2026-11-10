@@ -701,7 +701,9 @@ const PLANILHA_VENDAS_IMPORTADORES = ['Anderson','Gabriela','Thais','Camille','L
 // Abre o card "Pré-análise de certidões e matrícula" (frente da Renata), ainda em construção.
 const PILOTO_CLAUDE_EMAILS = ['rodrigo@novasaopaulo.com.br','anderson.lucchi@novasaopaulo.com.br','cpd@novasaopaulo.com.br',
   'thais.barbosa@novasaopaulo.com.br','financeiro@novasaopaulo.com.br','ti@novasaopaulo.com.br',
-  'fernanda.araujo@novasaopaulo.com.br','renata@novasaopaulo.com.br','vitorcordeiro@novasaopaulo.com.br'];
+  'fernanda.araujo@novasaopaulo.com.br','renata@novasaopaulo.com.br','vitorcordeiro@novasaopaulo.com.br',
+  // gerentes de vendas na pré-análise (10/11/2026): Christiane, Emilia e Felippe (Renata já estava)
+  'gerenciavendas@novasaopaulo.com.br','emilia.vitoria@novasaopaulo.com.br','felippe.lemos@novasaopaulo.com.br'];
 function ehParticipantePiloto(){
   if (!CUR) return false;
   if (CUR.admin) return true;
