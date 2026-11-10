@@ -143,6 +143,7 @@
         <label style="font-size:13px"><input type="checkbox" id="pa-ver-arq" onchange="PreAnalise.filtrar()"> arquivadas</label>
         ${window.PAAcomp ? `<label style="font-size:13px"><input type="checkbox" id="pa-quadro" onchange="try{localStorage.setItem('pa_quadro',this.checked?'1':'')}catch(_){};PreAnalise.filtrar()" ${(() => { try { return localStorage.getItem('pa_quadro') ? 'checked' : ''; } catch (_) { return ''; } })()}> quadro por etapas</label>` : ''}
         <button class="btn btn-o" onclick="PreAnalise.semana()">📊 Uso da semana</button>
+        ${window.PACompr ? '<button class="btn btn-o" onclick="PACompr.modelos()">📚 Modelos</button>' : ''}
         <button class="btn btn-p" onclick="PreAnalise.nova()">+ Nova venda</button>
       </div></div>
       <div id="pa-nova"></div><div id="pa-semana"></div>
@@ -298,6 +299,8 @@
     if (!_venda) { abrir(); return; }
     let ac = null, acErro = '';
     if (window.PAAcomp) { try { ac = await PAAcomp.carregar(_venda, _docs, _execs); } catch (e) { acErro = e.message; } }
+    let cp = false, cpErro = '';   // compromisso de venda e compra (js/26-preanalise-compromisso.js, 10/11/2026)
+    if (window.PACompr && window.PAAcomp) { try { await PACompr.carregar(_venda, _docs, _execs); cp = true; } catch (e) { cpErro = e.message; } }
     const v = _venda, ult = _execs.find(x => x.situacao === 'ok');
     _pz = (v.prazos || []).map(x => Object.assign({}, x));
     const conferida = ult && v.leitura_conferida_exec === ult.id;
@@ -317,6 +320,7 @@
       ${ac ? PAAcomp.etapasHTML() : acErro ? `<div class="card" style="margin-bottom:12px"><div class="cb" style="font-size:13px;color:#b45309">Acompanhamento (etapas, protocolos, pós-venda) indisponível: ${esc(acErro)}. O SQL 2026-11-06-preanalise-acompanhamento.sql já rodou?</div></div>` : ''}
       <div id="pa-prazos">${prazosHTML()}</div>
       ${ac ? PAAcomp.emissaoHTML() : ''}
+      ${cp || cpErro ? PACompr.cardHTML(cpErro) : ''}
       <details class="card" style="margin-bottom:12px" ${_docs.length ? '' : 'open'}><summary class="cb" style="cursor:pointer;font-weight:700">Documentos (PDF) · ${_docs.length}</summary><div class="cb" style="padding-top:0">
         ${_docs.length ? `<table style="width:100%;border-collapse:collapse;font-size:13px"><tbody>${_docs.map(d => `<tr style="border-top:1px solid var(--borda,#e2e8f0)">
           <td style="padding:5px 6px;white-space:nowrap">${TIPOS[d.tipo] || d.tipo}</td><td style="padding:5px 6px">${esc(d.nome_arquivo)}</td>
@@ -487,7 +491,7 @@
   }
   async function excluir() {
     if (!confirm(`Excluir a venda "${_venda.titulo}", os PDFs e as análises? Não dá para desfazer.`)) return;
-    try { await apagarPdfs(_docs.map(d => d.caminho).concat(window.PAAcomp ? PAAcomp.caminhosAnexos() : [])); await db.del('preanalise_venda', _venda.id); aviso('Venda excluída.', 'ok'); abrir(); } catch (e) { aviso('Erro: ' + e.message, 'err'); }
+    try { await apagarPdfs(_docs.map(d => d.caminho).concat(window.PAAcomp ? PAAcomp.caminhosAnexos() : []).concat(window.PACompr ? PACompr.caminhosAnexos() : [])); await db.del('preanalise_venda', _venda.id); aviso('Venda excluída.', 'ok'); abrir(); } catch (e) { aviso('Erro: ' + e.message, 'err'); }
   }
   async function subir() {
     const inp = document.getElementById('pa-arq'), tipo = (document.getElementById('pa-tipo') || {}).value || 'outro', st = document.getElementById('pa-sub');

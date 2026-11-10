@@ -775,7 +775,7 @@
   }
   function caminhosAnexos() { if (!C) return []; return C.protos.flatMap(p => (p.anexos || []).map(a => a.caminho)).concat(((C.v.pos_venda || {}).anexos || []).map(a => a.caminho)); }
 
-  window.PAAcomp = { VERSOES, usaBanco, prazosBancoDe, cartorioTitulo, carregar, etapas, etapasHTML, emissaoHTML, protocolosHTML, posVendaHTML, timelineHTML, carregarPainel, alertasPainel, quadroHTML, caminhosAnexos,
+  window.PAAcomp = { VERSOES, PTIPO, PGRUPOS, MODELO, usaBanco, prazosBancoDe, cartorioTitulo, carregar, etapas, etapasHTML, emissaoHTML, protocolosHTML, posVendaHTML, timelineHTML, carregarPainel, alertasPainel, quadroHTML, caminhosAnexos,
     ir, salvarEtapas, salvarMarcos, novoProto, editarProto, fecharProto, gravarProto, excluirProto, statusProto, anexarProto, verAnexo, docPdf, docWord,
     addLinha, tirarLinha, salvarPv, gerarRecibo, anexarPv, arquivar, reabrir,
     _t: { extenso, reaisExtenso, mesmaPessoa, dataExtenso, numero, cartorioTitulo, preencherXml, prazosBanco, valoresDoc, docxPreenchido, pdfDoModelo, _ctx: c => { C = c; } } };
