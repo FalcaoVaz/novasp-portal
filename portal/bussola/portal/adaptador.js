@@ -21,6 +21,10 @@
       if (m && ROTAS[m[1]]) {
         var req = new Request(url.href, init || (typeof entrada === 'string' ? undefined : entrada));
         return import(new URL(ROTAS[m[1]], base).href).then(function (mod) { return mod.default(req); })
+          .then(function (resp) {   // anúncio lido: mostra as referências do bairro no quadro do portal (fora do código delas)
+            if (m[1] === 'ler-imovel') resp.clone().json().then(function (j) { var b = j && j.dados && j.dados.bairro; if (b) avisaBairro(b); }).catch(function () {});
+            return resp;
+          })
           .catch(function (e) { return new Response(JSON.stringify({ ok: false, erro: 'Falha na Bússola do portal: ' + e.message }), { status: 500, headers: { 'content-type': 'application/json' } }); });
       }
       if (url.pathname.indexOf(base.pathname + 'data/') === 0)
@@ -29,6 +33,9 @@
     return original(entrada, init);
   };
 
+  function avisaBairro(b) { try { var P = window.parent.BussolaPortal; if (P && P.verReferencias) P.verReferencias(b); } catch (_) {} }
+  // bairro digitado à mão no formulário de análise
+  document.addEventListener('change', function (e) { if (e.target && e.target.id === 'f-bairro' && e.target.value) avisaBairro(e.target.value); }, true);
   // fora do portal (link aberto direto) só funciona o link de análise compartilhada, que não precisa de login
   var noPortal = false; try { noPortal = window.parent !== window && !!(window.parent.BussolaPortal && window.parent.BussolaPortal.usuario()); } catch (_) {}
   document.documentElement.setAttribute('data-portal', noPortal ? 'sim' : 'nao');
