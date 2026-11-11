@@ -83,15 +83,16 @@
   // grupos do seletor "+ Novo" (recibo sai pelo Pós-venda)
   const PGRUPOS = [['Protocolos, autorizações e notificações', ['chaves', 'documentos', 'escritura', 'autorizacao', 'procuracao', 'notificacao']],
                    ['Declarações (modelo da NSP, preenchido)', ['atual_proprietario', 'chaves_proprietario', 'declaracao_uniao_estavel', 'declaracao_patrimonio']],
-                   ['Formulários da NSP (Word em branco)', ['proposta', 'exclusividade', 'corretagem', 'direito_preferencia', 'parceria_autonomo', 'parceria_pj']]];
+                   ['Contratos e formulários da NSP', ['exclusividade', 'corretagem', 'parceria_autonomo', 'parceria_pj', 'proposta', 'direito_preferencia']]];
   // modelos Word da NSP (pasta modelos-nsp/, vindos do pacote da Renata de 07/11). Campos {{...}} preenchidos no navegador.
   const MODELO = { chaves: 'NSP_Doc_chaves.docx', documentos: 'NSP_Doc_documentos.docx', atual_proprietario: 'NSP_Doc_atual_proprietario.docx',
                    chaves_proprietario: 'NSP_Doc_chaves_proprietario.docx', declaracao_uniao_estavel: 'NSP_Doc_declaracao_uniao_estavel.docx',
                    declaracao_patrimonio: 'NSP_Doc_declaracao_patrimonio.docx', proposta: 'NSP_Doc_proposta.docx', exclusividade: 'NSP_Doc_exclusividade.docx',
                    corretagem: 'NSP_Doc_corretagem.docx', direito_preferencia: 'NSP_Doc_direito_preferencia.docx', parceria_autonomo: 'NSP_Doc_parceria_autonomo.docx',
                    parceria_pj: 'NSP_Doc_parceria_pj.docx' };
-  const EM_BRANCO = new Set(['proposta', 'exclusividade', 'corretagem', 'direito_preferencia', 'parceria_autonomo', 'parceria_pj']);
-  const MODELOS_V = '20261108';
+  // 10/11 (pacote da Renata): exclusividade, corretagem e parcerias ganharam campos (imóvel, vendedores/compradores, preço)
+  const EM_BRANCO = new Set(['proposta', 'direito_preferencia']);
+  const MODELOS_V = '20261111';
   const PST = { emitido: 'Emitido', assinado: 'Assinado / recebido', enviado: 'Enviado', recebido: 'Recebido pelo notificado', cumprido: 'Obrigação cumprida', descumprido: 'Obrigação descumprida', cancelado: 'Cancelado' };
   const PST_TIPO = { notificacao: ['emitido', 'enviado', 'recebido', 'cumprido', 'descumprido', 'cancelado'] };
   const pstDo = t => PST_TIPO[t] || ['emitido', 'assinado', 'cancelado'];
@@ -588,6 +589,7 @@
       declarante_qualificacao: dec, declarante_nome: dec.split(',')[0].trim(), declarante_cpf: cpf, declarante_estado_civil: p.para || '',
       apontamentos_certidoes: positivas.length ? positivas.map(c => `- ${nomeFonte(c.orgao)}, em nome de ${c.refere_a || '—'}: ${c.resumo || 'ver a certidão'}`).join('\n') : '(nenhum apontamento registrado)',
       gerente_responsavel: (v.responsaveis || {}).gerente || '', assistente_responsavel: (v.responsaveis || {}).assistente || '', corretor: (v.responsaveis || {}).corretor || '',
+      preco: (n => n == null ? '' : n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }))(numero(((v.minuta || {}).N || {}).preco)),
       data_proposta: (v.marcos || {}).proposta_enviada ? U().dia(v.marcos.proposta_enviada) : '', data_envio_banco: (v.marcos || {}).docs_banco ? U().dia(v.marcos.docs_banco) : ''
     };
   }

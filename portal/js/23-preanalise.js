@@ -344,6 +344,7 @@
       ${_execs[0] && _execs[0].situacao === 'erro' ? `<div class="card" style="margin-bottom:12px"><div class="cb" style="color:#dc2626;font-size:13px">A última análise falhou (${dt(_execs[0].iniciado_em)}): ${esc(_execs[0].erro)}</div></div>` : ''}
       ${ult ? conferenciaHTML(v, ult) : ''}
       <div id="pa-dossie">${ult ? dossieHTML(ult, v) : ''}</div>
+      ${cp ? PACompr.apontamentosHTML() : ''}
       ${ult ? `<details class="card" style="margin-bottom:12px" ${conferida ? 'open' : ''}><summary class="cb" style="cursor:pointer;font-weight:700">✉️ Mensagens de pendências</summary>
         <div class="cb" style="padding-top:0" id="pa-msgs">${mensagensHTML(ult, v)}</div></details>` : ''}
       ${v.encaminhado_juridico || v.revisao_status ? revisaoHTML(v) : ''}
@@ -597,6 +598,7 @@
       <div style="color:#64748b;margin-bottom:10px">${esc(v.titulo)}${v.matricula ? ' · matrícula ' + esc(v.matricula) : ''}${v.cartorio ? ' · ' + esc(v.cartorio) : ''} · Imobiliária Nova São Paulo · documento interno, contém dados pessoais · gerado em ${dt(new Date().toISOString())}</div>
       <div style="margin-bottom:10px;font-size:12px;line-height:1.5">
         <div><b>Leitura da matrícula:</b> ${conf ? `conferida por ${esc(v.leitura_conferida_por || '')} em ${dt(v.leitura_conferida_em)}${v.leitura_nota ? ' — correções: ' + esc(v.leitura_nota) : ''}` : '<b style="color:#b45309">AINDA NÃO CONFERIDA</b>'}</div>
+        ${window.PACompr ? PACompr.decisoesParecer() : ''}
         ${v.revisao_status ? `<div><b>Revisão jurídica:</b> ${esc(REV[v.revisao_status])} — ${esc(v.revisado_por || '')} em ${dt(v.revisado_em)}${v.revisao_nota ? ': ' + esc(v.revisao_nota) : ''}</div>` : v.encaminhado_juridico ? '<div><b>Revisão jurídica:</b> encaminhada, aguardando.</div>' : ''}
       </div>
       ${dossieHTML(ult, v).replace(/<details/g, '<details open')}</div>`;

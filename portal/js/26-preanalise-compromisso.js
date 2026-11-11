@@ -19,7 +19,7 @@
   const T = () => window.PAAcomp._t;
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const MAX = 20 * 1024 * 1024;
-  const MODELOS_V = '20261110';
+  const MODELOS_V = '20261111';
   const MODELO_ARQ = { modelo1: 'NSP_Modelo1_financiamento_FGTS_locatario.docx', modelo2: 'NSP_Modelo2_a_vista.docx',
                        modelo3: 'NSP_Modelo3_financiamento_FGTS_vendedor_PJ.docx', modelo4: 'NSP_Modelo4_a_vista_com_FGTS.docx' };
   const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
@@ -331,7 +331,7 @@
       s.onerror = () => { delete _libs[url]; err(new Error('não consegui carregar ' + global)); }; document.head.appendChild(s); }));
   }
   const JSZIP = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
-  async function preencherDocx(arquivo, val) {
+  async function preencherDocx(arquivo, val, aviso) {
     await lib(JSZIP, 'JSZip');
     const r = await fetch(`modelos-nsp/${arquivo}?v=${MODELOS_V}`); if (!r.ok) throw new Error('modelo não encontrado (' + r.status + ')');
     const zip = await window.JSZip.loadAsync(await r.arrayBuffer()), usados = new Set(), desc = new Set();
@@ -346,7 +346,7 @@
           const novo = prim.cloneNode(true); limparParagrafo(novo);
           const rr = doc.createElementNS(W, 'w:r'), rp = doc.createElementNS(W, 'w:rPr');
           poeNoRpr(doc, rp, 'b'); poeNoRpr(doc, rp, 'color', { val: 'C00000' }); poeNoRpr(doc, rp, 'sz', { val: '18' });
-          const te = doc.createElementNS(W, 'w:t'); te.setAttribute('xml:space', 'preserve'); te.textContent = AVISO;
+          const te = doc.createElementNS(W, 'w:t'); te.setAttribute('xml:space', 'preserve'); te.textContent = aviso || AVISO;
           rr.appendChild(rp); rr.appendChild(te); novo.appendChild(rr); body.insertBefore(novo, prim);
         }
       }
@@ -475,15 +475,21 @@
     const d = Object.assign({ minuta: S.M }, extra || {});
     await db.patch('preanalise_venda', S.v.id, d); Object.assign(S.v, d);
   }
-  function podeEmitir() {
-    if (typeof CUR === 'undefined' || !CUR) return false;
-    if (CUR.admin) return true;
-    const ger = typeof VENDAS_GERENTES !== 'undefined' ? VENDAS_GERENTES : [];
-    const n = String(CUR.nome || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-    return ger.some(g => n.includes(String(g).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()));
-  }
+  // pacote da Renata de 10/11: gerente, assistente e administrador emitem; só gerente e administrador decidem apontamentos
+  const semAc = x => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const ASSISTENTES = ['Leticia', 'Thais', 'Camille', 'Amanda', 'Karina', 'Juliana', 'Anderson'];
+  function ehDaLista(lista) { const n = semAc(typeof CUR !== 'undefined' && CUR ? CUR.nome : ''); return !!n && lista.some(g => n.includes(semAc(g))); }
+  const ehAdmin = () => typeof CUR !== 'undefined' && !!CUR && !!CUR.admin;
+  const ehGerente = () => ehAdmin() || ehDaLista(typeof VENDAS_GERENTES !== 'undefined' ? VENDAS_GERENTES : []);
+  const podeEmitir = () => ehGerente() || ehDaLista(ASSISTENTES);
+  const podeDecidir = () => ehGerente();
   const conferida = () => !!(S.ult && S.v.leitura_conferida_exec === S.ult.id);
-  const liberada = () => S.v.status === 'liberado' || ['aprovado', 'aprovado_ressalvas'].includes(S.v.revisao_status);
+  const liberadaPorDecisao = () => {
+    if (S.v.status !== 'ressalvas') return false;
+    const ress = ((((S.ult || {}).resultado || {}).decisao || {}).motivos || {}).ressalva || [], ap = apontamentos(), d = S.v.decisoes_apontamentos || {};
+    return ap.length > 0 && ress.every(t => /^Certid[ãa]o positiva/i.test(t)) && ap.every(a => (d[a.id] || {}).decisao === 'seguir');
+  };
+  const liberada = () => S.v.status === 'liberado' || ['aprovado', 'aprovado_ressalvas'].includes(S.v.revisao_status) || liberadaPorDecisao();
   function itensEncontrados() {
     const ck = (((S.ult || {}).resultado) || {}).checklist || [];
     return new Set(ck.filter(c => c.resultado === 'encontrado').map(c => c.item));
@@ -663,9 +669,9 @@
     itens.push({ rot: 'Documentos pessoais', ok: ps.length > 0 && !sem.length, bloq: false, txt: !ps.length ? 'informe vendedores e compradores' : (sem.length ? 'faltam de: ' + esc(sem.join(', ')) : 'de todas as partes anexados') });
     const iptu = S.docs.filter(d => d.tipo === 'iptu');
     itens.push({ rot: 'IPTU', ok: iptu.length > 0, bloq: false, txt: iptu.length ? 'anexado' + (S.v.sql_contribuinte || m.sql_contribuinte ? `, contribuinte ${esc(S.v.sql_contribuinte || m.sql_contribuinte)}` : '') : 'anexe a certidão de débitos ou o comprovante do IPTU' });
-    itens.push({ rot: 'Análise das certidões', ok: liberada(), bloq: true, txt: liberada() ? (S.v.status === 'liberado' ? 'Liberado' : 'aprovada pelo jurídico') : `status: ${esc(((U().STATUS[S.v.status] || {}).lb) || 'sem análise')}; resolva os apontamentos ou peça a revisão jurídica` });
+    itens.push({ rot: 'Análise das certidões', ok: liberada(), bloq: true, txt: liberada() ? (S.v.status === 'liberado' ? 'Liberado' : liberadaPorDecisao() ? 'Liberada: o gerente decidiu seguir sem o jurídico em todos os apontamentos' : 'aprovada pelo jurídico') : `status: ${esc(((U().STATUS[S.v.status] || {}).lb) || 'sem análise')}; resolva os apontamentos ou peça a revisão jurídica` });
     const r = montar(entrada());
-    itens.push({ rot: 'Dados do compromisso', ok: !r.faltas.length, bloq: true, txt: !r.faltas.length ? 'completos' : `${r.faltas.length} campo(s) faltando: ${esc(r.faltas.slice(0, 3).join('; '))}${r.faltas.length > 3 ? '…' : ''}`, acao: 'PACompr.abrirDados()' });
+    itens.push({ rot: 'Dados do compromisso', ok: !r.faltas.length, bloq: false, txt: !r.faltas.length ? 'completos' : `${r.faltas.length} campo(s) faltando: ${esc(r.faltas.slice(0, 3).join('; '))}${r.faltas.length > 3 ? '…' : ''}. Não impede a emissão: sai como rascunho e você completa antes da assinatura`, acao: 'PACompr.abrirDados()' });
     return { itens, pronto: itens.every(i => !i.bloq || i.ok), r };
   }
   function cardHTML(erro) {
@@ -710,13 +716,14 @@
         ${pron.r.avisos.length ? `<div style="font-size:12.5px;color:#b45309;margin-bottom:8px">${pron.r.avisos.map(a => '⚠️ ' + esc(a)).join('<br>')}</div>` : ''}
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
           ${podeEmitir() ? `<button class="btn btn-p" style="font-size:15px;padding:10px 20px${pron.pronto ? '' : ';opacity:.45;cursor:not-allowed'}" ${pron.pronto ? '' : 'disabled title="Resolva os itens em vermelho"'} onclick="PACompr.emitir()" id="cp-btn-emitir">Emitir compromisso de venda e compra</button>
-            ${pron.pronto ? '' : '<span style="font-size:12px;color:var(--muted)">resolva os itens em vermelho para liberar o botão</span>'}` : '<span style="font-size:12.5px;color:var(--muted)">Só o gerente (ou o administrador) emite o compromisso. O assistente anexa e completa os dados.</span>'}
+            ${pron.pronto ? ((S.M.emitido || {}).rascunho ? '<span style="font-size:12px;color:var(--muted)">a última emissão é um rascunho: complete os dados e emita de novo</span>' : '') : '<span style="font-size:12px;color:var(--muted)">resolva os itens em vermelho para liberar o botão</span>'}` : '<span style="font-size:12.5px;color:var(--muted)">Só gerente, assistente e administrador emitem o compromisso.</span>'}
           <button class="btn btn-o" onclick="PACompr.abrirDados()">Dados do compromisso</button>
           <span id="cp-st" style="font-size:12.5px;color:var(--muted)"></span></div>
+        ${em.em && em.rascunho ? `<div style="margin-top:8px;font-size:13px;background:#fef3c7;border:1px solid #f0c48a;border-radius:8px;padding:8px 10px;color:#7a3b00"><b>Rascunho com ${(em.faltas || []).length} pendência(s)</b>: ${esc((em.faltas || []).slice(0, 5).join('; '))}${(em.faltas || []).length > 5 ? '…' : ''}. <a href="#" onclick="event.preventDefault();PACompr.abrirDados()">Completar</a></div>` : ''}
         ${em.em ? `<div style="margin-top:8px;font-size:13px">Última emissão: <b>${U().dt(em.em)}</b> por ${esc(em.por || '')} · ${esc(em.modelo || '')}
           ${em.docx_id ? ' · ' + btnMini(`PACompr.verAnexo('${em.docx_id}')`, 'Word') : ''}${em.pdf_id ? ' ' + btnMini(`PACompr.verAnexo('${em.pdf_id}')`, 'PDF') : ''}
           ${(em.avisos || []).length ? `<div style="font-size:12px;color:#b45309">${em.avisos.map(esc).join('<br>')}</div>` : ''}
-          <div style="font-size:12px;color:var(--muted)">Confira a minuta (texto preenchido em amarelo) e apague o aviso do topo antes de enviar. Envio para assinatura (Clicksign): depois.</div></div>` : ''}
+          <div style="font-size:12px;color:var(--muted)">${em.rascunho ? 'Rascunho: não enviar para assinatura antes de completar e emitir de novo.' : 'Confira a minuta (texto preenchido em amarelo) e apague o aviso do topo antes de enviar.'} Envio para assinatura (Clicksign): depois.</div></div>` : ''}
         ${compA.length > 2 ? `<details style="margin-top:6px"><summary style="cursor:pointer;font-size:12px;color:var(--muted)">Emissões anteriores (${compA.length})</summary>${compA.map(a => `<div style="font-size:12px">${esc(a.nome_arquivo)} ${quando(a)} ${btnMini(`PACompr.verAnexo('${a.id}')`, 'Abrir')}</div>`).join('')}</details>` : ''}
       </div>
       <div id="cp-dados"></div>
@@ -848,7 +855,7 @@
 
   // ══════════════ EMITIR ══════════════
   async function emitir() {
-    if (!podeEmitir()) { U().aviso('Só o gerente (ou o administrador) emite o compromisso.', 'err'); return; }
+    if (!podeEmitir()) { U().aviso('Só gerente, assistente e administrador emitem o compromisso.', 'err'); return; }
     const st = document.getElementById('cp-st'), b = document.getElementById('cp-btn-emitir'), msg = t => { if (st) st.textContent = t; };
     if (document.getElementById('cp-dados') && document.getElementById('cp-dados').innerHTML) { try { await salvarDados(true); } catch (_) { return; } }
     const feito = autopreencher(); if (feito.length) await salvarM();
@@ -858,20 +865,100 @@
     if (b) b.disabled = true;
     try {
       msg('Preenchendo o Word…');
-      const { blob, desconhecidos } = await preencherDocx(arq, r.val);
+      const rascunho = r.faltas.length > 0;
+      const avisoW = rascunho ? `RASCUNHO COM PENDÊNCIAS: faltam ${r.faltas.length} dado(s): ${r.faltas.join('; ')}. Complete no sistema e emita de novo antes da assinatura. Apagar este aviso antes de enviar.` : AVISO;
+      const { blob, desconhecidos } = await preencherDocx(arq, r.val, avisoW);
       const avisos = r.avisos.slice(); if (desconhecidos.size) avisos.unshift('O modelo tem campos que o portal não conhece (ficaram como estão): ' + [...desconhecidos].sort().join(', '));
       const quandoTxt = new Date().toLocaleString('pt-BR').replace(/[/:]/g, '-').replace(', ', ' ');
-      const base = `Compromisso - ${S.v.titulo.replace(/[\\/:*?"<>|]+/g, ' ').slice(0, 60)} - ${quandoTxt}`;
+      const base = `${rascunho ? 'RASCUNHO - ' : ''}Compromisso - ${S.v.titulo.replace(/[\\/:*?"<>|]+/g, ' ').slice(0, 60)} - ${quandoTxt}`;
       msg('Gerando o PDF…');
       let pdf = null; try { pdf = await pdfDoDocx(blob, base + '.pdf'); } catch (e) { avisos.push('PDF não gerado (' + e.message + '): use o Word.'); }
       msg('Guardando na venda…');
       const fx = new File([blob], base + '.docx', { type: DOCX_MIME }); const ax = await anexar('compromisso', fx);
       let ap = null; if (pdf) ap = await anexar('compromisso', new File([pdf], base + '.pdf', { type: 'application/pdf' }));
-      S.M.emitido = { por: quem(), em: new Date().toISOString(), modelo: (window.PAAcomp.VERSOES[S.v.versao_contrato] || t), arquivo_modelo: arq, docx_id: ax.id, pdf_id: ap ? ap.id : null, avisos };
-      await salvarM(); await evento('emitiu o compromisso', `${S.M.emitido.modelo}: Word${ap ? ' e PDF' : ''}`);
+      S.M.emitido = { por: quem(), em: new Date().toISOString(), modelo: (window.PAAcomp.VERSOES[S.v.versao_contrato] || t), arquivo_modelo: arq, docx_id: ax.id, pdf_id: ap ? ap.id : null, avisos, rascunho, faltas: r.faltas.slice() };
+      await salvarM(); await evento('emitiu o compromisso', `${S.M.emitido.modelo}: Word${ap ? ' e PDF' : ''}${rascunho ? ` (rascunho, ${r.faltas.length} pendência(s))` : ''}`);
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = base + '.docx'; document.body.appendChild(a); a.click(); a.remove();
-      U().aviso('Compromisso emitido: Word e PDF prontos. Confira a minuta (amarelo) e ajuste se precisar.', 'ok'); recarregar();
+      U().aviso(rascunho ? `Compromisso emitido como RASCUNHO (${r.faltas.length} pendência(s)): complete os dados e emita de novo antes da assinatura.` : 'Compromisso emitido: Word e PDF prontos. Confira a minuta (amarelo) e ajuste se precisar.', 'ok'); recarregar();
     } catch (e) { msg(''); if (b) b.disabled = false; U().aviso('Não consegui emitir: ' + e.message, 'err'); }
+  }
+
+  // ══════════════ APONTAMENTOS DAS CERTIDÕES: decisão do gerente (pacote da Renata de 10/11) ══════════════
+  // Certidão positiva que vale (não substituída) = apontamento. Para cada um o gerente escolhe enviar ao jurídico ou
+  // seguir sem o jurídico, com motivo padrão (opcional) e/ou texto escrito. Fica com nome, dia e hora e entra no parecer.
+  // Todos "seguir" e nenhuma outra ressalva → venda liberada para o compromisso. Algum "jurídico" → vai para a revisão.
+  // Grava em preanalise_venda.decisoes_apontamentos (sql/2026-11-11-preanalise-apontamentos.sql).
+  const MOTIVOS_SEGUIR = ['Cobrança de IPTU de outro imóvel: não recai sobre o bem negociado', 'Homônimo: o apontamento não é do vendedor', 'Ação extinta ou arquivada', 'Outro (descrever na observação)'];
+  const normK = x => semAc(x).replace(/[^a-z0-9]+/g, ' ').trim();
+  function apontamentos() {
+    const cfg = ((S || {}).ult || {}).config || {};
+    return certs().filter(c => !c.substituida && c.resultado === 'positiva').map(c => ({
+      id: [c.orgao, normK(c.refere_a), c.data_emissao || ''].join('|'), orgao: c.orgao,
+      nome: ((cfg.certidoes || []).find(z => z.id === c.orgao) || {}).txt || c.orgao, pessoa: c.refere_a || '', resumo: c.resumo || '' }));
+  }
+  function decisaoTexto(d) {
+    if (!d) return '';
+    const mot = [d.motivo, d.obs].filter(Boolean);
+    return (d.decisao === 'juridico' ? 'Enviado ao jurídico' : 'Seguir sem jurídico') + (mot.length ? ' — ' + mot.join(' — ') : '') + ` (por ${d.por || ''}, ${U().dt(d.em)})`;
+  }
+  function formDecisao(k, atual, todos) {
+    const ist2 = 'padding:6px 8px;border:1.5px solid var(--borda);border-radius:7px;font-size:12.5px;max-width:100%';
+    const a = atual || {};
+    return `<div style="margin-top:6px;display:flex;flex-direction:column;gap:6px">
+      <div style="font-size:13px"><label><input type="radio" name="cpd-${k}" value="seguir" ${todos || a.decisao === 'seguir' ? 'checked' : ''}> Seguir sem jurídico</label> &nbsp;
+        <label><input type="radio" name="cpd-${k}" value="juridico" ${!todos && a.decisao === 'juridico' ? 'checked' : ''}> ${todos ? 'Enviar todos ao jurídico' : 'Enviar ao jurídico'}</label></div>
+      <select id="cpm-${k}" style="${ist2}"><option value="">Motivo padrão (opcional)</option>${MOTIVOS_SEGUIR.map(m => `<option ${a.motivo === m ? 'selected' : ''}>${esc(m)}</option>`).join('')}</select>
+      <textarea id="cpo-${k}" rows="2" style="${ist2}" placeholder="Motivo de seguir sem o jurídico: escreva aqui (obrigatório se não escolher um motivo padrão)">${esc(a.obs || '')}</textarea>
+      <div><button class="btn ${todos ? 'btn-p' : 'btn-o'} bsm" onclick="PACompr.${todos ? 'decidirTodos()' : `decidir(${k.slice(1)})`}">${todos ? 'Aplicar a todos' : 'Registrar decisão'}</button></div></div>`;
+  }
+  function apontamentosHTML() {
+    if (!S) return ''; const ap = apontamentos(); if (!ap.length) return '';
+    const d = S.v.decisoes_apontamentos || {}, pode = podeDecidir(), sem = ap.filter(a => !d[a.id]);
+    return `<div class="card" style="margin-bottom:12px" id="cp-apontamentos"><div class="cb">
+      <div style="font-weight:700;font-size:15px">⚖️ Apontamentos das certidões <span style="font-size:12px;font-weight:400;color:var(--muted)">${ap.length - sem.length} de ${ap.length} decidido(s)</span></div>
+      <div style="font-size:12.5px;color:var(--muted);margin:2px 0 8px">Para cada certidão positiva, o gerente decide: enviar ao jurídico ou seguir sem o jurídico, com o motivo. Fica registrado e entra no parecer.${liberadaPorDecisao() ? ' <b style="color:#047857">Todos decididos como "seguir": venda liberada para o compromisso.</b>' : ''}</div>
+      ${ap.map((a, i) => `<div style="border-top:1px solid #eef1f6;padding:8px 0"><b>${esc(a.nome)}</b>${a.pessoa ? ' · ' + esc(a.pessoa) : ''}<div style="font-size:12.5px;color:#475569">${esc(a.resumo)}</div>
+        ${d[a.id] ? `<div style="font-size:12.5px;margin-top:4px;color:${d[a.id].decisao === 'juridico' ? '#b45309' : '#047857'}"><b>${esc(decisaoTexto(d[a.id]))}</b></div>` : '<div style="font-size:12.5px;color:#b91c1c;margin-top:4px">sem decisão</div>'}
+        ${pode ? `<details style="margin-top:4px" ${d[a.id] ? '' : 'open'}><summary style="cursor:pointer;font-size:12.5px;color:var(--pri,#0088CC)">${d[a.id] ? 'Mudar a decisão' : 'Decidir'}</summary>${formDecisao('a' + i, d[a.id], false)}</details>` : ''}</div>`).join('')}
+      ${pode && sem.length > 1 ? `<div style="background:#f1f6ff;border-radius:10px;padding:10px;margin-top:8px"><b>Seguir com a venda</b> <span style="font-size:12px;color:var(--muted)">aplica a mesma decisão e o mesmo motivo aos ${sem.length} apontamentos ainda sem decisão</span>${formDecisao('todos', null, true)}</div>` : ''}
+      ${pode ? '' : '<div style="font-size:12px;color:var(--muted);margin-top:6px">Só o gerente (ou o administrador) decide os apontamentos.</div>'}
+    </div></div>`;
+  }
+  function lerDecisao(k) {
+    const dec = (document.querySelector(`input[name="cpd-${k}"]:checked`) || {}).value || '';
+    let motivo = (document.getElementById('cpm-' + k) || {}).value || ''; const obs = ((document.getElementById('cpo-' + k) || {}).value || '').trim();
+    if (motivo && !MOTIVOS_SEGUIR.includes(motivo)) motivo = '';
+    if (!dec) throw new Error('Escolha a decisão (enviar ao jurídico ou seguir).');
+    if (dec === 'seguir' && !motivo && !obs) throw new Error('Para seguir sem o jurídico, informe o motivo (escolha um dos padrões ou escreva no campo).');
+    if (dec === 'seguir' && /^Outro/.test(motivo) && !obs) throw new Error('Descreva o motivo no campo de texto.');
+    return { decisao: dec, motivo: dec === 'seguir' ? motivo : '', obs, por: quem(), em: new Date().toISOString() };
+  }
+  async function gravarDecisoes(lista, base) {
+    const d = Object.assign({}, S.v.decisoes_apontamentos || {});
+    lista.forEach(a => { d[a.id] = Object.assign({}, base, { certidao: a.nome, pessoa: a.pessoa }); });
+    const extra = { decisoes_apontamentos: d };
+    if (base.decisao === 'juridico' && !S.v.encaminhado_juridico) Object.assign(extra, { encaminhado_juridico: true, encaminhado_em: new Date().toISOString(), encaminhado_por: quem() });
+    await db.patch('preanalise_venda', S.v.id, extra); Object.assign(S.v, extra);
+    await evento('decisão sobre apontamento', `${lista.length} apontamento(s): ` + (base.decisao === 'juridico' ? 'enviar ao jurídico' : 'seguir sem jurídico — ' + [base.motivo, base.obs].filter(Boolean).join(' — ')));
+  }
+  async function decidir(i) {
+    if (!podeDecidir()) { U().aviso('Só o gerente (ou o administrador) decide os apontamentos.', 'err'); return; }
+    const a = apontamentos()[i]; if (!a) return;
+    try { const b = lerDecisao('a' + i); await gravarDecisoes([a], b); U().aviso(b.decisao === 'juridico' ? 'Decisão registrada: a venda vai para a revisão jurídica.' : 'Decisão registrada: seguindo sem o jurídico, com o motivo registrado.', 'ok'); recarregar(); }
+    catch (e) { U().aviso(e.message, 'err'); }
+  }
+  async function decidirTodos() {
+    if (!podeDecidir()) { U().aviso('Só o gerente (ou o administrador) decide os apontamentos.', 'err'); return; }
+    const d = S.v.decisoes_apontamentos || {}, pend = apontamentos().filter(a => !d[a.id]);
+    if (!pend.length) { U().aviso('Não há apontamentos sem decisão.', ''); return; }
+    try { const b = lerDecisao('todos'); await gravarDecisoes(pend, b); U().aviso(`Decisão registrada para ${pend.length} apontamento(s).` + (b.decisao === 'seguir' ? ' A venda segue sem o jurídico.' : ' A venda vai para a revisão jurídica.'), 'ok'); recarregar(); }
+    catch (e) { U().aviso(e.message, 'err'); }
+  }
+  // para o parecer (impressão/PDF): uma linha por apontamento com a decisão
+  function decisoesParecer() {
+    if (!S) return ''; const ap = apontamentos(); if (!ap.length) return '';
+    const d = S.v.decisoes_apontamentos || {};
+    return `<div><b>Apontamentos das certidões (decisão do gerente):</b><ul style="margin:2px 0 0;padding-left:18px">${ap.map(a => `<li>${esc(a.nome)}${a.pessoa ? ' — ' + esc(a.pessoa) : ''}: ${d[a.id] ? esc(decisaoTexto(d[a.id])) : '<b style="color:#b45309">sem decisão</b>'}</li>`).join('')}</ul></div>`;
   }
 
   // ══════════════ BIBLIOTECA DE MODELOS ══════════════
@@ -901,7 +988,7 @@
   }
 
   const caminhosAnexos = () => S ? S.anexos.map(a => a.caminho) : [];
-  window.PACompr = { carregar, cardHTML, caminhosAnexos, subirProposta, aplicarProposta, subirDoc, subirPessoais, definirPessoa, verAnexo, tirarAnexo, abrirDados, fecharDados, redesenhar,
+  window.PACompr = { carregar, cardHTML, caminhosAnexos, apontamentosHTML, decidir, decidirTodos, decisoesParecer, liberada: () => !!S && liberada(), subirProposta, aplicarProposta, subirDoc, subirPessoais, definirPessoa, verAnexo, tirarAnexo, abrirDados, fecharDados, redesenhar,
     addPessoa, tirarPessoa, addLinha, tirarLinha, salvarDados, preencherAuto, preVisualizar, emitir, modelos, copiarClausula,
     _t: { montar, extrairProposta, versaoSugerida, preencherDocx, pdfDoDocx, textoDocx, cent, moeda, extensoReais, nomeIgual, normEC, normRegime, qualificarM1, _ctx: s => { S = s; } } };
 })();
