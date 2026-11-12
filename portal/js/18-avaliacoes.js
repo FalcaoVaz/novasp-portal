@@ -327,10 +327,11 @@ async function _avBuscarIptu(){
   let rows=[], ruas=[];
   try{ ruas=await _avIptu('iptu_ruas',{p_logradouro:rua,p_numero:num,p_lim:4})||[]; }catch(e){ el.innerHTML='<span style="color:#94a3b8;font-size:.85em">Cadastro do IPTU indisponível agora.</span>'; return; }
   if(velho()) return;
-  const comNum=ruas.find(r=>r.tem_numero);
+  // a rua escolhida no mapa manda (ruas de nome igual: Francisco Dias × Francisco Dias Velho)
+  const comNum=(_avForm.ruaNorm&&(ruas.find(r=>r.logradouro_norm===_avForm.ruaNorm)||{logradouro_norm:_avForm.ruaNorm,logradouro:_avForm.rua,tem_numero:true}))||ruas.find(r=>r.tem_numero);
   if(comNum){ try{ rows=await _avIptu('iptu_por_rua',{p_logradouro_norm:comNum.logradouro_norm,p_numero:num,p_lim:300})||[]; }catch(_){} }
   else if(!ruas.length || ruas[0].sim<0.6){
-    el.innerHTML = ruas.length ? `<div style="font-size:.86em;color:#334155;padding:6px 8px;background:#f8fafc;border-radius:8px">🏛️ <b>Cadastro do IPTU:</b> não achei "${rua}, ${num}". Você quis dizer: ${ruas.map(r=>`<a href="javascript:void(0)" onclick="_avForm.rua='${_avNomeRuaIptu(r.logradouro).replace(/'/g,"\\'")}';_avBuscarIptu()" style="color:#2563eb">${_avNomeRuaIptu(r.logradouro)}</a>`).join(' · ')}</div>`
+    el.innerHTML = ruas.length ? `<div style="font-size:.86em;color:#334155;padding:6px 8px;background:#f8fafc;border-radius:8px">🏛️ <b>Cadastro do IPTU:</b> não achei "${rua}, ${num}". Você quis dizer: ${ruas.map(r=>`<a href="javascript:void(0)" onclick="_avForm.rua='${_avNomeRuaIptu(r.logradouro).replace(/'/g,"\\'")}';_avForm.ruaNorm='';_avBuscarIptu()" style="color:#2563eb">${_avNomeRuaIptu(r.logradouro)}</a>`).join(' · ')}</div>`
                                : `<span style="color:#94a3b8;font-size:.85em">🏛️ Cadastro do IPTU: rua não encontrada no recorte carregado (CEPs 04…).</span>`;
     return;
   }
@@ -744,17 +745,28 @@ async function _avOsm(q){
 }
 // Endereço → cadastro do IPTU (número exato) → centro da QUADRA FISCAL do contribuinte (04/10/2026).
 // É a fonte mais segura do pino: não depende do nome da rua bater com vendas registradas nem com o OpenStreetMap.
-async function _avPontoIptu(rua, num){
-  if(!rua || !num) return null;
+// 12/11/2026: devolve LISTA. Quando duas ruas do cadastro têm o número e o nome bate igual ("francisco dias" →
+// R FRANCISCO DIAS no Jd. da Saúde e R FRANCISCO DIAS VELHO no Brooklin), as duas viram opção — a de nome exato primeiro.
+// Se o corretor escreveu o bairro junto ("francisco dias - jardim da saude"), a do bairro digitado vem primeiro.
+const _avSemAcN = x => String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9 ]+/g,' ').replace(/\s+/g,' ').trim();
+async function _avPontoIptu(rua, num, bairroDig){
+  if(!rua || !num) return [];
   try{
-    const ruas=await _avIptu('iptu_ruas',{p_logradouro:rua,p_numero:num,p_lim:4})||[];
-    const r=ruas.find(x=>x.tem_numero && x.sim>=0.5); if(!r) return null;
-    const rows=await _avIptu('iptu_por_rua',{p_logradouro_norm:r.logradouro_norm,p_numero:num,p_lim:3})||[];
-    if(!rows.length || !rows[0].sql) return null;
-    const q=await _avRpc('aval_quadra_ponto',{p_sql:rows[0].sql}); const h=Array.isArray(q)?q[0]:q;
-    if(!h || !h.lat) return null;
-    return {lat:h.lat, lng:h.lng, nome:_avNomeRuaIptu(r.logradouro), sql:rows[0].sql, distrito:h.distrito||''};
-  }catch(_){ return null; }
+    const ruas=await _avIptu('iptu_ruas',{p_logradouro:rua,p_numero:num,p_lim:6})||[];
+    let ok=ruas.filter(x=>x.tem_numero && x.sim>=0.5); if(!ok.length) return [];
+    const top=Math.max(...ok.map(x=>+x.sim)); ok=ok.filter(x=>+x.sim>=top-0.05).slice(0,3);
+    const bd=_avSemAcN(bairroDig).replace(/^(JARDIM|JD|VILA|VL|PARQUE|PRQ|CHACARA) /,'');
+    if(bd) ok.sort((a,b)=>(_avSemAcN(b.bairro).includes(bd)?1:0)-(_avSemAcN(a.bairro).includes(bd)?1:0));
+    const out=[];
+    for(const r of ok){
+      const rows=await _avIptu('iptu_por_rua',{p_logradouro_norm:r.logradouro_norm,p_numero:num,p_lim:3})||[];
+      if(!rows.length || !rows[0].sql) continue;
+      const q=await _avRpc('aval_quadra_ponto',{p_sql:rows[0].sql}); const h=Array.isArray(q)?q[0]:q;
+      if(!h || !h.lat) continue;
+      out.push({lat:h.lat, lng:h.lng, nome:_avNomeRuaIptu(r.logradouro), norm:r.logradouro_norm, sql:rows[0].sql, distrito:h.distrito||'', bairroCad:r.bairro?_avCap(r.bairro):''});
+    }
+    return out;
+  }catch(_){ return []; }
 }
 const _avDistM=(a,b)=>Math.round(Math.hypot((a.lat-b.lat)*111320,(a.lng-b.lng)*111320*Math.cos(a.lat*Math.PI/180)));
 async function avalGeocodificar(){
@@ -762,24 +774,25 @@ async function avalGeocodificar(){
   const num=(document.getElementById('av-num').value||'').trim();
   const res=document.getElementById('av-geo-res');
   if(!rua){ res.innerHTML='<span style="color:#dc2626">Informe ao menos a rua.</span>'; return; }
-  _avForm={rua,num,bairro:''}; window._avIptuSeq=(window._avIptuSeq||0)+1;
+  // "rua francisco dias - jardim da saude" / "..., jardim da saude": o bairro digitado só desempata ruas de mesmo nome
+  const mB=rua.match(/^(.*?)\s+-\s+(.+)$/); const ruaBusca=mB?mB[1].trim():rua, bairroDig=mB?mB[2].trim():'';
+  _avForm={rua:ruaBusca,num,bairro:''}; window._avIptuSeq=(window._avIptuSeq||0)+1;
   ['av-iptu-info','av-comaer-info','av-incorp-cta','av-pino-info'].forEach(id=>{ const e=document.getElementById(id); if(e) e.innerHTML=''; });
   const bb=document.getElementById('av-bairro'); if(bb) bb.value='';
   res.innerHTML='Procurando…';
   let cands=[];
   // 0) cadastro do IPTU → quadra fiscal (quando o número existe no cadastro, é o pino mais confiável)
-  const pIptu=await _avPontoIptu(rua,num);
-  if(pIptu) cands.push({label:`${pIptu.nome}, ${num}`,lat:pIptu.lat,lng:pIptu.lng,origem:'cadastro da Prefeitura · quadra fiscal',ruaCorrigida:pIptu.nome,bairro:''});
+  (await _avPontoIptu(ruaBusca,num,bairroDig)).forEach(p=>cands.push({label:`${p.nome}, ${num}${p.bairroCad?' — '+p.bairroCad:''}`,lat:p.lat,lng:p.lng,origem:'cadastro da Prefeitura · quadra fiscal',ruaCorrigida:p.nome,ruaNorm:p.norm,bairro:''}));
   // 1) vendas registradas (ITBI) geolocalizadas — aceita grafia aproximada
-  try{ const r=await _avRpc('aval_geocode_endereco',{p_rua:rua,p_numero:num}); const h=Array.isArray(r)?r[0]:null;
-       if(h&&h.lat) cands.push({label:`${_avCap(h.rua_norm)}${num?', '+num:''} (digitado: ${rua})`,lat:h.lat,lng:h.lng,origem:`vendas registradas · ${h.precisao}`}); }catch(_){}
+  try{ const r=await _avRpc('aval_geocode_endereco',{p_rua:ruaBusca,p_numero:num}); const h=Array.isArray(r)?r[0]:null;
+       if(h&&h.lat) cands.push({label:`${_avCap(h.rua_norm)}${num?', '+num:''} (digitado: ${ruaBusca})`,lat:h.lat,lng:h.lng,origem:`vendas registradas · ${h.precisao}`}); }catch(_){}
   // 2) base local de endereços
-  try{ const loc=await _avRpc('aval_geocode',{p_q:`${rua} ${num}`}); (loc||[]).forEach(c=>cands.push({label:c.endereco,lat:c.lat,lng:c.lng,origem:'nosso banco',bairro:c.distrito||''})); }catch(_){}
+  try{ const loc=await _avRpc('aval_geocode',{p_q:`${ruaBusca} ${num}`}); (loc||[]).forEach(c=>cands.push({label:c.endereco,lat:c.lat,lng:c.lng,origem:'nosso banco',bairro:c.distrito||''})); }catch(_){}
   // 3) OpenStreetMap com o que foi digitado
-  if(!cands.length) cands=await _avOsm([rua+(num?', '+num:''),'São Paulo','SP'].join(', '));
+  if(!cands.length) cands=await _avOsm([ruaBusca+(num?', '+num:''),'São Paulo','SP'].join(', '));
   // 4) nome corrigido pelo cadastro do IPTU (ex.: "gaiós" → Alameda dos Guaiós) e nova tentativa no OSM
   if(!cands.length){
-    try{ const ruas=await _avIptu('iptu_ruas',{p_logradouro:rua,p_numero:num,p_lim:4})||[];
+    try{ const ruas=await _avIptu('iptu_ruas',{p_logradouro:ruaBusca,p_numero:num,p_lim:4})||[];
          for(const r of ruas.filter(x=>x.tem_numero||x.sim>=0.6).slice(0,3)){
            const nome=_avNomeRuaIptu(r.logradouro); const c=await _avOsm(`${nome}${num?', '+num:''}, São Paulo, SP`);
            c.forEach(x=>{ x.origem='OpenStreetMap · nome do cadastro: '+nome; x.ruaCorrigida=nome; }); cands.push(...c.slice(0,1)); }
@@ -829,7 +842,7 @@ function _avNovoPonto(){
 async function _avEscolher(lat,lng,i){
   _avNovoPonto();
   _avPino={lat,lng}; _avForm.pinoProvisorio=false;
-  const c=(window._avCands||[])[i]; if(c&&c.ruaCorrigida) _avForm.rua=c.ruaCorrigida;
+  const c=(window._avCands||[])[i]; if(c&&c.ruaCorrigida) _avForm.rua=c.ruaCorrigida; _avForm.ruaNorm=(c&&c.ruaNorm)||'';
   await _avMostrarMapa(lat,lng);
   if(window._avCands) document.querySelectorAll('#av-geo-res > div[onclick]').forEach((el,k)=>
     el.style.borderColor = k===i ? '#1E2D4A' : '#e2e8f0');
