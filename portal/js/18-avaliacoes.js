@@ -812,12 +812,21 @@ async function avalGeocodificar(){
     const c=cands[0];
     res.innerHTML=`<div style="font-size:.9em;color:#334155">📍 <b>${c.label}</b> <span style="color:#94a3b8;font-size:.88em">· ${c.origem} · arraste o pino se precisar ajustar</span></div>`;
   }else{
-    res.innerHTML='<div style="font-size:.9em;color:#b45309;margin-bottom:6px">As fontes apontam lugares diferentes — escolha o endereço certo (arraste o pino se precisar ajustar):</div>'
-      + cands.slice(0,5).map((c,i)=>`<div style="padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:4px;cursor:pointer"
-          onclick="_avEscolher(${c.lat},${c.lng},${i})">📍 ${c.label} <span style="color:#94a3b8;font-size:.82em">· ${c.origem}${i>0?` · a ${n0(_avDistM(c,cands[0]))} m da 1ª`:''}</span></div>`).join('');
+    // 12/11/2026 (Rodrigo): com mais de uma opção, NADA é escolhido sozinho — o corretor clica na certa e só então
+    // o mapa, o zoneamento e o cadastro do IPTU aparecem (antes ia a 1ª e a pessoa nem percebia a outra)
+    res.innerHTML='<div style="font-size:.92em;color:#b45309;font-weight:600;margin-bottom:6px">Encontrei mais de um endereço parecido. Clique no endereço certo:</div>'
+      + cands.slice(0,5).map((c,i)=>`<div style="padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:8px;margin-bottom:5px;cursor:pointer;background:#fff"
+          onmouseover="this.style.background='#f1f6ff'" onmouseout="this.style.background='#fff'"
+          onclick="_avEscolher(${c.lat},${c.lng},${i})">📍 <b>${c.label}</b> <span style="color:#94a3b8;font-size:.82em">· ${c.origem}</span></div>`).join('');
   }
   window._avCands=cands.slice(0,5);
-  await _avEscolher(cands[0].lat,cands[0].lng,0);
+  if(cands.length===1){ await _avEscolher(cands[0].lat,cands[0].lng,0); return; }
+  // várias opções: limpa o ponto anterior e esconde o mapa até a escolha
+  _avNovoPonto(); _avPino=null;
+  const mp=document.getElementById('av-mapa'); if(mp) mp.style.display='none';
+  ['av-pino-info','av-incorp-cta','av-iptu-info','av-comaer-info'].forEach(id=>{ const e=document.getElementById(id); if(e) e.innerHTML=''; });
+  const p2=document.getElementById('av-passo2'); if(p2) p2.style.display='none';
+  const bx=document.getElementById('av-bairro-box'); if(bx) bx.style.display='none';
 }
 // Bairro a partir do ponto (OpenStreetMap reverso); cai no distrito do zoneamento se não houver
 async function _avDetectarBairro(){
@@ -844,8 +853,10 @@ async function _avEscolher(lat,lng,i){
   _avPino={lat,lng}; _avForm.pinoProvisorio=false;
   const c=(window._avCands||[])[i]; if(c&&c.ruaCorrigida) _avForm.rua=c.ruaCorrigida; _avForm.ruaNorm=(c&&c.ruaNorm)||'';
   await _avMostrarMapa(lat,lng);
-  if(window._avCands) document.querySelectorAll('#av-geo-res > div[onclick]').forEach((el,k)=>
-    el.style.borderColor = k===i ? '#1E2D4A' : '#e2e8f0');
+  if(window._avCands) document.querySelectorAll('#av-geo-res > div[onclick]').forEach((el,k)=>{
+    el.style.borderColor = k===i ? '#1E2D4A' : '#e2e8f0'; el.style.boxShadow = k===i ? '0 0 0 2px #1E2D4A22' : 'none';
+    const tag=el.querySelector('.av-escolhido'); if(tag) tag.remove();
+    if(k===i) el.insertAdjacentHTML('beforeend',' <span class="av-escolhido" style="color:#047857;font-size:.82em;font-weight:700">✓ escolhido</span>'); });
 }
 
 async function _avMostrarMapa(lat,lng){
