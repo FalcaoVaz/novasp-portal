@@ -39,6 +39,75 @@ function agjDonoEhMembro(e) {
   return !!d && agjMembros.some(m => agjNorm(m.nome) === d || agjNorm(m.nome).includes(d) || d.includes(agjNorm(m.nome)));
 }
 
+// ═══ HOME OFFICE (13/11/2026) — tabela agenda_home_office (sql/2026-11-13-agenda-home-office.sql) ═══
+// Cada pessoa marca o próprio dia: só aquele dia ('dia') ou toda semana naquele dia ('semanal');
+// 'excecao' tira o semanal só numa data. Mesma lógica no portal (07-agenda.js) e no jurídico (19-agenda.js).
+const HO_DIAS = ['', 'segunda', 'terça', 'quarta', 'quinta', 'sexta'];
+const _hoD = r => String(r.data || '').slice(0, 10);
+function hoEstado(rows, iso, dow, email) {
+  const em = String(email || '').toLowerCase(), meus = (rows || []).filter(r => String(r.email).toLowerCase() === em);
+  const dia = meus.find(r => r.tipo === 'dia' && _hoD(r) === iso);
+  const sem = meus.find(r => r.tipo === 'semanal' && +r.dia_semana === dow && _hoD(r) <= iso);
+  const exc = meus.find(r => r.tipo === 'excecao' && _hoD(r) === iso);
+  const sems = meus.filter(r => r.tipo === 'semanal' && +r.dia_semana === dow);
+  return { dia, sem, exc, sems, ho: !!(dia || (sem && !exc)) };
+}
+function hoNoDia(rows, iso, dow) {
+  const pessoas = {};
+  (rows || []).forEach(r => { const k = String(r.email).toLowerCase(); if (!pessoas[k]) pessoas[k] = r.nome; });
+  return Object.keys(pessoas).map(em => Object.assign({ email: em, nome: pessoas[em] }, hoEstado(rows, iso, dow, em))).filter(p => p.ho);
+}
+// abre a escolha; acao(op) recebe 'dia' | 'semanal' | 'tirar-dia' | 'tirar-todas'
+function hoEscolha(iso, dow, est, acao) {
+  const dd = iso.split('-').reverse().slice(0, 2).join('/'), nd = HO_DIAS[dow] || '';
+  const bt = (op, txt, pri) => `<button data-op="${op}" style="display:block;width:100%;margin-top:8px;padding:10px 12px;border-radius:8px;font-size:14px;cursor:pointer;text-align:left;${pri ? 'background:#0f766e;color:#fff;border:1px solid #0f766e' : 'background:#fff;color:#1e293b;border:1px solid #cbd5e1'}">${txt}</button>`;
+  let corpo;
+  if (!est.ho) corpo = `<div style="font-weight:800;font-size:16px">🏠 Home office · ${nd} ${dd}</div>` + bt('dia', `Só neste dia (${dd})`, true) + bt('semanal', `Toda ${nd}-feira, a partir de ${dd}`);
+  else if (est.sem && !est.exc) corpo = `<div style="font-weight:800;font-size:16px">🏠 Você está em home office toda ${nd}-feira</div>` + bt('tirar-dia', `Vou ao escritório só neste dia (${dd})`, true) + bt('tirar-todas', `Tirar o home office de todas as ${nd}s`);
+  else corpo = `<div style="font-weight:800;font-size:16px">🏠 Você está em home office em ${dd}</div>` + bt('tirar-dia', `Tirar o home office deste dia`, true) + (est.sem ? bt('tirar-todas', `Tirar também de todas as ${nd}s`) : '');
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:9500;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML = `<div style="background:#fff;border-radius:12px;max-width:380px;width:100%;padding:18px;box-shadow:0 12px 40px rgba(0,0,0,.2);font-family:inherit">${corpo}${bt('', 'Cancelar')}</div>`;
+  ov.onclick = async ev => {
+    if (ev.target === ov) { ov.remove(); return; }
+    const b = ev.target.closest('button[data-op]'); if (!b) return;
+    const op = b.dataset.op; if (!op) { ov.remove(); return; }
+    ov.querySelectorAll('button').forEach(x => x.disabled = true); b.textContent = 'Salvando…';
+    try { await acao(op); } catch (e) { alert('Não consegui gravar o home office: ' + (e && e.message || e)); }
+    ov.remove();
+  };
+  document.body.appendChild(ov);
+}
+// grava a escolha; ins(reg) e del(id) são do banco de cada sistema
+async function hoAplicar(op, iso, dow, est, eu, ins, del) {
+  const base = { email: eu.email, nome: eu.nome };
+  if (op === 'dia') { if (est.sem && est.exc) await del(est.exc.id); else await ins(Object.assign({ tipo: 'dia', data: iso }, base)); }
+  else if (op === 'semanal') { if (est.exc) await del(est.exc.id); if (!est.sem) await ins(Object.assign({ tipo: 'semanal', data: iso, dia_semana: dow }, base)); }
+  else if (op === 'tirar-dia') { if (est.dia) await del(est.dia.id); if (est.sem && !est.exc) await ins(Object.assign({ tipo: 'excecao', data: iso }, base)); }
+  else if (op === 'tirar-todas') { for (const r of est.sems) await del(r.id); if (est.dia) await del(est.dia.id); }
+}
+
+let agjHoRows = [];
+function agjHoHTML(iso, dow) {
+  // no jurídico só o home office de quem é da equipe
+  const membros = new Set(agjMembros.map(m => String(m.email || '').toLowerCase()));
+  const lista = hoNoDia(agjHoRows, iso, dow).filter(p => membros.has(p.email));
+  const eu = String(currentUser && currentUser.email || '').toLowerCase(), souEu = lista.some(p => p.email === eu);
+  return `<div style="margin-top:4px;font-size:11px;line-height:1.3">
+    ${lista.length ? `<div style="color:#0f766e;font-weight:600" title="Home office: ${agjEsc(lista.map(p => p.nome).join(', '))}">🏠 ${agjEsc(lista.map(p => String(p.nome || '').split(' ')[0]).join(', '))}</div>` : ''}
+    <a href="#" onclick="event.preventDefault();agjHomeOffice('${iso}',${dow})" style="color:${souEu ? '#0f766e' : 'var(--gray-400)'};text-decoration:none">${souEu ? '✓ você em home office' : '+ home office'}</a></div>`;
+}
+function agjHomeOffice(iso, dow) {
+  if (!currentUser || !currentUser.email) { showToast('⚠️ Entre pelo portal para marcar home office.'); return; }
+  const est = hoEstado(agjHoRows, iso, dow, currentUser.email);
+  hoEscolha(iso, dow, est, async op => {
+    await hoAplicar(op, iso, dow, est, { email: String(currentUser.email).toLowerCase(), nome: currentUser.name },
+      async r => { if (!(await db.insert('agenda_home_office', r))) throw new Error(String(db.lastError || '').slice(0, 160)); },
+      async id => { if (!(await db.delete('agenda_home_office', id))) throw new Error('não apagou'); });
+    carregarAgendaJur();
+  });
+}
+
 async function carregarAgendaJur() {
   const lbl = document.getElementById('agj-semana'), grid = document.getElementById('agj-grid'), aviso = document.getElementById('agj-aviso');
   if (!grid) return;
@@ -50,6 +119,9 @@ async function carregarAgendaJur() {
   if (db.lastError) { aviso.innerHTML = `<div class="card"><div class="card-body" style="color:#b91c1c">Não consegui ler a agenda: ${agjEsc(String(db.lastError).slice(0, 200))}</div></div>`; return; }
   aviso.innerHTML = (evs.length && !('agenda' in evs[0]))
     ? '<div class="card" style="margin-bottom:12px"><div class="card-body" style="color:#b45309">Falta rodar o SQL portal/sql/2026-11-13-agenda-juridico.sql — até lá não dá para gravar nesta agenda.</div></div>' : '';
+  agjHoRows = await db.get('agenda_home_office', `?or=(tipo.eq.semanal,and(data.gte.${agjIso(dias[0])},data.lte.${agjIso(dias[4])}))&select=*`) || [];
+  if (!Array.isArray(agjHoRows)) agjHoRows = [];
+  db.lastError = null;
   const duas = agjVeDuas();
   agjEventos = (evs || []).filter(e => {
     if (agjPessoal(e)) { e._dono = agjDono(e); e._ocupado = !e._dono; return e._dono || agjDonoEhMembro(e); }
@@ -70,6 +142,7 @@ async function carregarAgendaJur() {
       <div style="padding:10px;text-align:center;background:var(--gray-50);border-bottom:1px solid var(--gray-200)">
         <div style="font-size:11px;font-weight:700;color:var(--gray-400)">${nomesDia[i]}</div>
         <div style="font-size:20px;font-weight:800;${iso === hoje ? 'color:var(--blue-600)' : ''}">${d.getDate()}</div>
+        ${agjHoHTML(iso, d.getDay())}
       </div>
       <div style="padding:6px;min-height:80px">
         ${doDia.map(agjCartao).join('')}
