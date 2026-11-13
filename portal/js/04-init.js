@@ -39,7 +39,7 @@ function _initAppTela(){
     if (document.getElementById('pgrid')) renderHome();
   });
   const tVnd = document.getElementById('t-vnd');
-  if (tVnd) tVnd.classList.toggle('off', !(typeof podeAcessarVendas === 'function' && podeAcessarVendas()));
+  if (tVnd) tVnd.classList.toggle('off', !(typeof podeAcessarVendas === 'function' && (podeAcessarVendas() || (typeof ehParticipantePiloto==='function' && ehParticipantePiloto()))));
   // Perfil corretor: só Avaliação, feedback do líder, Regras de Vendas e (representante) Fórum
   const ehCor = (typeof ehCorretor === 'function') && ehCorretor();
   if (ehCor) {
@@ -103,7 +103,7 @@ function renderHome(){
     {id:'cal',tone:'purple', ic:'calendar', ti:'Calendar & Tarefas',ds:'Tarefas, agenda da equipe, horários livres e pauta das reuniões.',                  ac:!ehRepPuro && ((typeof podeAcessarCalendar==='function') ? podeAcessarCalendar() : CUR.acesso_calendar), mod:'calendar'},
     {id:'ges',tone:'amber',  ic:'users',    ti: soFeedback?'Avaliação & Feedback':'Gestão & Feedback', ds: soFeedback?'Avalie seu líder no trimestre.':'Liderados, avaliações trimestrais, metas e cálculo de bônus.', ac:podeGestao && !ehRepPuro, mod:'gestao'},
     {id:'reg',tone:'slate',  ic:'book',     ti:'Regras e Processos', ds:'Diretrizes padronizadas de Vendas, Locação, Financeiro e RH.',                      ac:!ehRepPuro,                 mod:'regras'},
-    {id:'vnd',tone:'blue',   ic:'briefcase',ti:'Gestão de Vendas',   ds:'Seleção de imóveis, presença em atividades, cotas de anúncios e agenda do fotógrafo.', ac:(typeof podeAcessarVendas==='function') && podeAcessarVendas(), mod:'vendas'},
+    {id:'vnd',tone:'blue',   ic:'briefcase',ti:'Gestão de Vendas',   ds:'Seleção de imóveis, presença em atividades, cotas de anúncios e agenda do fotógrafo.', ac:(typeof podeAcessarVendas==='function') && (podeAcessarVendas() || (typeof ehParticipantePiloto==='function' && ehParticipantePiloto())), mod:'vendas'},
     {id:'avl',tone:'emerald',ic:'target',   ti:'Avaliação de Imóveis', ds:'Avaliação por endereço em minutos: mercado, ITBI, zoneamento, potencial de incorporação e dossiê em PDF.', ac:true, mod:'avaliacao'},
     {id:'acv',tone:'slate',  ic:'archive',  ti:'Acervo',             ds:'Histórico dos sistemas antigos, só consulta: Nido (vendas e locação até 2026) e Guess (locação).', ac:(typeof podeAcessarAcervo==='function') && podeAcessarAcervo() && !ehRepPuro, mod:'acervo'}
   ];
@@ -154,7 +154,8 @@ function setMod(mod){
     if (!podeCal) return;
   }
   if(mod==='gestao'&&typeof podeAcessarGestao==='function'&&!podeAcessarGestao())return;
-  if(mod==='vendas'&&typeof podeAcessarVendas==='function'&&!podeAcessarVendas())return;
+  const soPreanalise = mod==='vendas' && typeof podeAcessarVendas==='function' && !podeAcessarVendas() && typeof ehParticipantePiloto==='function' && ehParticipantePiloto();
+  if(mod==='vendas'&&typeof podeAcessarVendas==='function'&&!podeAcessarVendas()&&!soPreanalise)return;
   if(mod==='acervo'&&typeof podeAcessarAcervo==='function'&&!podeAcessarAcervo())return;
   // regras: liberado para todos os usuarios autenticados
   const modAbreviada = {juridico:'jur', interno:'int', calendar:'cal', gestao:'ges', regras:'reg', vendas:'vnd', acervo:'acv', avaliacao:'avl'}[mod] || mod;
@@ -175,7 +176,7 @@ function setMod(mod){
   nav.innerHTML=itens.map(i=>`<div class="ni" onclick="goTo('${i.pg}')" id="n-${i.pg}"><span class="ic">${(typeof icon==='function'?icon(i.ic):'')||i.ic}</span><span>${i.lb}</span></div>`).join('');
   if(mod==='interno'){goTo('interno-home');}
   else if(mod==='regras'){goTo('regras-home');}
-  else if(mod==='vendas'){goTo('vendas-home');}
+  else if(mod==='vendas'){goTo(soPreanalise ? 'vnd-preanalise' : 'vendas-home');}
   else{const first=itens[0];if(first)goTo(first.pg);}
   if (typeof resolverIcones === 'function') resolverIcones();
   if(window.innerWidth<=768)closeSB();

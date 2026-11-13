@@ -387,14 +387,9 @@ const LIDERES_GESTAO = [
 // que precisa enxergar todos os modulos pra dar suporte. Casar por email
 // evita colisao com homonimos — ex: 'Fabio' (TI) vs 'Fabio Ayres' (corretor).
 const ACESSO_TOTAL_EMAILS = [
-  'ti@novasaopaulo.com.br',              // Fabio — T.I.
-  // Piloto Claude Team (16/09 a 14/10/2026): acesso total a todos os módulos — decisão do Rodrigo em 01/10/2026
-  'anderson.lucchi@novasaopaulo.com.br', // Anderson — marketing
-  'cpd@novasaopaulo.com.br',             // Gabriela — marketing
-  'thais.barbosa@novasaopaulo.com.br',   // Thais — marketing/vendas
-  'financeiro@novasaopaulo.com.br',      // Dayani — RH
-  'fernanda.araujo@novasaopaulo.com.br', // Fernanda — jurídico
-  'renata@novasaopaulo.com.br'           // Renata — Moema
+  'ti@novasaopaulo.com.br'               // Fabio — T.I.
+  // 13/11/2026: o acesso total do piloto Claude Team (Anderson, Gabriela, Thais, Dayani, Fernanda, Renata)
+  // foi retirado — cada um ficou com o acesso do próprio cargo (Rodrigo).
 ];
 function ehAcessoTotal(){
   if (!CUR) return false;
@@ -416,7 +411,7 @@ function ehColaboradorGestao(){
   return !CUR.acesso_juridico && !CUR.acesso_interno && !CUR.acesso_calendar;
 }
 // Tem direito ao modulo Gestao (lider, admin ou colaborador de avaliacao)
-function podeAcessarGestao(){ return ehLiderGestao() || ehColaboradorGestao(); }
+function podeAcessarGestao(){ return ehLiderGestao() || ehColaboradorGestao() || (typeof podeRecrutamento === 'function' && podeRecrutamento()); }
 
 // Pessoas com acesso SÓ ao Calendar (sem Vendas/Gestão) — incluídas na agenda
 // por e-mail exato. Ex.: Gabriela (cpd@) e Dayani (financeiro@), set/2026.
@@ -465,8 +460,8 @@ function usuariosCalendar(){
 function menuGestaoItens(){
   const rh = typeof podeRecrutamento === 'function' && podeRecrutamento();
   if (ehLiderGestao()) return MENUS.gestao.filter(i => (!i.soAdmin || (CUR && CUR.admin)) && (!i.soRH || rh));
-  // colaborador: somente avaliacao/feedback do proprio lider
-  return MENUS.gestao.filter(i => i.pg === 'av-lider');
+  // colaborador: somente avaliacao/feedback do proprio lider (+ Recrutamento para o RH)
+  return MENUS.gestao.filter(i => i.pg === 'av-lider' || (rh && i.soRH));
 }
 const MENUS={
   juridico:[{ic:'scale',lb:'Sistema Jurídico',pg:'juridico'}],
@@ -545,6 +540,9 @@ function menuVendasItens(){
   if (typeof ehRepresentantePuro === 'function' && ehRepresentantePuro()) {
     return [{ic:'users', lb:'Fórum Representantes', pg:'vnd-forum'}];
   }
+  // Jurídico (Fernanda, Vitor) e quem não é de Vendas mas está na Pré-análise: só ela (13/11/2026)
+  if (!podeAcessarVendas() && typeof ehParticipantePiloto === 'function' && ehParticipantePiloto())
+    return [{ic:'scale', lb:'Pré-análise', pg:'vnd-preanalise'}];
   const itens = MENUS.vendas.slice();
   if (typeof ehVotantePeneira === 'function' && ehVotantePeneira()) {
     itens.splice(1, 0, {ic:'check-square', lb:'Peneira', pg:'vnd-peneira'});
@@ -574,6 +572,8 @@ function _vendasNormaliza(s){
     .replace(/[^a-z0-9\s]/g,' ')
     .replace(/\s+/g,' ').trim();
 }
+// Gestão de Vendas por e-mail exato: Gabriela (cpd@, marketing) importa a planilha de vendas (13/11/2026)
+const VENDAS_EXTRA_EMAILS = ['cpd@novasaopaulo.com.br'];
 function podeAcessarVendas(){
   if (!CUR) return false;
   if (CUR.admin) return true;
@@ -582,6 +582,7 @@ function podeAcessarVendas(){
   if (ehFotografo()) return true;
   // Representantes tambem entram — mas so veem o card do Forum (ehRepresentantePuro)
   if (typeof ehRepresentanteVendas === 'function' && ehRepresentanteVendas()) return true;
+  if (VENDAS_EXTRA_EMAILS.includes(String(CUR.email||'').trim().toLowerCase())) return true;
   const nome = _vendasNormaliza(CUR.nome||'');
   const email = _vendasNormaliza((CUR.email||'').split('@')[0]);
   return VENDAS_USUARIOS.some(p => {
@@ -700,8 +701,10 @@ const GESTAO_CORRETORES_EXTRA = ['Camille','Thais'];
 const PLANILHA_VENDAS_IMPORTADORES = ['Anderson','Gabriela','Thais','Camille','Leticia','Amanda','Karina','Juliana'];
 // Piloto Claude (16/09 a 14/10/2026): os 8 participantes, por e-mail (mesma lista do sandbox, 02-piloto-acessos.sql).
 // Abre o card "Pré-análise de certidões e matrícula" (frente da Renata), ainda em construção.
-const PILOTO_CLAUDE_EMAILS = ['rodrigo@novasaopaulo.com.br','anderson.lucchi@novasaopaulo.com.br','cpd@novasaopaulo.com.br',
-  'thais.barbosa@novasaopaulo.com.br','financeiro@novasaopaulo.com.br','ti@novasaopaulo.com.br',
+// 13/11/2026: saíram Gabriela (cpd@) e Dayani (financeiro@) — não trabalham com a venda. Anderson e Thais ficam (assistentes
+// de vendas: emitem o compromisso). Fernanda e Vitor (jurídico) entram na Gestão de Vendas só com a Pré-análise.
+const PILOTO_CLAUDE_EMAILS = ['rodrigo@novasaopaulo.com.br','anderson.lucchi@novasaopaulo.com.br',
+  'thais.barbosa@novasaopaulo.com.br','ti@novasaopaulo.com.br',
   'fernanda.araujo@novasaopaulo.com.br','renata@novasaopaulo.com.br','vitorcordeiro@novasaopaulo.com.br',
   // gerentes de vendas na pré-análise (10/11/2026): Christiane, Emilia e Felippe (Renata já estava)
   'gerenciavendas@novasaopaulo.com.br','emilia.vitoria@novasaopaulo.com.br','felippe.lemos@novasaopaulo.com.br'];
