@@ -15,6 +15,7 @@ function goTo(page) {
   if (page === 'documentos')   carregarPaginaDocumentos();
   if (page === 'processos')    carregarProcessos();
   if (page === 'prazos')       carregarPrazos();
+  if (page === 'agenda')       carregarAgendaJur();
   if (page === 'chamados')     { carregarChamadosRecebidos(); carregarChamadosPorMes(); }
   if (page === 'para-revisar') carregarParaRevisar();
   if (page === 'planilhas')    { if (typeof initCalculadora === 'function') initCalculadora(); }
@@ -23,7 +24,7 @@ function goTo(page) {
   if (page === 'cobrancas')    carregarCobrancas();
 
   const titles = {
-    dashboard:'Dashboard',
+    dashboard:'Dashboard', agenda:'Agenda do jurídico',
     prazos:'Controle de Prazos', 'calculo-prazos':'Cálculo de Prazos',
     processos:'Processos Judiciais', peticoes:'Petições com IA',
     financeiro:'Gestão Financeira', planilhas:'Cálculo de Atualização de Débito',

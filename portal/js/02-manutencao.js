@@ -351,7 +351,7 @@ function _atualizarReqLocal(){
 const GRUPOS={
   terca:    ['Anderson','Thais','Rodrigo Falcão Vaz'],
   quarta:   ['Vivian','Nogueira','João Marcos','Rodrigo Falcão Vaz'],
-  juridico: ['Fernanda Araujo','Edna Rebesco','Janaina Alves','Rodrigo Falcão Vaz'],
+  juridico: ['Fernanda Araujo','Vitor Cordeiro','Edna Rebesco','Janaina Alves','Rodrigo Falcão Vaz'],
   // 1:1 quinzenais — SEM Rodrigo pra evitar poluir a pauta com todas
   // as tarefas dele. Itens da pauta nativos aparecem normalmente.
   renata:     ['Renata Navarro'],
@@ -420,7 +420,8 @@ function podeAcessarGestao(){ return ehLiderGestao() || ehColaboradorGestao(); }
 
 // Pessoas com acesso SÓ ao Calendar (sem Vendas/Gestão) — incluídas na agenda
 // por e-mail exato. Ex.: Gabriela (cpd@) e Dayani (financeiro@), set/2026.
-const CALENDAR_EXTRA_EMAILS = ['cpd@novasaopaulo.com.br','financeiro@novasaopaulo.com.br'];
+// Vitor Cordeiro (advogado, 13/11/2026): agenda do portal + aparece como participante
+const CALENDAR_EXTRA_EMAILS = ['cpd@novasaopaulo.com.br','financeiro@novasaopaulo.com.br','vitorcordeiro@novasaopaulo.com.br'];
 
 // Calendar é restrito: lideres + gerentes/assistentes de vendas + admin.
 // Substitui a flag acesso_calendar pra evitar que o resto do time apareça

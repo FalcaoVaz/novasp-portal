@@ -23,7 +23,7 @@ function _pCfg(t){return PAUTA_CFG[t]||PAUTA_CFG.quarta;}
 const PAUTA_PARTICIPANTES = {
   terca:      ['Rodrigo Falcão Vaz','Thais','Anderson'],                                             // Mkt (terça 15h)
   quarta:     ['Rodrigo Falcão Vaz','Vivian','Nogueira','João Marcos'],                              // Adm (quarta 10h/11h)
-  juridico:   ['Rodrigo Falcão Vaz','Fernanda Araujo','Renata Navarro','Edna Rebesco','Durval Falcão Vaz','Janaina Alves'], // Jurídico (quarta)
+  juridico:   ['Rodrigo Falcão Vaz','Fernanda Araujo','Vitor Cordeiro','Renata Navarro','Edna Rebesco','Durval Falcão Vaz','Janaina Alves'], // Jurídico (quarta)
   felippe:    ['Rodrigo Falcão Vaz','Felippe'],                                                      // 1:1 quinta 10h
   emilia:     ['Rodrigo Falcão Vaz','Emilia'],                                                       // 1:1 quinta 11h
   renata:     ['Rodrigo Falcão Vaz','Renata Navarro'],                                               // 1:1 quinta 10h

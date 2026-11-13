@@ -82,6 +82,9 @@
     <div class="nav-item" id="nav-processos" style="display:none" onclick="goTo('processos')">
       <span class="icon">⚖️</span> Processos
     </div>
+    <div class="nav-item" id="nav-agenda-jur" style="display:none" onclick="goTo('agenda')">
+      <span class="icon">📅</span> Agenda
+    </div>
     <div class="nav-item" id="nav-prazos" style="display:none" onclick="goTo('prazos')">
       <span class="icon">⏰</span> Controle de Prazos
     </div>
@@ -374,6 +377,23 @@
       </div>
 
       <!-- ══ PRAZOS ══ -->
+      <div class="page" id="page-agenda">
+        <div class="page-header flex justify-between items-center" style="flex-wrap:wrap;gap:10px">
+          <div>
+            <h1>Agenda do jurídico</h1>
+            <p>Compromissos da equipe do jurídico. Compromisso pessoal aparece para os demais só como horário ocupado.</p>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-outline btn-sm" onclick="agjMudarSemana(-1)">‹</button>
+            <button class="btn btn-outline btn-sm" onclick="agjMudarSemana(0)">Hoje</button>
+            <button class="btn btn-outline btn-sm" onclick="agjMudarSemana(1)">›</button>
+            <span id="agj-semana" style="font-weight:700;margin-left:6px"></span>
+          </div>
+        </div>
+        <div id="agj-aviso"></div>
+        <div id="agj-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px"></div>
+      </div>
+
       <div class="page" id="page-prazos">
         <div class="page-header flex justify-between items-center">
           <div>
@@ -2155,15 +2175,15 @@
 
 <!-- Cachebuster: bump pra forcar pull do JS novo apos cada deploy -->
 <script src="js/00-config.js?v=20260805b"></script>
-<script src="js/01-auth.js?v=20260805b"></script>
-<script src="js/02-init.js?v=20261109b"></script>
+<script src="js/01-auth.js?v=20261113a"></script>
+<script src="js/02-init.js?v=20261113a"></script>
 <script src="js/03-planilhas.js?v=20260805b"></script>
 <script src="js/04-processos.js?v=20260805b"></script>
 <script src="js/05-email.js?v=20260805b"></script>
 <script src="js/06-listas.js?v=20261016a"></script>
-<script src="js/07-meus-docs.js?v=20260805b"></script>
+<script src="js/07-meus-docs.js?v=20261113a"></script>
 <script src="js/08-chamados.js?v=20260805b"></script>
-<script src="js/09-nav.js?v=20261109a"></script>
+<script src="js/09-nav.js?v=20261113a"></script>
 <script src="js/10-dashboard.js?v=20261016a"></script>
 <script src="js/11-documentos.js?v=20260805b"></script>
 <script src="js/12-uploads.js?v=20260805b"></script>
@@ -2173,5 +2193,6 @@
 <script src="js/16-calc-correcao.js?v=20261109a"></script>
 <script src="js/18-indicadores.js?v=20261109b"></script>
 <script src="js/17-relatorio-andamentos.js?v=20261016a"></script>
+<script src="js/19-agenda.js?v=20261113a"></script>
 </body>
 </html>

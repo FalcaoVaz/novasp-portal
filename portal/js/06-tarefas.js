@@ -5,7 +5,7 @@ const AREAS_TAREFAS = [
   {key:'vendas',    titulo:'Vendas',     cor:'#2563eb', nomes:['renata','felippe','christiane','emilia']},
   {key:'adm',       titulo:'Adm',        cor:'#d97706', nomes:['vivian','nogueira','joao']},
   {key:'marketing', titulo:'Marketing',  cor:'#7c3aed', nomes:['anderson','thais']},
-  {key:'juridico',  titulo:'Jurídico',   cor:'#0d9488', nomes:['fernanda','edna','janaina']},
+  {key:'juridico',  titulo:'Jurídico',   cor:'#0d9488', nomes:['fernanda','vitor','edna','janaina']},
 ];
 
 function _areaPorResp(resp){

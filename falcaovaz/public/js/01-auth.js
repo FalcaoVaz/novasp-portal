@@ -12,7 +12,7 @@ async function checkSSO() {
       const u = resultado[0];
       currentUser = {
         key: u.nome.split(' ')[0].toLowerCase(),
-        id: u.id, name: u.nome,
+        id: u.id, name: u.nome, email: u.email,
         short: u.nome.split(' ')[0],
         level: u.nivel, quota: u.quota_tokens,
         used: u.tokens_usados || 0,
@@ -58,7 +58,7 @@ async function doLogin() {
     if (resultado && resultado.length > 0) {
       const u = resultado[0];
       currentUser = {
-        key, id: u.id, name: u.nome,
+        key, id: u.id, name: u.nome, email: u.email,
         short: u.nome.split(' ')[0],
         level: u.nivel, quota: u.quota_tokens,
         used: u.tokens_usados || 0,

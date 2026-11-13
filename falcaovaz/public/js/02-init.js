@@ -20,6 +20,7 @@ async function initApp() {
   // ── JURÍDICO (nível 1) — módulo judicial completo
   if (u.judicial) {
     show('nav-section-judicial');
+    show('nav-agenda-jur');   // Agenda do jurídico (13/11/2026, js/19-agenda.js)
     show('nav-processos'); show('nav-prazos'); show('nav-calculo-prazos');
     show('nav-chamados-jur');   // Financeiro desativado (Rodrigo, 12/10/2026: não é usado; tabela fechada no banco)
     show('nav-acordos-jur');

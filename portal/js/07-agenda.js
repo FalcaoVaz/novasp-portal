@@ -174,6 +174,19 @@ async function _agExcluirEvento(id){
   return await db.del('agenda_eventos', id);
 }
 
+// ═══ Duas agendas na mesma tabela (13/11/2026) ═══
+// agenda_eventos.agenda = 'nsp' (esta, do portal) ou 'juridico' (Sistema Jurídico → Agenda).
+// Cada agenda mostra só os seus compromissos; o Rodrigo vê as duas juntas (os do jurídico com a etiqueta ⚖️).
+// Compromisso PESSOAL: o dono vê completo; os demais veem só "🔒 Ocupado · Nome" no horário (sem título/descrição).
+const AG_DONO_DUAS_AGENDAS = 'rodrigo@novasaopaulo.com.br';
+function _agVeDuasAgendas(){ return !!(typeof CUR!=='undefined' && CUR && String(CUR.email||'').trim().toLowerCase()===AG_DONO_DUAS_AGENDAS); }
+function _agEhPessoal(e){ return String(e.tipo||e.Tipo||'').toLowerCase()==='pessoal'; }
+function _agEhDono(e){
+  const dono=_normLogin(e.responsavel||e.Responsavel||''), eu=_normLogin((typeof CUR!=='undefined' && CUR && CUR.nome)||'');
+  return !!(eu && dono.includes(eu));
+}
+function _agDonoPrimeiroNome(e){ return String(e.responsavel||'').split(/[,;]/)[0].trim().split(' ')[0] || 'alguém'; }
+
 async function renderAg(){
   document.getElementById('ag-lbl').textContent=wkLabel(wkO);
   const days=wkDays(wkO);
@@ -266,11 +279,13 @@ async function renderAg(){
       // Compromisso PESSOAL (tipo "Pessoal"): so aparece pro proprio dono
       // (identificado pelo nome no campo responsavel). Privacidade sem
       // depender de coluna nova na planilha.
+      // 13/11/2026: o pessoal dos OUTROS aparece como horário ocupado (sem título); pessoal vale nas duas agendas
+      // (é o tempo da pessoa). Compromisso da agenda do jurídico só aparece aqui para o Rodrigo.
       .filter(e=>{
-        if (String(e.tipo||e.Tipo||'').toLowerCase() !== 'pessoal') return true;
-        const dono = _normLogin(e.responsavel||e.Responsavel||'');
-        const eu   = _normLogin((typeof CUR!=='undefined' && CUR && CUR.nome) || '');
-        return eu && dono.includes(eu);
+        if (_agEhPessoal(e)) { e._ocupado = !_agEhDono(e); return true; }
+        e._ocupado = false;
+        if ((e.agenda||'nsp') === 'nsp') return true;
+        return _agVeDuasAgendas();
       })
       // Filtra reunioes legadas que ja foram substituidas por outras
       // pautas — includes em qualquer parte do titulo pra pegar todas as
@@ -305,7 +320,7 @@ async function renderAg(){
       const titulo = String(e.titulo||e.Titulo||'').trim().toLowerCase();
       const hi = String(e.hora_inicio||'').slice(0,5);
       const hf = String(e.hora_fim||'').slice(0,5);
-      const key = `${titulo}|${hi}|${hf}`;
+      const key = e._ocupado ? `oc|${e.id}` : `${titulo}|${hi}|${hf}`;
       if (_vistos.has(key)) continue;
       _vistos.add(key);
       evDia.push(e);
@@ -352,10 +367,15 @@ async function renderAg(){
       const horario = hi ? (hf ? `${hi}–${hf}` : hi) : '';
       const resp = (e.responsavel||'').trim();
       const eid = String(e.id||'');
-      const ehPessoal = String(e.tipo||'').toLowerCase()==='pessoal';
-      const bgEv = ehPessoal ? '#f5f3ff' : 'var(--bg)';
-      return { hora: hi || '99:99', html: `<div style="padding:5px 7px;border-radius:6px;font-size:11.5px;margin-bottom:4px;background:${bgEv};cursor:pointer" onclick="abrirEditarEv('${eid}')" title="${ehPessoal?'Compromisso pessoal (só você vê)':'Clique para editar'}">
-        ${horario?`<b>${horario}</b> `:''}${ehPessoal?'🔒 ':''}${e.titulo||''}
+      const ehPessoal = _agEhPessoal(e);
+      if (e._ocupado) {
+        return { hora: hi || '99:99', html: `<div style="padding:5px 7px;border-radius:6px;font-size:11.5px;margin-bottom:4px;background:repeating-linear-gradient(135deg,#f1f5f9,#f1f5f9 6px,#e2e8f0 6px,#e2e8f0 12px);color:#475569;cursor:default" title="Horário ocupado (compromisso pessoal)">
+          ${horario?`<b>${horario}</b> `:''}🔒 Ocupado · ${_agDonoPrimeiroNome(e)}</div>` };
+      }
+      const ehJur = (e.agenda||'nsp') === 'juridico';
+      const bgEv = ehPessoal ? '#f5f3ff' : (ehJur ? '#fff7ed' : 'var(--bg)');
+      return { hora: hi || '99:99', html: `<div style="padding:5px 7px;border-radius:6px;font-size:11.5px;margin-bottom:4px;background:${bgEv};cursor:pointer${ehJur?';border-left:3px solid #d97706':''}" onclick="abrirEditarEv('${eid}')" title="${ehPessoal?'Compromisso pessoal (os outros veem só Ocupado)':(ehJur?'Agenda do jurídico (edite no Sistema Jurídico)':'Clique para editar')}">
+        ${horario?`<b>${horario}</b> `:''}${ehPessoal?'🔒 ':''}${ehJur?'<span style="font-size:9px;background:#d97706;color:#fff;padding:1px 5px;border-radius:8px;margin-right:3px">⚖️ JURÍDICO</span>':''}${e.titulo||''}
         ${(!ehPessoal && resp)?`<div style="font-size:10px;color:#64748b;margin-top:2px">👤 ${resp.length>40?resp.slice(0,38)+'…':resp}</div>`:''}
       </div>` };
     });
@@ -537,6 +557,8 @@ async function abrirEditarEv(id){
     }catch(e){}
   }
   if(!ev){ toast('Evento nao encontrado.','err'); return; }
+  if(_agEhPessoal(ev) && !_agEhDono(ev)){ toast('Horário ocupado: compromisso pessoal de '+_agDonoPrimeiroNome(ev)+'.',''); return; }
+  if((ev.agenda||'nsp')==='juridico'){ toast('Este compromisso é da agenda do jurídico — abra e edite no Sistema Jurídico (Agenda).',''); return; }
   _editEvId = id;
   _popularHorasSelects();
   // Preenche o modal

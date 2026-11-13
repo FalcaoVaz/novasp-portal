@@ -14,7 +14,7 @@ const PASSADO_DIAS = 30, FUTURO_DIAS = 180;
 const FIXAS = {
   terca:      { dow: 2, hora: '15:00', lb: 'Reunião Mkt',            quinzenal: false, part: ['Rodrigo Falcão Vaz', 'Thais', 'Anderson'] },
   quarta:     { dow: 3, hora: '11:00', lb: 'Reunião Adm',            quinzenal: true,  part: ['Rodrigo Falcão Vaz', 'Vivian', 'Nogueira', 'João Marcos'] },
-  juridico:   { dow: 3, hora: '11:00', lb: 'Reunião Jurídico',       quinzenal: true,  part: ['Rodrigo Falcão Vaz', 'Fernanda Araujo', 'Renata Navarro', 'Edna Rebesco', 'Durval Falcão Vaz', 'Janaina Alves'] },
+  juridico:   { dow: 3, hora: '11:00', lb: 'Reunião Jurídico',       quinzenal: true,  part: ['Rodrigo Falcão Vaz', 'Fernanda Araujo', 'Vitor Cordeiro', 'Renata Navarro', 'Edna Rebesco', 'Durval Falcão Vaz', 'Janaina Alves'] },
   felippe:    { dow: 4, hora: '10:00', lb: '1:1 Felippe',            quinzenal: true,  part: ['Rodrigo Falcão Vaz', 'Felippe'] },
   emilia:     { dow: 4, hora: '11:00', lb: '1:1 Emilia',             quinzenal: true,  part: ['Rodrigo Falcão Vaz', 'Emilia'] },
   renata:     { dow: 4, hora: '10:00', lb: '1:1 Renata (Moema)',     quinzenal: true,  part: ['Rodrigo Falcão Vaz', 'Renata Navarro'] },
