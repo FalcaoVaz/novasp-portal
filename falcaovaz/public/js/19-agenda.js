@@ -3,7 +3,7 @@
 // Mesma tabela da agenda do portal (agenda_eventos), separada pelo campo agenda = 'juridico'
 // (sql: portal/sql/2026-11-13-agenda-juridico.sql). Regras:
 //   · aqui aparecem os compromissos da agenda do jurídico;
-//   · o Rodrigo vê também os da agenda da NSP (etiqueta "NSP", só leitura aqui) — e no portal vê os daqui;
+//   · o Rodrigo vê também os SEUS compromissos da agenda da NSP (etiqueta "NSP", só leitura aqui) — e no portal os seus daqui;
 //   · compromisso PESSOAL: o dono vê completo; os demais veem só "🔒 Ocupado · Nome" naquele horário.
 //     Vale nas duas agendas (é o tempo da pessoa): o pessoal de quem é do jurídico aparece aqui como ocupado,
 //     mesmo se foi marcado na agenda do portal.
@@ -20,6 +20,12 @@ function agjDias(off) { return Array.from({ length: 5 }, (_, i) => { const d = a
 function agjVeDuas() { return !!(currentUser && String(currentUser.email || '').trim().toLowerCase() === AGJ_DUAS_AGENDAS); }
 const agjPessoal = e => agjNorm(e.tipo) === 'pessoal';
 function agjDono(e) { const eu = agjNorm(currentUser && currentUser.name); return !!(eu && agjNorm(e.responsavel).includes(eu)); }
+// o compromisso tem a pessoa entre os participantes? (nome completo ou só o primeiro nome)
+function agjParticipa(e, nome) {
+  const eu = agjNorm(nome), pn = eu.split(' ')[0];
+  return !!eu && String(e.responsavel || '').split(/[,;]/).map(agjNorm).filter(Boolean)
+    .some(p => p === eu || p === pn || (p.length >= 4 && (eu.includes(p) || p.includes(eu))));
+}
 const agjPrimeiro = e => String(e.responsavel || '').split(/[,;]/)[0].trim().split(' ')[0] || 'alguém';
 // o pessoal de alguém do jurídico (participa desta agenda) aparece aqui como ocupado
 function agjDonoEhMembro(e) {
@@ -43,7 +49,8 @@ async function carregarAgendaJur() {
     if (agjPessoal(e)) { e._dono = agjDono(e); e._ocupado = !e._dono; return e._dono || agjDonoEhMembro(e); }
     e._ocupado = false;
     if ((e.agenda || 'nsp') === 'juridico') return true;
-    return duas && !/^\[CANCELADA:/.test(e.titulo || '') && agjNorm(e.tipo) !== 'cancelamento';
+    // 13/11/2026: da agenda da NSP só entram os compromissos em que o Rodrigo participa (não a agenda inteira da empresa)
+    return duas && agjParticipa(e, currentUser.name) && !/^\[CANCELADA:/.test(e.titulo || '') && agjNorm(e.tipo) !== 'cancelamento';
   });
   const nomesDia = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'], hoje = agjIso(new Date());
   grid.innerHTML = dias.map((d, i) => {

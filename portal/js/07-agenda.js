@@ -185,6 +185,11 @@ function _agEhDono(e){
   const dono=_normLogin(e.responsavel||e.Responsavel||''), eu=_normLogin((typeof CUR!=='undefined' && CUR && CUR.nome)||'');
   return !!(eu && dono.includes(eu));
 }
+function _agParticipa(e){
+  const eu=_normLogin((typeof CUR!=='undefined' && CUR && CUR.nome)||''), pn=eu.split(' ')[0];
+  return !!eu && String(e.responsavel||'').split(/[,;]/).map(_normLogin).filter(Boolean)
+    .some(p => p===eu || p===pn || (p.length>=4 && (eu.includes(p) || p.includes(eu))));
+}
 function _agDonoPrimeiroNome(e){ return String(e.responsavel||'').split(/[,;]/)[0].trim().split(' ')[0] || 'alguém'; }
 
 async function renderAg(){
@@ -285,7 +290,7 @@ async function renderAg(){
         if (_agEhPessoal(e)) { e._ocupado = !_agEhDono(e); return true; }
         e._ocupado = false;
         if ((e.agenda||'nsp') === 'nsp') return true;
-        return _agVeDuasAgendas();
+        return _agVeDuasAgendas() && _agParticipa(e);   // do jurídico, só os dele
       })
       // Filtra reunioes legadas que ja foram substituidas por outras
       // pautas — includes em qualquer parte do titulo pra pegar todas as
