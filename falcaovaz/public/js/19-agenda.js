@@ -10,6 +10,12 @@
 // ═══════════════════════════════════════════════════════════════
 const AGJ_DUAS_AGENDAS = 'rodrigo@novasaopaulo.com.br';
 const AGJ_TIPOS = ['Audiência', 'Reunião', 'Prazo', 'Atendimento', 'Diligência', 'Despacho', 'Outro'];
+// Reunião fixa do jurídico: quarta 11h, quinzenal — mesma conta do portal (08-pauta.js / 07-agenda.js):
+// âncora 17/06/2026 = semana do jurídico; alterna com a reunião Adm. Cancelada na semana pelo portal ([CANCELADA:juridico]) não aparece.
+const AGJ_REUNIAO = { dow: 3, hora: '11:00', fim: '12:00', lb: 'Reunião Jurídico',
+  part: ['Rodrigo Falcão Vaz', 'Fernanda Araujo', 'Vitor Cordeiro', 'Renata Navarro', 'Edna Rebesco', 'Durval Falcão Vaz', 'Janaina Alves'] };
+function agjParidade(d) { const x = new Date(d), dy = x.getDay() || 7; x.setDate(x.getDate() - dy + 1); x.setHours(0, 0, 0, 0); return Math.floor(x.getTime() / 6048e5) % 2; }
+const AGJ_PAR_JUR = agjParidade(new Date(2026, 5, 17));
 let agjSemana = 0, agjEventos = [], agjMembros = [], agjEditId = null;
 
 const agjEsc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -52,11 +58,14 @@ async function carregarAgendaJur() {
     // 13/11/2026: da agenda da NSP só entram os compromissos em que o Rodrigo participa (não a agenda inteira da empresa)
     return duas && agjParticipa(e, currentUser.name) && !/^\[CANCELADA:/.test(e.titulo || '') && agjNorm(e.tipo) !== 'cancelamento';
   });
+  const canceladas = new Set((evs || []).filter(e => /^\[CANCELADA:juridico\]/.test(e.titulo || '')).map(e => String(e.data).slice(0, 10)));
   const nomesDia = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'], hoje = agjIso(new Date());
   grid.innerHTML = dias.map((d, i) => {
     const iso = agjIso(d);
-    const doDia = agjEventos.filter(e => String(e.data).slice(0, 10) === iso)
-      .sort((a, b) => String(a.hora_inicio || '99:99').localeCompare(String(b.hora_inicio || '99:99')));
+    const doDia = agjEventos.filter(e => String(e.data).slice(0, 10) === iso);
+    if (d.getDay() === AGJ_REUNIAO.dow && agjParidade(d) === AGJ_PAR_JUR)
+      doDia.push(canceladas.has(iso) ? { _fixa: true, _cancelada: true, hora_inicio: AGJ_REUNIAO.hora } : { _fixa: true, hora_inicio: AGJ_REUNIAO.hora, hora_fim: AGJ_REUNIAO.fim });
+    doDia.sort((a, b) => String(a.hora_inicio || '99:99').localeCompare(String(b.hora_inicio || '99:99')));
     return `<div class="card" style="min-width:0">
       <div style="padding:10px;text-align:center;background:var(--gray-50);border-bottom:1px solid var(--gray-200)">
         <div style="font-size:11px;font-weight:700;color:var(--gray-400)">${nomesDia[i]}</div>
@@ -73,6 +82,10 @@ function agjCartao(e) {
   const hi = String(e.hora_inicio || '').slice(0, 5), hf = String(e.hora_fim || '').slice(0, 5);
   const h = hi ? (hf ? `${hi}–${hf}` : hi) : '';
   const base = 'padding:6px 8px;border-radius:6px;font-size:12px;margin-bottom:5px;';
+  if (e._fixa && e._cancelada) return `<div style="${base}background:var(--gray-50);border-left:3px solid var(--gray-300);color:var(--gray-400)"><s>${AGJ_REUNIAO.hora} · ${AGJ_REUNIAO.lb}</s> cancelada esta semana</div>`;
+  if (e._fixa) return `<div style="${base}background:#fef3c7;border-left:3px solid #d97706" title="Reunião fixa quinzenal (pauta no portal). Participantes: ${agjEsc(AGJ_REUNIAO.part.join(', '))}">
+    <b style="color:#92400e">${AGJ_REUNIAO.hora} · ${AGJ_REUNIAO.lb}</b> <span style="font-size:9px;background:#d97706;color:#fff;padding:1px 5px;border-radius:8px">FIXA</span>
+    <div style="font-size:10px;color:var(--gray-500);margin-top:2px">👥 ${agjEsc(AGJ_REUNIAO.part.map(n => n.split(' ')[0]).join(', '))}</div></div>`;
   if (e._ocupado) return `<div style="${base}background:repeating-linear-gradient(135deg,#f1f5f9,#f1f5f9 6px,#e2e8f0 6px,#e2e8f0 12px);color:var(--gray-600)" title="Horário ocupado (compromisso pessoal)">${h ? `<b>${h}</b> ` : ''}🔒 Ocupado · ${agjEsc(agjPrimeiro(e))}</div>`;
   const nsp = (e.agenda || 'nsp') === 'nsp' && !agjPessoal(e);
   const pes = agjPessoal(e);
