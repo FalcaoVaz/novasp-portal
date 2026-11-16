@@ -861,7 +861,7 @@ function raLerPlanilha(wb) {
 RA.abrirPlanilhas = function () {
   const sel = document.getElementById('ra-eproc-adv');
   const adv = document.getElementById('filtro-processo-adv')?.value || currentUser?.name || '';
-  sel.innerHTML = Object.keys(RA.OAB).concat(['Rodrigo Falcão Vaz', 'Durval Falcão Vaz', 'Janaina Alves']).map(n => `<option ${n === adv ? 'selected' : ''}>${raEsc(n)}</option>`).join('');
+  sel.innerHTML = Object.keys(RA.OAB).concat(['Vitor Cordeiro', 'Rodrigo Falcão Vaz', 'Durval Falcão Vaz', 'Janaina Alves']).map(n => `<option ${n === adv ? 'selected' : ''}>${raEsc(n)}</option>`).join('');
   document.getElementById('ra-eproc-arq').value = '';
   document.getElementById('ra-eproc-res').innerHTML = '';
   document.getElementById('ra-eproc-salvar').style.display = 'none';
