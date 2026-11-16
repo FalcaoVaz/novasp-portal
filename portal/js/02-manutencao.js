@@ -415,8 +415,8 @@ function podeAcessarGestao(){ return ehLiderGestao() || ehColaboradorGestao() ||
 
 // Pessoas com acesso SÓ ao Calendar (sem Vendas/Gestão) — incluídas na agenda
 // por e-mail exato. Ex.: Gabriela (cpd@) e Dayani (financeiro@), set/2026.
-// Vitor Cordeiro (advogado, 13/11/2026): agenda do portal + aparece como participante
-const CALENDAR_EXTRA_EMAILS = ['cpd@novasaopaulo.com.br','financeiro@novasaopaulo.com.br','vitorcordeiro@novasaopaulo.com.br'];
+// Vitor Cordeiro (advogado, 13/11/2026) e Durval (16/11/2026): agenda do portal + aparecem como participantes
+const CALENDAR_EXTRA_EMAILS = ['cpd@novasaopaulo.com.br','financeiro@novasaopaulo.com.br','vitorcordeiro@novasaopaulo.com.br','diretor@novasaopaulo.com.br'];
 
 // Calendar é restrito: lideres + gerentes/assistentes de vendas + admin.
 // Substitui a flag acesso_calendar pra evitar que o resto do time apareça

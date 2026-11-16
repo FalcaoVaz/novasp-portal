@@ -10,7 +10,7 @@
 // A data é sempre sugestão: a advogada confere nos autos e confirma.
 // ═══════════════════════════════════════════════════════════════
 const RA = {
-  OAB: { 'Fernanda Araujo': '498574', 'Edna Rebesco': '30248' },   // carteiras com DJEN por OAB
+  OAB: { 'Fernanda Araujo': '498574', 'Edna Rebesco': '30248', 'Vitor Cordeiro': '528845' },   // carteiras com DJEN por OAB
   DJEN_URL: 'https://comunicaapi.pje.jus.br/api/v1/comunicacao',
   JANELA_DIAS: 180,          // DJEN: publicações dos últimos 6 meses
   LIMITE_PARADO: 30,         // dias sem movimentação para "parado"
@@ -861,7 +861,7 @@ function raLerPlanilha(wb) {
 RA.abrirPlanilhas = function () {
   const sel = document.getElementById('ra-eproc-adv');
   const adv = document.getElementById('filtro-processo-adv')?.value || currentUser?.name || '';
-  sel.innerHTML = Object.keys(RA.OAB).concat(['Vitor Cordeiro', 'Rodrigo Falcão Vaz', 'Durval Falcão Vaz', 'Janaina Alves']).map(n => `<option ${n === adv ? 'selected' : ''}>${raEsc(n)}</option>`).join('');
+  sel.innerHTML = Object.keys(RA.OAB).concat(['Rodrigo Falcão Vaz', 'Durval Falcão Vaz', 'Janaina Alves']).map(n => `<option ${n === adv ? 'selected' : ''}>${raEsc(n)}</option>`).join('');
   document.getElementById('ra-eproc-arq').value = '';
   document.getElementById('ra-eproc-res').innerHTML = '';
   document.getElementById('ra-eproc-salvar').style.display = 'none';

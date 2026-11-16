@@ -314,6 +314,6 @@ async function excluirPrazo(id, descricao) {
 }
 
 // ─── SALVAR CHAMADO ───────────────────────────────────────
-const JURIDICO_NOMES = ['Rodrigo Falcão Vaz','Fernanda Araujo','Vitor Cordeiro','Renata Navarro',
+const JURIDICO_NOMES = ['Rodrigo Falcão Vaz','Fernanda Araujo','Vitor Cordeiro',
   'Edna Rebesco','Durval Falcão Vaz','Janaina Alves'];
 

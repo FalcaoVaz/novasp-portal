@@ -35,7 +35,7 @@ async function doLogin() {
   if (!key) { document.getElementById('login-error').style.display = 'flex'; return; }
 
   const nomeMap = {
-    rodrigo:'Rodrigo Falcão Vaz', fernanda:'Fernanda Araujo', renata:'Renata Navarro',
+    rodrigo:'Rodrigo Falcão Vaz', fernanda:'Fernanda Araujo',
     edna:'Edna Rebesco', durval:'Durval Falcão Vaz', janaina:'Janaina Alves',
     simone:'Simone Cirino', mikaeli:'Mikaeli', vanderleia:'Vanderleia', vivian:'Vivian',
     joaomarcus:'João Marcus', nogueira:'Nogueira',

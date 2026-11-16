@@ -91,7 +91,7 @@ const db = {
 const USERS = {
   rodrigo:    { name: 'Rodrigo Falcão Vaz',  short: 'Rodrigo', level: 1, quota: 500000, used: 0,  admin: true,  judicial: true  },
   fernanda:   { name: 'Fernanda Araujo',      short: 'Fernanda', level: 1, quota: 500000, used: 0, admin: false, judicial: true  },
-  renata:     { name: 'Renata Navarro',       short: 'Renata',  level: 1, quota: 500000, used: 0,  admin: false, judicial: true  },
+  renata:     { name: 'Renata Navarro',       short: 'Renata',  level: 3, quota: 100000, used: 0,  admin: false, judicial: false },   // saiu do jurídico 16/11/2026
   edna:       { name: 'Edna Rebesco',         short: 'Edna',    level: 1, quota: 500000, used: 0,  admin: false, judicial: true  },
   durval:     { name: 'Durval Falcão Vaz',    short: 'Durval',  level: 1, quota: 500000, used: 0,  admin: false, judicial: true  },
   simone:     { name: 'Simone Cirino',        short: 'Simone',  level: 2, quota: 200000, used: 0,  admin: false, judicial: false },

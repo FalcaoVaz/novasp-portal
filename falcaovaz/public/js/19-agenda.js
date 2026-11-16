@@ -13,7 +13,7 @@ const AGJ_TIPOS = ['Audiência', 'Reunião', 'Prazo', 'Atendimento', 'Diligênci
 // Reunião fixa do jurídico: quarta 11h, quinzenal — mesma conta do portal (08-pauta.js / 07-agenda.js):
 // âncora 17/06/2026 = semana do jurídico; alterna com a reunião Adm. Cancelada na semana pelo portal ([CANCELADA:juridico]) não aparece.
 const AGJ_REUNIAO = { dow: 3, hora: '11:00', fim: '12:00', lb: 'Reunião Jurídico',
-  part: ['Rodrigo Falcão Vaz', 'Fernanda Araujo', 'Vitor Cordeiro', 'Renata Navarro', 'Edna Rebesco', 'Durval Falcão Vaz', 'Janaina Alves'] };
+  part: ['Rodrigo Falcão Vaz', 'Fernanda Araujo', 'Vitor Cordeiro', 'Edna Rebesco', 'Durval Falcão Vaz', 'Janaina Alves'] };
 function agjParidade(d) { const x = new Date(d), dy = x.getDay() || 7; x.setDate(x.getDate() - dy + 1); x.setHours(0, 0, 0, 0); return Math.floor(x.getTime() / 6048e5) % 2; }
 const AGJ_PAR_JUR = agjParidade(new Date(2026, 5, 17));
 let agjSemana = 0, agjEventos = [], agjMembros = [], agjEditId = null;
