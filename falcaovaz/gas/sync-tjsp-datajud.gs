@@ -9,7 +9,10 @@
 
 // ── CONFIGURAÇÃO ────────────────────────────────────────────────
 var SUPABASE_URL  = 'https://mqcduyvpuxdweqesgwrq.supabase.co';
-var SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1xY2R1eXZwdXhkd2VxZXNnd3JxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4MzE5OTcsImV4cCI6MjA5MzQwNzk5N30.QdpRZRxnYF6GTh13wdTNqZTQ-9ztY3veef62mfGRphE';
+// 17/11/2026: com o banco fechado (RLS), a chave pública (anon) não enxerga nenhum processo — a sincronização rodava e não
+// gravava nada desde 27/10. A chave de serviço fica nas PROPRIEDADES DO SCRIPT (Configurações do projeto → Propriedades do
+// script → SUPABASE_SERVICE_KEY), nunca no código. Sem ela, cai na pública (e não sincroniza).
+var SUPABASE_KEY  = PropertiesService.getScriptProperties().getProperty('SUPABASE_SERVICE_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1xY2R1eXZwdXhkd2VxZXNnd3JxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4MzE5OTcsImV4cCI6MjA5MzQwNzk5N30.QdpRZRxnYF6GTh13wdTNqZTQ-9ztY3veef62mfGRphE';
 
 // DataJud — endpoint do TJSP e API key publica oficial do CNJ
 var DATAJUD_URL    = 'https://api-publica.datajud.cnj.jus.br/api_publica_tjsp/_search';
