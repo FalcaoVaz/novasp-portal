@@ -412,20 +412,30 @@ async function confirmarReset(){
   if(nova!==conf){ showErr('As senhas não coincidem.'); return; }
   btn.disabled=true; btn.textContent='Verificando...';
   try{
-    const url = GAS_EMAIL + '?action=verificar_reset&data=' +
-      encodeURIComponent(JSON.stringify({ email: CUR.email, codigo })) + '&t=' + Date.now();
-    const r = await fetch(url);
-    const j = await r.json();
-    if(!j || j.success===false){
-      const er=(j&&j.error)||'';
+    // 17/11/2026: o servidor confere o código E troca a senha da conta de login (Supabase Auth) — antes só mudava
+    // usuarios.senha_hash, e no acesso seguinte o login recusava a senha nova (caso da Christiane).
+    const r = await fetch(JURIDICO_ORIGIN + '/.netlify/functions/redefinir-senha', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ email: CUR.email, codigo, nova }) });
+    const j = await r.json().catch(()=>null);
+    if(!j || j.ok!==true){
+      const er=(j&&j.erro)||'';
       showErr(er==='expirado' ? 'Código expirado. Clique em "Reenviar código".'
             : er==='invalido' ? 'Código incorreto. Confira no email.'
-            : 'Não foi possível validar o código. Tente novamente.');
+            : 'Não foi possível redefinir agora. Tente novamente em instantes.');
       btn.disabled=false; btn.textContent='Redefinir senha'; return;
     }
-    const hash=await hashSenha(nova);
-    await db.patch('usuarios',CUR.id,{senha_hash:hash,primeiro_acesso:false});
-    CUR.senha_hash=hash;
+    // senha trocada: entra com ela, como no login normal
+    btn.textContent='Entrando...';
+    const okAuth = await autenticarSupabase(CUR, nova, {somenteLogin:true});
+    if(!okAuth){ showErr('Senha redefinida, mas não consegui entrar. Volte e entre com a senha nova.'); btn.disabled=false; btn.textContent='Redefinir senha'; return; }
+    if (CUR._viaView) {
+      const full = await db.get('usuarios','?id=eq.'+CUR.id+'&limit=1').catch(()=>[]);
+      if (full && full[0]) CUR = {...CUR, ...full[0]};
+    }
+    CUR.tem_senha=true;
+    const manter = document.getElementById('lmanter')?.checked;
+    if (manter) _salvarAuthPersistente(CUR); else _limparAuthPersistente();
     btn.disabled=false; btn.textContent='Redefinir senha';
     document.getElementById('ls').style.display='none';
     document.getElementById('app').style.display='block';
