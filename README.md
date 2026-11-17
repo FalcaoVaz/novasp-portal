@@ -52,6 +52,25 @@
 - **IA:** Anthropic API (claude-sonnet-4-6)
 - **Email:** Resend API
 
+## Deploy (linha de comando — desde 17/11/2026)
+
+O zip arrastado no painel do Netlify **deixou de existir**. Cada pasta tem um `deploy.sh` e está ligada ao seu site
+(`netlify link`; o estado fica em `.netlify/`, fora do git). Requer o Netlify CLI logado (`~/.local/node/bin/netlify`, time NOVASP).
+
+| Pasta | Site | O que vai para o ar |
+|---|---|---|
+| `portal/` | novasp → https://novasp.netlify.app | a pasta inteira, **menos** `sql/`, `gas/`, `_teste*`, `.DS_Store` e o próprio `deploy.sh` |
+| `falcaovaz/` | falcaovaz → https://falcaovaz.netlify.app | `public/` + funções de `netlify/functions` (esbuild, pelo `netlify.toml`) |
+
+```bash
+cd ~/Downloads/novasp-extraido/portal && ./deploy.sh      # rascunho → mostra a URL de teste → pergunta se publica
+cd ~/Downloads/novasp-extraido/falcaovaz && ./deploy.sh   # idem
+./deploy.sh --prod                                         # direto para produção, sem rascunho
+```
+
+A mensagem do deploy no Netlify é o último commit (ou `MSG="..." ./deploy.sh`). As variáveis de ambiente ficam no
+Netlify — o deploy não mexe nelas. Fluxo: commit → `./deploy.sh` (confere o rascunho) → `s` → `git push`.
+
 ## Variáveis de Ambiente (Netlify)
 
 ```
