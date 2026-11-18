@@ -18,13 +18,13 @@ const GAS_EMAIL       = 'https://script.google.com/macros/s/AKfycbw6QlYrbYAlM4TF
 // As abas TAREFAS e PAUTA_* da planilha do Calendar foram para calendar_tarefas / calendar_pauta
 // (sql/2026-11-18-tarefas-pautas-supabase.sql). As telas continuam chamando gasGet/gasGetCached com
 // {action, sheet, id, data} — aqui essas chamadas são desviadas para o banco, com a mesma resposta {success, data}.
-// HORARIOS_RODRIGO e o resto do Apps Script seguem na planilha. Se a tabela ainda não existir, volta para a planilha.
+// HORARIOS_RODRIGO e o resto do Apps Script seguem na planilha. Sem volta automática para a planilha (tirada em
+// 18/11/2026, depois da carga: uma aba aberta antes do SQL ficava gravando na planilha sem ninguém ver).
 const _PLAN_COLS = {
   calendar_tarefas: ['id','titulo','status','prazo','prioridade','responsavel','delegar_para','categoria','observacoes',
                      'data_criacao','semana_conclusao','data_conclusao','comentario'],
   calendar_pauta:   ['id','reuniao','data_reuniao','item','responsavel','status','comentario','data_conclusao']
 };
-let _planSemBanco = false;
 function _planTabela(sheet){
   if (sheet === 'TAREFAS') return 'calendar_tarefas';
   if (/^PAUTA_[A-Z]+$/.test(String(sheet || ''))) return 'calendar_pauta';
@@ -60,14 +60,7 @@ async function _planDb(params){
 }
 
 async function gasGet(url, params={}, opts={}) {
-  if (url === GAS_CALENDAR && !_planSemBanco && _planTabela(params.sheet)) {
-    try { return await _planDb(params); }
-    catch (e) {
-      if (!/calendar_(tarefas|pauta)|does not exist|PGRST20[45]|schema cache/i.test(e.message || '')) throw e;
-      _planSemBanco = true;   // SQL ainda não rodado: segue na planilha
-      console.warn('[tarefas/pautas] tabela do banco ainda não existe — usando a planilha:', e.message);
-    }
-  }
+  if (url === GAS_CALENDAR && _planTabela(params.sheet)) return _planDb(params);
   const q = new URLSearchParams({...params, t: Date.now()}).toString();
   const timeoutMs = opts.timeoutMs || 20000;
   const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
@@ -94,7 +87,7 @@ async function gasGet(url, params={}, opts={}) {
 // So LEITURA passa aqui; escrita (create/update/delete) nunca faz retry.
 const _gasCache = new Map();
 async function gasGetCached(url, params={}, ttlMs=60000){
-  if (url === GAS_CALENDAR && !_planSemBanco && _planTabela(params.sheet)) return gasGet(url, params);   // banco: sem cache
+  if (url === GAS_CALENDAR && _planTabela(params.sheet)) return _planDb(params);   // banco: sem cache
   const k = url + '::' + JSON.stringify(params);
   const hit = _gasCache.get(k);
   if (hit && (Date.now() - hit.ts) < ttlMs) return hit.data;
