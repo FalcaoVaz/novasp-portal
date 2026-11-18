@@ -690,7 +690,7 @@
       txt: liberada() ? (S.v.status === 'liberado' ? 'Liberado' : lgv ? (lgv.decisao === 'seguir' ? 'o gerente decidiu seguir sem o jurídico' : 'o gerente enviou ao jurídico (consulta: a venda segue)') : liberadaPorDecisao() ? 'Liberada: o gerente decidiu seguir sem o jurídico em todos os apontamentos' : 'aprovada pelo jurídico')
         : `status: ${esc(statusTxt())}; falta a decisão do gerente ("Enviar ao jurídico?"). Não impede a emissão: sai como rascunho com essa pendência no topo` });
     const r = montar(entrada());
-    itens.push({ rot: 'Dados do compromisso', ok: !r.faltas.length, bloq: false, txt: !r.faltas.length ? 'completos' : `${r.faltas.length} campo(s) faltando: ${esc(r.faltas.slice(0, 3).join('; '))}${r.faltas.length > 3 ? '…' : ''}. Não impede a emissão: sai como rascunho e você completa antes da assinatura`, acao: 'PACompr.abrirDados()' });
+    itens.push({ rot: 'Dados do compromisso', ok: !r.faltas.length, bloq: false, txt: !r.faltas.length ? 'completos' : `${r.faltas.length} campo(s) faltando: ${esc(r.faltas.slice(0, 3).join('; '))}${r.faltas.length > 3 ? '…' : ''}. Não impede a emissão: sai como rascunho e você completa antes da assinatura`, acao: r.faltas.length ? `PACompr.irParaFalta(${JSON.stringify(r.faltas[0]).replace(/"/g, '&quot;')})` : 'PACompr.abrirDados()' });
     return { itens, pronto: itens.every(i => !i.bloq || i.ok), r };
   }
   function cardHTML(erro) {
@@ -738,7 +738,7 @@
             ${pron.pronto ? ((S.M.emitido || {}).rascunho ? '<span style="font-size:12px;color:var(--muted)">a última emissão é um rascunho: complete os dados e emita de novo</span>' : '') : '<span style="font-size:12px;color:var(--muted)">resolva os itens em vermelho para liberar o botão</span>'}` : '<span style="font-size:12.5px;color:var(--muted)">Só gerente, assistente e administrador emitem o compromisso.</span>'}
           <button class="btn btn-o" onclick="PACompr.abrirDados()">Dados do compromisso</button>
           <span id="cp-st" style="font-size:12.5px;color:var(--muted)"></span></div>
-        ${em.em && em.rascunho ? `<div style="margin-top:8px;font-size:13px;background:#fef3c7;border:1px solid #f0c48a;border-radius:8px;padding:8px 10px;color:#7a3b00"><b>Rascunho com ${(em.faltas || []).length} pendência(s)</b>: ${esc((em.faltas || []).slice(0, 5).join('; '))}${(em.faltas || []).length > 5 ? '…' : ''}. <a href="#" onclick="event.preventDefault();PACompr.abrirDados()">Completar</a></div>` : ''}
+        ${em.em && em.rascunho ? `<div style="margin-top:8px;font-size:13px;background:#fef3c7;border:1px solid #f0c48a;border-radius:8px;padding:8px 10px;color:#7a3b00"><b>Rascunho com ${(em.faltas || []).length} pendência(s)</b> na última emissão: ${(em.faltas || []).slice(0, 8).map(linkFalta).join('; ')}${(em.faltas || []).length > 8 ? '…' : ''}. <span style="color:var(--muted)">Clique para ir ao campo; depois salve e emita de novo.</span></div>` : ''}
         ${em.em ? `<div style="margin-top:8px;font-size:13px">Última emissão: <b>${U().dt(em.em)}</b> por ${esc(em.por || '')} · ${esc(em.modelo || '')}
           ${em.docx_id ? ' · ' + btnMini(`PACompr.verAnexo('${em.docx_id}')`, 'Word') : ''}${em.pdf_id ? ' ' + btnMini(`PACompr.verAnexo('${em.pdf_id}')`, 'PDF') : ''}
           ${(em.avisos || []).length ? `<div style="font-size:12px;color:#b45309">${em.avisos.map(esc).join('<br>')}</div>` : ''}
@@ -805,7 +805,7 @@
       <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><b style="font-size:14px">Dados do compromisso</b>
         <span><button class="btn btn-o bsm" onclick="PACompr.preencherAuto()">Preencher automaticamente</button> <button class="btn btn-p bsm" onclick="PACompr.salvarDados()">Salvar</button> ${btnMini('PACompr.fecharDados()', 'Fechar')}</span></div>
       <div style="font-size:12px;color:var(--muted);margin:4px 0 8px">Copie do RG/CNH e das certidões. O que vem da matrícula e da proposta entra sozinho ao clicar em "Preencher automaticamente" (não apaga o que foi digitado).</div>
-      ${r.faltas.length ? `<div style="font-size:12.5px;color:#991b1b;background:#fef2f2;border-radius:8px;padding:8px 10px;margin-bottom:8px"><b>Falta (${r.faltas.length}):</b> ${esc(r.faltas.join('; '))}</div>` : '<div style="font-size:12.5px;color:#166534;margin-bottom:8px">✓ Todos os dados obrigatórios preenchidos.</div>'}
+      ${r.faltas.length ? `<div style="font-size:12.5px;color:#991b1b;background:#fef2f2;border-radius:8px;padding:8px 10px;margin-bottom:8px"><b>Falta (${r.faltas.length}):</b> ${r.faltas.map(linkFalta).join('; ')} <span style="color:var(--muted)">— clique para ir ao campo</span></div>` : '<div style="font-size:12.5px;color:#166534;margin-bottom:8px">✓ Todos os dados obrigatórios preenchidos.</div>'}
       ${grade(`<label style="font-size:11.5px;color:var(--muted)">Versão do contrato<select data-cp="versao" style="${ist}" onchange="PACompr.redesenhar()"><option value="">(escolha)</option>${Object.entries(window.PAAcomp.VERSOES).map(([k, x]) => `<option value="${k}" ${v.versao_contrato === k ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>`)}
       <div style="font-size:13px;font-weight:700;margin:10px 0 6px">Vendedores</div>${S.M.vendedores.map((q, i) => pessoaHTML('V', i, q)).join('')}${btnMini("PACompr.addPessoa('V')", '+ vendedor')}
       <div style="font-size:13px;font-weight:700;margin:12px 0 6px">Compradores</div>${S.M.compradores.map((q, i) => pessoaHTML('C', i, q)).join('')}${btnMini("PACompr.addPessoa('C')", '+ comprador')}
@@ -841,9 +841,9 @@
     S.M.N.testemunhas = test.filter(w => w && (w.nome || w.cpf));
     return versao;
   }
-  function abrirDados() { const b = document.getElementById('cp-dados'); if (!b) return; b.innerHTML = dadosHTML(); b.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  function abrirDados() { const b = document.getElementById('cp-dados'); if (!b) return; b.innerHTML = dadosHTML(); marcarFaltas(); b.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   function fecharDados() { const b = document.getElementById('cp-dados'); if (b) b.innerHTML = ''; }
-  function redesenhar() { const vs = lerForm(); if (vs !== undefined) S.v.versao_contrato = vs || null; const b = document.getElementById('cp-dados'); if (b) b.innerHTML = dadosHTML(); }
+  function redesenhar() { const vs = lerForm(); if (vs !== undefined) S.v.versao_contrato = vs || null; const b = document.getElementById('cp-dados'); if (b) { b.innerHTML = dadosHTML(); marcarFaltas(); } }
   function addPessoa(l) { redesenhar(); (l === 'V' ? S.M.vendedores : S.M.compradores).push({ nacionalidade: 'brasileiro(a)' }); redesenhar(); }
   function tirarPessoa(l, i) { redesenhar(); (l === 'V' ? S.M.vendedores : S.M.compradores).splice(i, 1); const b = document.getElementById('cp-dados'); if (b) b.innerHTML = dadosHTML(); }
   function addLinha(k) { redesenhar(); S.M.N[k] = (S.M.N[k] || []).concat([{}]); if (S.M.N[k].length === 1 && k === 'testemunhas') S.M.N[k].push({}); const b = document.getElementById('cp-dados'); if (b) b.innerHTML = dadosHTML(); }
@@ -871,6 +871,79 @@
     b.innerHTML = `<div style="margin-top:10px;font-size:12.5px;background:#f8fafc;border-radius:8px;padding:10px;line-height:1.5">
       <b>PARTE VENDEDORA:</b> ${esc(r.val.partes_vendedoras)}<br><br><b>PARTE COMPRADORA:</b> ${esc(r.val.parte_compradora)}<br><br><b>Preço:</b> ${esc(r.val.preco)} (${esc(r.val.preco_extenso)}) · <b>Sinal:</b> ${esc(r.val.sinal)} (${esc(r.val.sinal_extenso)}) · <b>Saldo:</b> ${esc(r.val.saldo)}</div>`;
   }
+
+
+  // ══════════════ COMPLETAR O QUE FALTA ALI MESMO (18/11/2026 — "faltas_campos" do motor 1.3) ══════════════
+  // Cada pendência da minuta aponta o campo do formulário "Dados do compromisso" (data-cp) — ou o cartão da decisão,
+  // ou os Dados da proposta (matrícula). Clicar abre o formulário no campo, que fica marcado em vermelho.
+  const OBRIG_K = { 'preço': 'preco', 'sinal': 'sinal', 'data da assinatura': 'data_assinatura', 'valor da comissão': 'comissao_valor', 'banco do financiamento': 'banco_financiador',
+    'valor dos recursos do FGTS': 'valor_fgts', 'data do sinal': 'sinal_data', 'valor financiado (aproximado)': 'valor_financiado_aprox', 'valor do FGTS (aproximado)': 'valor_fgts_aprox',
+    'saldo do depósito-caução da locação': 'caucao_valor' };
+  const PROF_K = { 'nome': 'nome', 'nacionalidade': 'nacionalidade', 'profissão': 'profissao', 'rg': 'rg', 'cpf': 'cpf', 'endereço': 'endereco', 'estado civil': 'estado_civil' };
+  function campoDaFalta(f) {
+    const idx = (lista, nome) => lista.findIndex(q => q && (q.nome === nome || (q.nome && nomeIgual(q.nome, nome))));
+    let m;
+    if (/^Decisão do gerente/.test(f)) return { liberacao: true };
+    if (/^Versão do contrato/.test(f)) return { cp: 'versao' };
+    if (/^Matrícula: /.test(f)) return { proposta: true };
+    if (/^Descrição do imóvel/.test(f)) return { cp: 'N.descricao_imovel' };
+    if (/^Testemunhas/.test(f)) return { cp: 'T.0.nome' };
+    if (/^Usufruto/.test(f)) return { cp: 'N.usufrutuario' };
+    if ((m = f.match(/^Negociação: (.+)$/))) {
+      if (/conta da parte/.test(m[1])) return { cp: 'K.0.nome' };
+      if (/beneficiário da conta/.test(m[1])) return { cp: 'K.0.doc' };
+      return OBRIG_K[m[1]] ? { cp: 'N.' + OBRIG_K[m[1]] } : null;
+    }
+    if (/^Vendedor: qualificação/.test(f)) return { secao: 'V' };
+    if (/^Comprador: qualificação/.test(f)) return { secao: 'C' };
+    if ((m = f.match(/^Vendedora (.+): (CNPJ|sede|representante)$/))) { const i = idx(S.M.vendedores, m[1]); return i < 0 ? null : { cp: `V.${i}.` + { CNPJ: 'cnpj', sede: 'sede', representante: 'rep.nome' }[m[2]] }; }
+    if ((m = f.match(/^Representante (.+): (.+)$/))) {
+      const i = S.M.vendedores.findIndex(q => q && q.rep && q.rep.nome === m[1]); if (i < 0) return null;
+      const k = /regime/.test(m[2]) ? 'regime' : PROF_K[m[2]]; return k ? { cp: `V.${i}.rep.${k}` } : null;
+    }
+    if ((m = f.match(/^Cônjuge anuente de (.+): /))) { const i = idx(S.M.vendedores, m[1]); return i < 0 ? null : { cp: `V.${i}.conjuge_nome` }; }
+    if ((m = f.match(/^Cônjuge anuente (.+): (CPF|nacionalidade|profissão)$/))) {
+      const i = S.M.vendedores.findIndex(q => q && q.conjuge_nome && nomeIgual(q.conjuge_nome, m[1]));
+      return i < 0 ? null : { cp: `V.${i}.conjuge_` + { CPF: 'cpf', nacionalidade: 'nacionalidade', 'profissão': 'profissao' }[m[2]] };
+    }
+    if ((m = f.match(/^Vendedor (.+): (.+)$/))) {
+      const i = idx(S.M.vendedores, m[1]); if (i < 0) return null;
+      const k = /regime/.test(m[2]) ? 'regime' : /^estado civil/.test(m[2]) ? 'estado_civil' : PROF_K[m[2]]; return k ? { cp: `V.${i}.${k}` } : null;
+    }
+    if ((m = f.match(/^Comprador (.+): (.+)$/))) {
+      let i = idx(S.M.compradores, m[1]); if (i < 0 && m[1] === '?') i = S.M.compradores.findIndex(q => q && !q.nome); if (i < 0) return null;
+      const r = m[2];
+      if (/^cônjuge \(nome/.test(r)) return { cp: `C.${i}.conjuge_nome` };
+      if (/regime/.test(r)) return { cp: `C.${i}.regime` };
+      const mc = r.match(/^(.+) do cônjuge$/);
+      if (mc) { const k = { nacionalidade: 'nacionalidade', 'profissão': 'profissao', RG: 'rg' }[mc[1]]; return k ? { cp: `C.${i}.conjuge_${k}` } : null; }
+      return PROF_K[r] ? { cp: `C.${i}.${PROF_K[r]}` } : null;
+    }
+    return null;
+  }
+  // marca em vermelho os campos que faltam no formulário aberto
+  function marcarFaltas() {
+    const box = document.getElementById('cp-dados'); if (!box || !box.innerHTML) return;
+    montar(entrada()).faltas.forEach(f => { const c = campoDaFalta(f); const el = c && c.cp && box.querySelector(`[data-cp="${c.cp}"]`);
+      if (el) { el.style.borderColor = '#dc2626'; el.style.background = '#fef2f2'; el.title = f; } });
+  }
+  function irParaFalta(f) {
+    const c = campoDaFalta(String(f || ''));
+    if (c && c.liberacao) { const el = document.getElementById('cp-liberacao'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+    if (c && c.proposta) {
+      const d = [...document.querySelectorAll('details')].find(x => /Dados da proposta/.test((x.querySelector('summary') || {}).textContent || ''));
+      if (d) { d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+      U().aviso('Número da matrícula, cartório e contribuinte ficam em "Dados da proposta" (ou confirme a leitura da matrícula).', ''); return;
+    }
+    const box = document.getElementById('cp-dados'); if (!box) return;
+    if (!box.innerHTML) { box.innerHTML = dadosHTML(); marcarFaltas(); }
+    let el = c && c.cp ? box.querySelector(`[data-cp="${c.cp}"]`) : null;
+    if (!el && c && c.secao) el = box.querySelector(`[data-cp^="${c.secao}."]`);
+    if (!el) { box.scrollIntoView({ behavior: 'smooth', block: 'start' }); if (c && c.cp) U().aviso('Esse dado aparece depois de preencher o anterior (ex.: estado civil "casado" abre os campos do cônjuge).', ''); return; }
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => { try { el.focus(); } catch (_) {} }, 350);
+    el.style.borderColor = '#dc2626'; el.style.boxShadow = '0 0 0 3px #fecaca';
+  }
+  const linkFalta = f => `<a href="#" data-f="${esc(f)}" onclick="event.preventDefault();PACompr.irParaFalta(this.dataset.f)" style="color:#991b1b;text-decoration:underline">${esc(f)}</a>`;
 
   // ══════════════ EMITIR ══════════════
   async function emitir() {
@@ -1071,7 +1144,7 @@
   }
 
   const caminhosAnexos = () => S ? S.anexos.map(a => a.caminho) : [];
-  window.PACompr = { carregar, cardHTML, caminhosAnexos, apontamentosHTML, liberacaoHTML, decidirVenda, desfazerVenda, decidir, decidirTodos, decisoesParecer, liberada: () => !!S && liberada(), subirProposta, aplicarProposta, subirDoc, subirPessoais, definirPessoa, verAnexo, tirarAnexo, abrirDados, fecharDados, redesenhar,
+  window.PACompr = { carregar, cardHTML, caminhosAnexos, apontamentosHTML, liberacaoHTML, decidirVenda, desfazerVenda, irParaFalta, decidir, decidirTodos, decisoesParecer, liberada: () => !!S && liberada(), subirProposta, aplicarProposta, subirDoc, subirPessoais, definirPessoa, verAnexo, tirarAnexo, abrirDados, fecharDados, redesenhar,
     addPessoa, tirarPessoa, addLinha, tirarLinha, salvarDados, preencherAuto, preVisualizar, emitir, modelos, copiarClausula,
-    _t: { montar, extrairProposta, versaoSugerida, preencherDocx, pdfDoDocx, textoDocx, cent, moeda, extensoReais, nomeIgual, normEC, normRegime, qualificarM1, _ctx: s => { S = s; } } };
+    _t: { montar, campoDaFalta, extrairProposta, versaoSugerida, preencherDocx, pdfDoDocx, textoDocx, cent, moeda, extensoReais, nomeIgual, normEC, normRegime, qualificarM1, _ctx: s => { S = s; } } };
 })();
