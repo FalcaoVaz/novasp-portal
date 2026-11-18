@@ -53,7 +53,12 @@ def main():
     if not gravar:
         print('\nSó conferência. Para gravar: --gravar')
         return
-    import psycopg2                                     # só para gravar (biblioteca do usuário: rodar sem -I)
+    try:
+        import psycopg2                                 # só para gravar
+    except ImportError:                                 # rodando com -I: a biblioteca está na pasta do usuário
+        import site
+        sys.path.append(site.getusersitepackages())
+        import psycopg2
     dsn = open(os.path.expanduser('~/.config/novasp/prod-pooler.dsn')).read().strip()
     con = psycopg2.connect(dsn)
     cur = con.cursor()
