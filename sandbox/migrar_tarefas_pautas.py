@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 """Copia TAREFAS e as abas PAUTA_* da planilha (Apps Script do Calendar) para calendar_tarefas / calendar_pauta (18/11/2026).
 
-    python3 -I sandbox/migrar_tarefas_pautas.py            # só confere: lê a planilha e mostra o que faria
-    python3 -I sandbox/migrar_tarefas_pautas.py --gravar   # grava no banco de produção
+    python3 sandbox/migrar_tarefas_pautas.py            # só confere: lê a planilha e mostra o que faria
+    python3 sandbox/migrar_tarefas_pautas.py --gravar   # grava no banco de produção
 
 Pode rodar de novo: só insere o que ainda não existe (on conflict do nothing) — não desfaz o que já foi editado no portal.
 Ids repetidos na planilha (2 casos em TAREFAS) ganham id+1 na cópia.
 A planilha fica intacta como reserva.
 """
 import json, os, sys, urllib.request
-import psycopg2
 
 GAS = 'https://script.google.com/macros/s/AKfycbzvYElSoSN_rBikiur2Z-kgDF06xt8lvL-F6BfahfayyHKMWPUzqe78_s4h1YjK-0Q/exec'
 PAUTAS = ['PAUTA_TERCA', 'PAUTA_QUARTA', 'PAUTA_JURIDICO', 'PAUTA_FELIPPE', 'PAUTA_EMILIA', 'PAUTA_RENATA', 'PAUTA_CHRISTIANE']
@@ -54,6 +53,7 @@ def main():
     if not gravar:
         print('\nSó conferência. Para gravar: --gravar')
         return
+    import psycopg2                                     # só para gravar (biblioteca do usuário: rodar sem -I)
     dsn = open(os.path.expanduser('~/.config/novasp/prod-pooler.dsn')).read().strip()
     con = psycopg2.connect(dsn)
     cur = con.cursor()
