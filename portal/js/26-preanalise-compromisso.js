@@ -873,6 +873,171 @@
   }
 
 
+  // ══════════════ DISTRIBUIÇÃO DA COMISSÃO (18/11/2026 — comissao.py do motor 1.3 / planilha Calculadora_Comissoes.xlsx) ══════════════
+  // comissão = base (valor real ou computável) × %; até 3 parcelas (somam 100%); descontos zelador/outros sobre a bruta;
+  // profissionais: % sobre o VALOR A DISTRIBUIR (bruta − descontos); empresa = o resto. Tudo em centavos, parcela a parcela;
+  // a última parcela fecha a comissão exata e o arredondamento fica com a empresa.
+  const COM_TIPOS = ['Indicador', 'Corretor', 'Gerente', 'Parceria', 'Outro'];
+  const COM_BASES = { real: 'Valor real', computavel: 'Valor computável' };
+  function comNum(x) {
+    if (x == null || x === '') return 0;
+    if (typeof x === 'number') return x;
+    let t = String(x).trim().replace('R$', '').replace('%', '').replace(/\s/g, '');
+    if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+    const n = Number(t); if (!isFinite(n)) throw new Error('número inválido: ' + x); return n;
+  }
+  function comPct(x) { if (typeof x === 'string' && x.includes('%')) return comNum(x) / 100; const d = comNum(x); return d <= 1 ? d : d / 100; }
+  const comRhu = v => (v < 0 ? -1 : 1) * Math.floor(Math.abs(v) + 0.5 + 1e-7);       // centavos, meio para cima
+  function calcComissao(dados) {
+    const erros = [], avisos = []; let baseK = dados.base || 'real';
+    if (!COM_BASES[baseK]) { erros.push("Base da comissão deve ser 'real' ou 'computavel'."); baseK = 'real'; }
+    const realC = comRhu(comNum(dados.valor_real) * 100), compC = comRhu(comNum(dados.valor_computavel) * 100), baseC = baseK === 'real' ? realC : compC;
+    const perc = comPct(dados.percentual);
+    if (baseC <= 0) erros.push(`Informe o ${COM_BASES[baseK].toLowerCase()}.`);
+    if (perc <= 0) erros.push('Informe o % de comissão.');
+    const comissao = comRhu(baseC * perc);
+    let parcelas = (dados.parcelas || []).filter(p => !['', '0'].includes(String(p.percentual == null ? '' : p.percentual).trim()));
+    if (!parcelas.length) { parcelas = [{ vencimento: '', percentual: 1 }]; avisos.push('Sem parcelas informadas: considerada parcela única de 100%.'); }
+    if (parcelas.length > 3) erros.push('No máximo 3 parcelas.');
+    const pp = parcelas.map(p => comPct(p.percentual)), soma = pp.reduce((a, b) => a + b, 0);
+    if (Math.abs(soma - 1) > 0.0001) erros.push(`As parcelas somam ${(soma * 100).toFixed(2).replace('.', ',')}%: precisam somar 100%.`);
+    const dZ = comPct(dados.desconto_zelador), dO = comPct(dados.desconto_outros);
+    if (dZ + dO >= 1) erros.push('Os descontos somam 100% ou mais da comissão.');
+    const parts = [];
+    for (const p of dados.participantes || []) {
+      const nome = String(p.nome || '').trim(), pv = String(p.percentual == null ? '' : p.percentual).trim();
+      if (!nome && ['', '0'].includes(pv)) continue;
+      const tipo = COM_TIPOS.includes(p.tipo) ? p.tipo : 'Outro';
+      if (!nome) erros.push(`${tipo}: informe o nome.`);
+      parts.push({ tipo, nome, percentual: comPct(p.percentual) });
+    }
+    const somaDist = parts.reduce((a, p) => a + p.percentual, 0);
+    if (somaDist > 1 + 1e-9) erros.push(`Os profissionais somam ${(somaDist * 100).toFixed(2).replace('.', ',')}% do valor a distribuir: passa de 100%.`);
+    const linhas = []; let acum = 0;
+    parcelas.forEach((p, i) => {
+      const bruta = i < parcelas.length - 1 ? comRhu(comissao * pp[i]) : comissao - acum; acum += bruta;
+      const zel = comRhu(bruta * dZ), out = comRhu(bruta * dO), liquida = bruta - zel - out;
+      const valores = parts.map(x => comRhu(liquida * x.percentual)), dist = valores.reduce((a, b) => a + b, 0);
+      linhas.push({ vencimento: p.vencimento || '', percentual: pp[i], bruta, zelador: zel, outros: out, descontos: zel + out, liquida, profissionais: valores, distribuido: dist, empresa: liquida - dist });
+    });
+    const tot = k => linhas.reduce((a, l) => a + l[k], 0);
+    const totProf = parts.map((_, j) => linhas.reduce((a, l) => a + l.profissionais[j], 0));
+    const porNome = new Map();
+    parts.forEach((p, j) => { const k = p.nome || p.tipo; if (!porNome.has(k)) porNome.set(k, { nome: k, papeis: [], parcelas: linhas.map(() => 0), total: 0 });
+      const o = porNome.get(k); o.papeis.push(p.tipo); linhas.forEach((l, i) => { o.parcelas[i] += l.profissionais[j]; }); o.total += totProf[j]; });
+    const brutaT = tot('bruta');
+    // valores em REAIS (como o motor devolve), centavos exatos
+    const R = c => c / 100;
+    return { ok: !erros.length, erros, avisos, base: baseK, base_rotulo: COM_BASES[baseK], valor_base: R(baseC), valor_real: R(realC), valor_computavel: R(compC), percentual: perc,
+      comissao: R(comissao), desconto_zelador: dZ, desconto_outros: dO,
+      parcelas: linhas.map(l => ({ ...l, bruta: R(l.bruta), zelador: R(l.zelador), outros: R(l.outros), descontos: R(l.descontos), liquida: R(l.liquida), profissionais: l.profissionais.map(R), distribuido: R(l.distribuido), empresa: R(l.empresa) })),
+      participantes: parts.map((p, j) => ({ ...p, valor: R(totProf[j]), parcelas: linhas.map(l => R(l.profissionais[j])) })),
+      totais: { bruta: R(brutaT), zelador: R(tot('zelador')), outros: R(tot('outros')), descontos: R(tot('descontos')), liquida: R(tot('liquida')), distribuido: R(tot('distribuido')), empresa: R(tot('empresa')),
+        pct_distribuido: somaDist, pct_empresa: brutaT ? tot('empresa') / brutaT : 0, pct_desc_mais_dist: brutaT ? (tot('descontos') + tot('distribuido')) / brutaT : 0 },
+      por_profissional: [...porNome.values()].map(o => ({ ...o, parcelas: o.parcelas.map(R), total: R(o.total) })) };
+  }
+  function csvComissao(r) {
+    const f = v => Number(v).toFixed(2).replace('.', ','), pt = d => (d * 100).toFixed(2).replace('.', ',') + '%', n = r.parcelas.length;
+    const out = [['Tipo', 'Profissional', '% s/ valor a distribuir'].concat(r.parcelas.map((_, i) => `Parcela ${i + 1}`), ['Total']).join(';'),
+      ['', 'Comissão bruta', ''].concat(r.parcelas.map(l => f(l.bruta)), [f(r.totais.bruta)]).join(';'),
+      ['', 'Descontos', ''].concat(r.parcelas.map(l => f(l.descontos)), [f(r.totais.descontos)]).join(';'),
+      ['', 'Valor a distribuir', ''].concat(r.parcelas.map(l => f(l.liquida)), [f(r.totais.liquida)]).join(';')];
+    r.participantes.forEach(p => out.push([p.tipo, p.nome, pt(p.percentual)].concat(p.parcelas.map(f), [f(p.valor)]).join(';')));
+    out.push(['', 'Empresa', pt(r.totais.pct_empresa)].concat(r.parcelas.map(l => f(l.empresa)), [f(r.totais.empresa)]).join(';'));
+    return out.join('\n') + '\n';
+  }
+  // cartão na venda: resumo da distribuição salva + botão (gerente e admin alteram; assistente vê)
+  const brl = v => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const pctBr = d => (Number(d || 0) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + '%';
+  function comissaoHTML() {
+    if (!S || !podeEmitir()) return '';
+    const cm = S.M.comissao, r = cm && cm.resultado;
+    return `<div class="card" style="margin-bottom:12px" id="cp-comissao"><div class="cb">
+      <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center">
+        <div style="font-weight:700;font-size:15px">💰 Distribuição da comissão</div>
+        <button class="btn btn-o bsm" onclick="PACompr.abrirComissao()">${r ? (podeDecidir() ? 'Ver / alterar' : 'Ver') : (podeDecidir() ? 'Fazer a distribuição' : 'Ver')}</button></div>
+      ${r ? `<div style="font-size:13px;margin-top:6px">Comissão <b>${brl(r.comissao)}</b> · descontos ${brl(r.totais.descontos)} · profissionais ${brl(r.totais.distribuido)} · empresa <b>${brl(r.totais.empresa)}</b>
+        <div style="font-size:12px;color:var(--muted)">${r.por_profissional.map(p => `${esc(p.nome)} ${brl(p.total)}`).join(' · ')} — salva por ${esc(cm.por || '')} em ${U().dt(cm.em)}</div></div>`
+        : '<div style="font-size:12.5px;color:var(--muted);margin-top:4px">Mesma conta da planilha de comissões: parcelas, descontos de zelador/plantonista e o que fica com cada profissional e com a empresa.</div>'}
+      <div id="cp-com-form"></div></div></div>`;
+  }
+  function comDadosIniciais() {
+    const rp = S.v.responsaveis || {};
+    return { valor_real: S.M.N.preco || '', valor_computavel: '', base: 'real', percentual: '', desconto_zelador: '', desconto_outros: '', beneficiario_zelador: '', beneficiario_outros: '',
+      parcelas: [{ vencimento: '', percentual: '100' }, { vencimento: '', percentual: '' }, { vencimento: '', percentual: '' }],
+      participantes: [{ tipo: 'Indicador', nome: '', percentual: '' }, { tipo: 'Corretor', nome: rp.corretor || '', percentual: '' }, { tipo: 'Gerente', nome: rp.gerente || '', percentual: '' },
+        { tipo: 'Parceria', nome: '', percentual: '' }, { tipo: 'Outro', nome: '', percentual: '' }, { tipo: 'Outro', nome: '', percentual: '' }] };
+  }
+  // no formulário os % são digitados sem o símbolo ("6" = 6%); para a conta vão com "%"
+  const comP = x => { const t = String(x == null ? '' : x).trim().replace('%', ''); return t ? t + '%' : ''; };
+  const comSemP = x => String(x == null ? '' : x).replace('%', '');
+  function comLer() {
+    const g = id => ((document.getElementById(id) || {}).value || '').trim();
+    return { valor_real: g('cm-real'), valor_computavel: g('cm-comp'), base: g('cm-base') || 'real', percentual: comP(g('cm-perc')),
+      desconto_zelador: comP(g('cm-dz')), desconto_outros: comP(g('cm-do')), beneficiario_zelador: g('cm-bz'), beneficiario_outros: g('cm-bo'),
+      parcelas: [0, 1, 2].map(i => ({ vencimento: g('cm-pv' + i), percentual: comP(g('cm-pp' + i)) })),
+      participantes: [0, 1, 2, 3, 4, 5, 6, 7].map(i => ({ tipo: g('cm-tt' + i) || 'Outro', nome: g('cm-tn' + i), percentual: comP(g('cm-tp' + i)) })) };
+  }
+  function abrirComissao() {
+    const box = document.getElementById('cp-com-form'); if (!box) return;
+    if (box.innerHTML) { box.innerHTML = ''; return; }
+    const d = (S.M.comissao && S.M.comissao.dados) || comDadosIniciais(), ro = !podeDecidir() ? 'disabled' : '';
+    const ist = 'padding:6px 8px;border:1.5px solid var(--borda);border-radius:7px;font-size:12.5px;width:100%;box-sizing:border-box';
+    const inp = (id, rot, val, extra) => `<label style="font-size:11.5px;color:var(--muted)">${rot}<input id="${id}" value="${esc(val || '')}" style="${ist}" oninput="PACompr.recalcComissao()" ${ro} ${extra || ''}></label>`;
+    const parts = (d.participantes || []).slice(0, 8); while (parts.length < 6) parts.push({ tipo: 'Outro', nome: '', percentual: '' });
+    box.innerHTML = `<div style="margin-top:10px;border-top:1px solid var(--borda);padding-top:10px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px 10px">
+        <label style="font-size:11.5px;color:var(--muted)">Base<select id="cm-base" style="${ist}" onchange="PACompr.recalcComissao()" ${ro}><option value="real" ${d.base !== 'computavel' ? 'selected' : ''}>Valor real</option><option value="computavel" ${d.base === 'computavel' ? 'selected' : ''}>Valor computável</option></select></label>
+        ${inp('cm-real', 'Valor real (R$)', d.valor_real)}${inp('cm-comp', 'Valor computável (R$)', d.valor_computavel)}${inp('cm-perc', '% de comissão', comSemP(d.percentual), 'placeholder="6"')}
+        ${inp('cm-dz', '% zelador/plantonista', comSemP(d.desconto_zelador))}${inp('cm-bz', 'Quem recebe (zelador)', d.beneficiario_zelador)}
+        ${inp('cm-do', '% outros descontos', comSemP(d.desconto_outros))}${inp('cm-bo', 'Quem recebe (outros)', d.beneficiario_outros)}</div>
+      <div style="font-size:12.5px;font-weight:700;margin:10px 0 4px">Parcelas (até 3; somam 100%)</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px 10px">${[0, 1, 2].map(i => { const p = (d.parcelas || [])[i] || {};
+        return inp('cm-pv' + i, `Parcela ${i + 1}: vencimento`, p.vencimento, 'type="date"') + inp('cm-pp' + i, `Parcela ${i + 1}: %`, comSemP(p.percentual)); }).join('')}</div>
+      <div style="font-size:12.5px;font-weight:700;margin:10px 0 4px">Profissionais (% sobre o valor a distribuir)</div>
+      ${parts.map((p, i) => `<div style="display:grid;grid-template-columns:130px 1fr 90px;gap:6px;margin-bottom:4px">
+        <select id="cm-tt${i}" style="${ist}" onchange="PACompr.recalcComissao()" ${ro}>${COM_TIPOS.map(t => `<option ${p.tipo === t ? 'selected' : ''}>${t}</option>`).join('')}</select>
+        <input id="cm-tn${i}" value="${esc(p.nome || '')}" placeholder="nome" style="${ist}" oninput="PACompr.recalcComissao()" ${ro}>
+        <input id="cm-tp${i}" value="${esc(comSemP(p.percentual))}" placeholder="%" style="${ist}" oninput="PACompr.recalcComissao()" ${ro}></div>`).join('')}
+      <div id="cm-res" style="margin-top:10px"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        ${podeDecidir() ? '<button class="btn btn-p bsm" onclick="PACompr.salvarComissao()">Salvar distribuição</button>' : ''}
+        <button class="btn btn-o bsm" onclick="PACompr.baixarComissao()">Baixar planilha (CSV)</button>
+        <button class="btn btn-o bsm" onclick="PACompr.abrirComissao()">Fechar</button></div></div>`;
+    recalcComissao();
+  }
+  function recalcComissao() {
+    const el = document.getElementById('cm-res'); if (!el) return null;
+    let r; try { r = calcComissao(comLer()); } catch (e) { el.innerHTML = `<div style="color:#b91c1c;font-size:12.5px">${esc(e.message)}</div>`; return null; }
+    const th = 'text-align:right;padding:3px 6px;color:var(--muted);font-weight:600', td = 'text-align:right;padding:3px 6px';
+    const cols = r.parcelas.map((_, i) => `<th style="${th}">Parc. ${i + 1}</th>`).join('') + `<th style="${th}">Total</th>`;
+    const lin = (rot, vals, tot, b) => `<tr style="border-top:1px solid #eef1f6${b ? ';font-weight:700' : ''}"><td style="padding:3px 6px">${rot}</td>${vals.map(v => `<td style="${td}">${brl(v)}</td>`).join('')}<td style="${td}">${brl(tot)}</td></tr>`;
+    el.innerHTML = (r.erros.length ? `<div style="color:#b91c1c;font-size:12.5px;margin-bottom:6px">${r.erros.map(esc).join('<br>')}</div>` : '') +
+      (r.avisos.length ? `<div style="color:#b45309;font-size:12px;margin-bottom:6px">${r.avisos.map(esc).join('<br>')}</div>` : '') +
+      `<div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:12.5px;min-width:420px"><tr><th></th>${cols}</tr>
+        ${lin(`Comissão bruta (${pctBr(r.percentual)} de ${brl(r.valor_base)})`, r.parcelas.map(l => l.bruta), r.totais.bruta, true)}
+        ${lin('Descontos (zelador e outros)', r.parcelas.map(l => l.descontos), r.totais.descontos)}
+        ${lin('Valor a distribuir', r.parcelas.map(l => l.liquida), r.totais.liquida, true)}
+        ${r.participantes.map(p => lin(`${esc(p.tipo)}: ${esc(p.nome || '—')} (${pctBr(p.percentual)})`, p.parcelas, p.valor)).join('')}
+        ${lin(`Empresa (${pctBr(r.totais.pct_empresa)} da bruta)`, r.parcelas.map(l => l.empresa), r.totais.empresa, true)}</table></div>
+      ${r.por_profissional.length ? `<div style="font-size:12.5px;margin-top:6px"><b>Por profissional:</b> ${r.por_profissional.map(p => `${esc(p.nome)} (${p.papeis.map(esc).join(' + ')}) ${brl(p.total)}`).join(' · ')}</div>` : ''}`;
+    return r;
+  }
+  async function salvarComissao() {
+    if (!podeDecidir()) { U().aviso('Só o gerente (ou o administrador) altera a distribuição.', 'err'); return; }
+    const dados = comLer(), r = calcComissao(dados);
+    if (!r.ok) { U().aviso('Corrija antes de salvar: ' + r.erros.join(' '), 'err'); return; }
+    S.M.comissao = { dados, resultado: r, por: quem(), em: new Date().toISOString() };
+    S.M.N.comissao_valor = r.comissao.toFixed(2).replace('.', ',');     // leva o valor para a minuta
+    try { await salvarM(); await evento('distribuição da comissão', `comissão ${brl(r.comissao)}; empresa ${brl(r.totais.empresa)}`); U().aviso('Distribuição salva. O valor da comissão foi para os dados do compromisso.', 'ok'); recarregar(); }
+    catch (e) { U().aviso('Não gravou: ' + e.message, 'err'); }
+  }
+  function baixarComissao() {
+    const r = recalcComissao() || (S.M.comissao && S.M.comissao.resultado); if (!r) return;
+    const blob = new Blob(['﻿' + csvComissao(r)], { type: 'text/csv;charset=utf-8' }), a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = `Comissao - ${S.v.titulo.replace(/[\\/:*?"<>|]+/g, ' ').slice(0, 50)}.csv`; document.body.appendChild(a); a.click(); a.remove();
+  }
+
   // ══════════════ COMPLETAR O QUE FALTA ALI MESMO (18/11/2026 — "faltas_campos" do motor 1.3) ══════════════
   // Cada pendência da minuta aponta o campo do formulário "Dados do compromisso" (data-cp) — ou o cartão da decisão,
   // ou os Dados da proposta (matrícula). Clicar abre o formulário no campo, que fica marcado em vermelho.
@@ -1144,7 +1309,7 @@
   }
 
   const caminhosAnexos = () => S ? S.anexos.map(a => a.caminho) : [];
-  window.PACompr = { carregar, cardHTML, caminhosAnexos, apontamentosHTML, liberacaoHTML, decidirVenda, desfazerVenda, irParaFalta, decidir, decidirTodos, decisoesParecer, liberada: () => !!S && liberada(), subirProposta, aplicarProposta, subirDoc, subirPessoais, definirPessoa, verAnexo, tirarAnexo, abrirDados, fecharDados, redesenhar,
+  window.PACompr = { carregar, cardHTML, caminhosAnexos, apontamentosHTML, liberacaoHTML, decidirVenda, desfazerVenda, irParaFalta, comissaoHTML, abrirComissao, recalcComissao, salvarComissao, baixarComissao, decidir, decidirTodos, decisoesParecer, liberada: () => !!S && liberada(), subirProposta, aplicarProposta, subirDoc, subirPessoais, definirPessoa, verAnexo, tirarAnexo, abrirDados, fecharDados, redesenhar,
     addPessoa, tirarPessoa, addLinha, tirarLinha, salvarDados, preencherAuto, preVisualizar, emitir, modelos, copiarClausula,
-    _t: { montar, campoDaFalta, extrairProposta, versaoSugerida, preencherDocx, pdfDoDocx, textoDocx, cent, moeda, extensoReais, nomeIgual, normEC, normRegime, qualificarM1, _ctx: s => { S = s; } } };
+    _t: { montar, campoDaFalta, calcComissao, csvComissao, extrairProposta, versaoSugerida, preencherDocx, pdfDoDocx, textoDocx, cent, moeda, extensoReais, nomeIgual, normEC, normRegime, qualificarM1, _ctx: s => { S = s; } } };
 })();

@@ -324,6 +324,7 @@
       ${ac ? PAAcomp.emissaoHTML() : ''}
       ${cp ? PACompr.liberacaoHTML() : ''}
       ${cp || cpErro ? PACompr.cardHTML(cpErro) : ''}
+      ${cp ? PACompr.comissaoHTML() : ''}
       <details class="card" style="margin-bottom:12px" ${_docs.length ? '' : 'open'}><summary class="cb" style="cursor:pointer;font-weight:700">Documentos (PDF) · ${_docs.length}</summary><div class="cb" style="padding-top:0">
         ${_docs.length ? `<table style="width:100%;border-collapse:collapse;font-size:13px"><tbody>${_docs.map(d => `<tr style="border-top:1px solid var(--borda,#e2e8f0)">
           <td style="padding:5px 6px;white-space:nowrap">${TIPOS[d.tipo] || d.tipo}</td><td style="padding:5px 6px">${esc(d.nome_arquivo)}</td>
