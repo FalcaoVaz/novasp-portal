@@ -1427,7 +1427,7 @@
       </div>
       <div class="grid-2">
         <div class="form-group">
-          <label>Advogado Responsável</label>
+          <label>Advogado Responsável (principal)</label>
           <select id="proc-responsavel">
             <option>Rodrigo Falcão Vaz</option>
             <option>Fernanda Araujo</option>
@@ -1441,6 +1441,10 @@
           <label>Valor da Causa (R$)</label>
           <input type="text" id="proc-valor" placeholder="0,00">
         </div>
+      </div>
+      <div class="form-group">
+        <label>Outros advogados responsáveis <span class="text-xs text-gray">(o processo entra na carteira de todos)</span></label>
+        <div id="proc-corresp"></div>
       </div>
       <div class="grid-2">
         <div class="form-group">
@@ -2178,10 +2182,10 @@
 <script src="js/01-auth.js?v=20261116b"></script>
 <script src="js/02-init.js?v=20261113a"></script>
 <script src="js/03-planilhas.js?v=20260805b"></script>
-<script src="js/04-processos.js?v=20260805b"></script>
+<script src="js/04-processos.js?v=20261118a"></script>
 <script src="js/05-email.js?v=20260805b"></script>
-<script src="js/06-listas.js?v=20261016a"></script>
-<script src="js/07-meus-docs.js?v=20261116b"></script>
+<script src="js/06-listas.js?v=20261118a"></script>
+<script src="js/07-meus-docs.js?v=20261118a"></script>
 <script src="js/08-chamados.js?v=20260805b"></script>
 <script src="js/09-nav.js?v=20261113a"></script>
 <script src="js/10-dashboard.js?v=20261016a"></script>
@@ -2191,8 +2195,9 @@
 <script src="js/14-modais.js?v=20260805b"></script>
 <script src="js/15-acordos.js?v=20260805b"></script>
 <script src="js/16-calc-correcao.js?v=20261109a"></script>
-<script src="js/18-indicadores.js?v=20261109b"></script>
-<script src="js/17-relatorio-andamentos.js?v=20261116b"></script>
+<script src="js/20-corresponsaveis.js?v=20261118a"></script>
+<script src="js/18-indicadores.js?v=20261118a"></script>
+<script src="js/17-relatorio-andamentos.js?v=20261118a"></script>
 <script src="js/19-agenda.js?v=20261116b"></script>
 </body>
 </html>

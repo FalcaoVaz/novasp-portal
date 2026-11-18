@@ -22,7 +22,8 @@
   setEl('proc-det-reu',    p.reu    || '—');
   setEl('proc-det-tipo',   p.tipo   || '—');
   setEl('proc-det-fase',   p.fase   || '—');
-  setEl('proc-det-resp',   p.responsavel?.nome || '—');
+  if (typeof procAdvs === 'function') await procAdvs();
+  setEl('proc-det-resp',   (typeof procResponsaveis === 'function' ? procResponsaveis(p).join(', ') : '') || p.responsavel?.nome || '—');
   setEl('proc-det-valor',  p.valor_causa ? `R$ ${Number(p.valor_causa).toLocaleString('pt-BR',{minimumFractionDigits:2})}` : '—');
   setEl('proc-det-status', p.status === 'ativo' ? '🟢 Ativo' : p.status === 'encerrado' ? '⚫ Encerrado' : p.status || '—');
   setEl('proc-det-data',   p.criado_em ? new Date(p.criado_em).toLocaleDateString('pt-BR') : '—');

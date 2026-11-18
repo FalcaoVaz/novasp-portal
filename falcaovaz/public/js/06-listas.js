@@ -11,10 +11,11 @@ async function carregarProcessos() {
 
   const dados = await db.get('processos', query);
   if (!dados) return;
+  if (typeof procAdvs === 'function') await procAdvs();
 
-  // Filtro por advogado — join via nome
+  // Filtro por advogado — principal OU corresponsável (18/11/2026)
   let filtrados = dados;
-  if (adv) filtrados = filtrados.filter(p => p.responsavel?.nome === adv);
+  if (adv) filtrados = filtrados.filter(p => (typeof procDoAdvogado === 'function') ? procDoAdvogado(p, adv) : p.responsavel?.nome === adv);
 
   // Filtro por busca textual
   if (busca) {
@@ -96,7 +97,7 @@ async function carregarProcessos() {
       <td><div class="text-xs">${(p.autor||'—').substring(0,35)}</div><div class="text-xs text-gray">${(p.reu||'').substring(0,35)}</div></td>
       <td><span class="badge ${tipoCls}">${p.tipo||'—'}</span></td>
       <td class="text-xs">${(p.fase||'—').substring(0,30)}</td>
-      <td><div class="flex items-center gap-2"><div class="avatar" style="width:24px;height:24px;font-size:9px;flex-shrink:0">${initials}</div><span class="text-xs">${resp.split(' ')[0]}</span></div></td>
+      <td title="${(typeof procResponsaveis === 'function' ? procResponsaveis(p) : [resp]).join(', ')}"><div class="flex items-center gap-2"><div class="avatar" style="width:24px;height:24px;font-size:9px;flex-shrink:0">${initials}</div><span class="text-xs">${resp.split(' ')[0]}${(() => { const n = (typeof procResponsaveis === 'function' ? procResponsaveis(p).length : 1) - 1; return n > 0 ? ' <span class="badge badge-gray" style="font-size:9px;padding:1px 6px">+' + n + '</span>' : ''; })()}</span></div></td>
       <td>${dtRel(ultData)}</td>
       <td><span class="badge ${statusCls}">${encerrado ? 'Encerrado' : 'Ativo'}</span></td>
       <td><div class="flex gap-1">

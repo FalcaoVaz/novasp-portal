@@ -211,8 +211,9 @@ async function raColetar(opts, log) {
   const ref = opts.ref;
   const inicio = raSoma(ref, -RA.JANELA_DIAS);
   log('Lendo processos do portal…');
-  const todos = await raBuscar('processos', '?select=id,numero,tipo,vara,fase,autor,reu,status,responsavel_id,responsavel:usuarios(nome)&limit=2000');
-  const ativos = todos.filter(p => p.status !== 'encerrado' && (!opts.advogado || p.responsavel?.nome === opts.advogado));
+  const todos = await raBuscar('processos', '?select=id,numero,tipo,vara,fase,autor,reu,status,responsavel_id,corresponsaveis,responsavel:usuarios(nome)&limit=2000');
+  if (typeof procAdvs === 'function') await procAdvs();
+  const ativos = todos.filter(p => p.status !== 'encerrado' && (!opts.advogado || (typeof procDoAdvogado === 'function' ? procDoAdvogado(p, opts.advogado) : p.responsavel?.nome === opts.advogado)));
   log(`${ativos.length} processos em andamento${opts.advogado ? ' na carteira de ' + opts.advogado : ''}.`);
 
   try { (await raBuscar('dias_sem_expediente', '?select=data')).forEach(x => RA.extras.add(x.data)); } catch (_) {}

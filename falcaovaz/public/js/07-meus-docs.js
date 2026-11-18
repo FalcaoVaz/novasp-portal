@@ -117,6 +117,7 @@ async function salvarProcesso() {
     autor: document.getElementById('proc-autor')?.value || null,
     reu: document.getElementById('proc-reu')?.value || null,
     responsavel_id: respId,
+    corresponsaveis: (typeof procCorrespLer === 'function') ? procCorrespLer(respId) : [],
     valor_causa: isNaN(valor) ? null : valor,
     cliente_nome: document.getElementById('proc-cliente-nome')?.value || null,
     cliente_email: document.getElementById('proc-cliente-email')?.value || null,
@@ -135,7 +136,7 @@ async function salvarProcesso() {
   }
   function _semCamposNovos(p) {
     const c = {...p};
-    delete c.cliente_nome; delete c.cliente_email; delete c.notificar_cliente;
+    delete c.cliente_nome; delete c.cliente_email; delete c.notificar_cliente; delete c.corresponsaveis;
     return c;
   }
 
@@ -164,6 +165,7 @@ function abrirNovoProcesso() {
   ['proc-tipo','proc-fase','proc-responsavel','proc-status']
     .forEach(id => { const el = document.getElementById(id); if (el) el.selectedIndex = 0; });
   const n = document.getElementById('proc-notificar'); if (n) n.checked = true;
+  if (typeof procCorrespRender === 'function') procCorrespRender([]);
   // pre-seleciona o responsavel = usuario logado, se estiver na lista
   const sel = document.getElementById('proc-responsavel');
   if (sel) {
@@ -193,6 +195,7 @@ async function abrirEditarProcesso(id) {
     document.getElementById('proc-cliente-email').value = p.cliente_email || '';
     document.getElementById('proc-notificar').checked = p.notificar_cliente !== false;
     document.getElementById('proc-status').value = p.status || 'ativo';
+    if (typeof procCorrespRender === 'function') await procCorrespRender(p.corresponsaveis || []);
     const sel = document.getElementById('proc-responsavel');
     const respNome = p.responsavel?.nome;
     if (sel && respNome) {

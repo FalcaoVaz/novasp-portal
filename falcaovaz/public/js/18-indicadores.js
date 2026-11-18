@@ -23,7 +23,7 @@ async function carregarIndicadores() {
   const box = document.getElementById('ind-conteudo'); if (!box) return;
   box.innerHTML = '<div class="card"><div class="card-body text-gray">Carregando…</div></div>';
   const [proc, andam, custas, pets, prazos, usuarios] = await Promise.all([
-    db.get('processos', '?status=eq.ativo&select=id,numero,tipo,fase,autor,reu,responsavel_id,ultimo_mov_cnj,resultado,resultado_data,resultado_nota,status&order=numero.asc'),
+    db.get('processos', '?status=eq.ativo&select=id,numero,tipo,fase,autor,reu,responsavel_id,corresponsaveis,ultimo_mov_cnj,resultado,resultado_data,resultado_nota,status&order=numero.asc'),
     db.get('andamentos_processos', '?select=processo_id,data&order=data.desc&limit=20000'),
     db.get('juridico_custas', '?select=*&order=data.desc'),
     db.get('juridico_peticoes', '?select=*&order=data.desc&limit=2000'),
@@ -47,7 +47,7 @@ const indRotProc = p => p ? `${p.numero || '—'}${p.autor || p.reu ? ' · ' + [
 function renderIndicadores() {
   const box = document.getElementById('ind-conteudo'); if (!box) return;
   const hoje = indHoje(), fa = IND.filtroAdv, ft = IND.filtroTipo;
-  const ok = p => (!fa || p.responsavel_id === fa) && (!ft || p.tipo === ft);
+  const ok = p => (!fa || p.responsavel_id === fa || (Array.isArray(p.corresponsaveis) && p.corresponsaveis.includes(fa))) && (!ft || p.tipo === ft);
   const procs = IND.proc.filter(ok);
   const ids = new Set(procs.map(p => p.id));
   const linhas = procs.map(p => { const u = IND.ult.get(p.id) || null; const d = u ? indDias(u, hoje) : null;
@@ -77,7 +77,7 @@ function renderIndicadores() {
   const prod = {}; petsF.filter(x => String(x.data).slice(0, 7) === mesAtual).forEach(x => { const n = indNome(x.advogado_id); prod[n] = (prod[n] || 0) + 1; });
   const parados = linhas.filter(l => l.dias != null).sort((a, b) => b.dias - a.dias).slice(0, 12);
   const tipos = [...new Set(IND.proc.map(p => p.tipo).filter(Boolean))].sort();
-  const advs = [...new Set(IND.proc.map(p => p.responsavel_id).filter(Boolean))];
+  const advs = [...new Set(IND.proc.flatMap(p => [p.responsavel_id, ...(Array.isArray(p.corresponsaveis) ? p.corresponsaveis : [])]).filter(Boolean))];
   const kpi = (rot, val, sub, cor) => `<div class="stat-card" style="padding:14px"><div style="font-size:12px;color:var(--gray-500)">${rot}</div><div style="font-size:24px;font-weight:700;color:${cor || 'var(--gray-800)'}">${val}</div><div style="font-size:11px;color:var(--gray-500)">${sub || ''}</div></div>`;
   const alertas = [];
   if (venc) alertas.push(`<b>${venc}</b> prazo(s) vencido(s) sem cumprimento`);
