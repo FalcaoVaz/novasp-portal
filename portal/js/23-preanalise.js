@@ -303,6 +303,8 @@
     if (window.PAAcomp) { try { ac = await PAAcomp.carregar(_venda, _docs, _execs); } catch (e) { acErro = e.message; } }
     let cp = false, cpErro = '';   // compromisso de venda e compra (js/26-preanalise-compromisso.js, 10/11/2026)
     if (window.PACompr && window.PAAcomp) { try { await PACompr.carregar(_venda, _docs, _execs); cp = true; } catch (e) { cpErro = e.message; } }
+    if (window.PALink) { try { await PALink.carregar(_venda); } catch (_) {} }   // link do corretor (js/27, 18/11/2026)
+    window.PreAnalise._prazosAtuais = prazosDe(_venda);
     const v = _venda, ult = _execs.find(x => x.situacao === 'ok');
     _pz = (v.prazos || []).map(x => Object.assign({}, x));
     const conferida = ult && v.leitura_conferida_exec === ult.id;
@@ -325,6 +327,7 @@
       ${cp ? PACompr.liberacaoHTML() : ''}
       ${cp || cpErro ? PACompr.cardHTML(cpErro) : ''}
       ${cp ? PACompr.comissaoHTML() : ''}
+      ${window.PALink ? PALink.cardHTML() : ''}
       <details class="card" style="margin-bottom:12px" ${_docs.length ? '' : 'open'}><summary class="cb" style="cursor:pointer;font-weight:700">Documentos (PDF) · ${_docs.length}</summary><div class="cb" style="padding-top:0">
         ${_docs.length ? `<table style="width:100%;border-collapse:collapse;font-size:13px"><tbody>${_docs.map(d => `<tr style="border-top:1px solid var(--borda,#e2e8f0)">
           <td style="padding:5px 6px;white-space:nowrap">${TIPOS[d.tipo] || d.tipo}</td><td style="padding:5px 6px">${esc(d.nome_arquivo)}</td>
@@ -356,6 +359,7 @@
       ${_execs.length ? `<details style="margin-top:12px"><summary style="cursor:pointer;color:var(--muted);font-size:13px">Histórico de análises (${_execs.length})</summary>
         <table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:6px"><tbody>${_execs.map(x => `<tr style="border-top:1px solid var(--borda,#e2e8f0)"><td style="padding:4px 6px">${dt(x.iniciado_em)}</td><td style="padding:4px 6px">${x.situacao === 'ok' ? badge(x.status) : esc(x.situacao)}</td><td style="padding:4px 6px">${esc(x.pedido_por || '')}</td><td style="padding:4px 6px">${x.id === v.leitura_conferida_exec ? '✓ leitura conferida' : ''}</td><td style="padding:4px 6px;color:var(--muted)">${x.custo_usd != null ? 'US$ ' + Number(x.custo_usd).toFixed(2) : ''}</td></tr>`).join('')}</tbody></table></details>` : ''}
       ${notaPiloto()}`;
+    if (window.PALink) PALink.atualizar(window.PreAnalise._prazosAtuais);   // resumo do link do corretor
   }
 
   // andamento: etapas feitas e pendentes + próximo prazo

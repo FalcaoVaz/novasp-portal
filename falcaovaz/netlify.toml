@@ -20,3 +20,9 @@
     Content-Security-Policy = "frame-ancestors 'self' https://novasp.netlify.app"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Link de acompanhamento do corretor (18/11/2026): /acompanhar/<token> → função pública só de leitura
+[[redirects]]
+  from = "/acompanhar/*"
+  to = "/.netlify/functions/acompanhar?t=:splat"
+  status = 200

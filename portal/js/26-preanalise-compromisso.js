@@ -1309,7 +1309,7 @@
   }
 
   const caminhosAnexos = () => S ? S.anexos.map(a => a.caminho) : [];
-  window.PACompr = { carregar, cardHTML, caminhosAnexos, apontamentosHTML, liberacaoHTML, decidirVenda, desfazerVenda, irParaFalta, comissaoHTML, abrirComissao, recalcComissao, salvarComissao, baixarComissao, decidir, decidirTodos, decisoesParecer, liberada: () => !!S && liberada(), subirProposta, aplicarProposta, subirDoc, subirPessoais, definirPessoa, verAnexo, tirarAnexo, abrirDados, fecharDados, redesenhar,
+  window.PACompr = { podeEmitir: () => !!S && podeEmitir(), carregar, cardHTML, caminhosAnexos, apontamentosHTML, liberacaoHTML, decidirVenda, desfazerVenda, irParaFalta, comissaoHTML, abrirComissao, recalcComissao, salvarComissao, baixarComissao, decidir, decidirTodos, decisoesParecer, liberada: () => !!S && liberada(), subirProposta, aplicarProposta, subirDoc, subirPessoais, definirPessoa, verAnexo, tirarAnexo, abrirDados, fecharDados, redesenhar,
     addPessoa, tirarPessoa, addLinha, tirarLinha, salvarDados, preencherAuto, preVisualizar, emitir, modelos, copiarClausula,
     _t: { montar, campoDaFalta, calcComissao, csvComissao, extrairProposta, versaoSugerida, preencherDocx, pdfDoDocx, textoDocx, cent, moeda, extensoReais, nomeIgual, normEC, normRegime, qualificarM1, _ctx: s => { S = s; } } };
 })();

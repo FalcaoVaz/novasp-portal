@@ -276,6 +276,17 @@
   }
   const eDe = x => x ? { id: x.id, mat_data: ((x.resultado || {}).matricula || {}).data_documento, certidoes: (x.resultado || {}).certidoes, decisao: (x.resultado || {}).decisao } : null;
 
+  // Resumo SEM dados pessoais para o link do corretor (18/11/2026): etapas, tarefas, marcos. Sem CPF, RG, valores, certidões
+  // nem nomes de clientes — o "detalhe" das tarefas fica de fora (pode citar pessoas ou certidões).
+  function resumoPublico() {
+    if (!C) return null;
+    const { v, docs, ult, protos } = C, et = etapas(v, eDe(ult), docs.length, protos), mk = v.marcos || {};
+    return { titulo: v.titulo || '', etapa_atual: et.atual.nome,
+      fases: et.lista.map(x => ({ nome: x.nome, feitas: x.feitas, total: x.total, completa: x.completa,
+        tarefas: x.tarefas.filter(t => t.status !== 'desativada').map(t => ({ nome: t.nome, status: t.status })) })),
+      marcos: MARCOS.filter(([k]) => k !== 'docs_banco' || usaBanco(v)).map(([k, rot]) => ({ rotulo: rot, data: mk[k] || (k === 'inicio' ? String(v.criado_em || '').slice(0, 10) : '') })),
+      arquivada: !!v.arquivada_em };
+  }
   function etapasHTML() {
     const { v, docs, ult, protos } = C, u = U(), et = etapas(v, eDe(ult), docs.length, protos), mk = v.marcos || {};
     const banco = usaBanco(v), [pdd, pdb] = prazosBanco(v), pad = PRAZO_BANCO_PAD[v.versao_contrato] || [];
@@ -777,7 +788,7 @@
   }
   function caminhosAnexos() { if (!C) return []; return C.protos.flatMap(p => (p.anexos || []).map(a => a.caminho)).concat(((C.v.pos_venda || {}).anexos || []).map(a => a.caminho)); }
 
-  window.PAAcomp = { VERSOES, PTIPO, PGRUPOS, MODELO, usaBanco, prazosBancoDe, cartorioTitulo, carregar, etapas, etapasHTML, emissaoHTML, protocolosHTML, posVendaHTML, timelineHTML, carregarPainel, alertasPainel, quadroHTML, caminhosAnexos,
+  window.PAAcomp = { VERSOES, PTIPO, PGRUPOS, MODELO, usaBanco, prazosBancoDe, cartorioTitulo, carregar, etapas, etapasHTML, resumoPublico, emissaoHTML, protocolosHTML, posVendaHTML, timelineHTML, carregarPainel, alertasPainel, quadroHTML, caminhosAnexos,
     ir, salvarEtapas, salvarMarcos, novoProto, editarProto, fecharProto, gravarProto, excluirProto, statusProto, anexarProto, verAnexo, docPdf, docWord,
     addLinha, tirarLinha, salvarPv, gerarRecibo, anexarPv, arquivar, reabrir,
     _t: { extenso, reaisExtenso, mesmaPessoa, dataExtenso, numero, cartorioTitulo, preencherXml, prazosBanco, valoresDoc, docxPreenchido, pdfDoModelo, _ctx: c => { C = c; } } };
