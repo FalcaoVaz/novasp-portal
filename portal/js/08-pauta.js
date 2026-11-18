@@ -150,7 +150,12 @@ async function renderPauta(tipo){
     const primeirosNomes = grupoNomes.map(n => n.toLowerCase().split(' ')[0]).filter(Boolean);
     tarefasPend = todasT.filter(x=>{
       const respText = String(x.responsavel||x.Responsavel||'').toLowerCase();
-      if(!primeirosNomes.some(n => respText.includes(n))) return false;
+      // 18/11/2026: o Rodrigo está em todas as reuniões — ele não decide a pauta. Conta quem MAIS é responsável
+      // (Rodrigo + Vitor = só jurídico). Tarefa só do Rodrigo continua em todas, como antes.
+      const partes = respText.split(/[,;]/).map(s=>s.trim()).filter(Boolean);
+      const outros = partes.filter(p => !p.startsWith('rodrigo'));
+      const alvo = outros.length ? outros : partes;
+      if(!alvo.some(p => primeirosNomes.some(n => p.includes(n)))) return false;
       const st = (x.status||'').toString().toLowerCase();
       const dc = String(x.data_conclusao||x.Data_conclusao||'');
       if(st.includes('conclu')) return dc.startsWith(wk);
