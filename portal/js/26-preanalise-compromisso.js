@@ -489,7 +489,23 @@
     const ress = ((((S.ult || {}).resultado || {}).decisao || {}).motivos || {}).ressalva || [], ap = apontamentos(), d = S.v.decisoes_apontamentos || {};
     return ap.length > 0 && ress.every(t => /^Certid[ãa]o positiva/i.test(t)) && ap.every(a => (d[a.id] || {}).decisao === 'seguir');
   };
-  const liberada = () => S.v.status === 'liberado' || ['aprovado', 'aprovado_ressalvas'].includes(S.v.revisao_status) || liberadaPorDecisao();
+  // ══ 18/11/2026 (pacote da Renata, motor 1.3) — NADA TRAVA NO JURÍDICO ══
+  // A minuta sai assim que a matrícula está conferida. O GERENTE decide a venda inteira: seguir sem o jurídico (com motivo)
+  // ou enviar ao jurídico — que vira CONSULTA (o jurídico é avisado e registra a revisão quando puder; a venda segue).
+  // Sem a decisão, a minuta sai como rascunho com a pendência no topo; assinatura só com tudo completo (pode_assinar).
+  // GERENTE_LIBERA_BLOQUEADO = true: o gerente libera também conteúdo "Bloqueado" (Rodrigo aprovou em 18/11/2026).
+  const GERENTE_LIBERA_BLOQUEADO = true;
+  const MOTIVOS_LIBERAR = ['Certidões serão renovadas ou emitidas antes da escritura', 'Apontamentos analisados pelo gerente: não afetam a venda',
+    'Ressalva de estado civil ou outorga: será resolvida na assinatura', 'Prazo do contrato: o compromisso precisa seguir agora', 'Outro (descrever na observação)'];
+  const liberacaoValida = () => {
+    const lg = S.v.liberacao_gerente;
+    if (!lg || !['seguir', 'juridico'].includes(lg.decisao)) return null;
+    if (lg.decisao === 'seguir' && S.v.status === 'bloqueado' && !GERENTE_LIBERA_BLOQUEADO) return null;
+    return lg;
+  };
+  const liberada = () => S.v.status === 'liberado' || ['aprovado', 'aprovado_ressalvas'].includes(S.v.revisao_status) || liberadaPorDecisao() || !!liberacaoValida();
+  const statusTxt = () => ((U().STATUS[S.v.status] || {}).lb) || S.v.status || 'sem análise';
+  const pendenciasAnalise = () => liberada() ? [] : [`Decisão do gerente: enviar ou não ao jurídico (análise das certidões: ${statusTxt()})`];
   function itensEncontrados() {
     const ck = (((S.ult || {}).resultado) || {}).checklist || [];
     return new Set(ck.filter(c => c.resultado === 'encontrado').map(c => c.item));
@@ -669,7 +685,10 @@
     itens.push({ rot: 'Documentos pessoais', ok: ps.length > 0 && !sem.length, bloq: false, txt: !ps.length ? 'informe vendedores e compradores' : (sem.length ? 'faltam de: ' + esc(sem.join(', ')) : 'de todas as partes anexados') });
     const iptu = S.docs.filter(d => d.tipo === 'iptu');
     itens.push({ rot: 'IPTU', ok: iptu.length > 0, bloq: false, txt: iptu.length ? 'anexado' + (S.v.sql_contribuinte || m.sql_contribuinte ? `, contribuinte ${esc(S.v.sql_contribuinte || m.sql_contribuinte)}` : '') : 'anexe a certidão de débitos ou o comprovante do IPTU' });
-    itens.push({ rot: 'Análise das certidões', ok: liberada(), bloq: true, txt: liberada() ? (S.v.status === 'liberado' ? 'Liberado' : liberadaPorDecisao() ? 'Liberada: o gerente decidiu seguir sem o jurídico em todos os apontamentos' : 'aprovada pelo jurídico') : `status: ${esc(((U().STATUS[S.v.status] || {}).lb) || 'sem análise')}; resolva os apontamentos ou peça a revisão jurídica` });
+    const lgv = liberacaoValida();
+    itens.push({ rot: 'Análise das certidões', ok: liberada(), bloq: false, acao: liberada() ? '' : "document.getElementById('cp-liberacao').scrollIntoView({behavior:'smooth'})",
+      txt: liberada() ? (S.v.status === 'liberado' ? 'Liberado' : lgv ? (lgv.decisao === 'seguir' ? 'o gerente decidiu seguir sem o jurídico' : 'o gerente enviou ao jurídico (consulta: a venda segue)') : liberadaPorDecisao() ? 'Liberada: o gerente decidiu seguir sem o jurídico em todos os apontamentos' : 'aprovada pelo jurídico')
+        : `status: ${esc(statusTxt())}; falta a decisão do gerente ("Enviar ao jurídico?"). Não impede a emissão: sai como rascunho com essa pendência no topo` });
     const r = montar(entrada());
     itens.push({ rot: 'Dados do compromisso', ok: !r.faltas.length, bloq: false, txt: !r.faltas.length ? 'completos' : `${r.faltas.length} campo(s) faltando: ${esc(r.faltas.slice(0, 3).join('; '))}${r.faltas.length > 3 ? '…' : ''}. Não impede a emissão: sai como rascunho e você completa antes da assinatura`, acao: 'PACompr.abrirDados()' });
     return { itens, pronto: itens.every(i => !i.bloq || i.ok), r };
@@ -723,7 +742,7 @@
         ${em.em ? `<div style="margin-top:8px;font-size:13px">Última emissão: <b>${U().dt(em.em)}</b> por ${esc(em.por || '')} · ${esc(em.modelo || '')}
           ${em.docx_id ? ' · ' + btnMini(`PACompr.verAnexo('${em.docx_id}')`, 'Word') : ''}${em.pdf_id ? ' ' + btnMini(`PACompr.verAnexo('${em.pdf_id}')`, 'PDF') : ''}
           ${(em.avisos || []).length ? `<div style="font-size:12px;color:#b45309">${em.avisos.map(esc).join('<br>')}</div>` : ''}
-          <div style="font-size:12px;color:var(--muted)">${em.rascunho ? 'Rascunho: não enviar para assinatura antes de completar e emitir de novo.' : 'Confira a minuta (texto preenchido em amarelo) e apague o aviso do topo antes de enviar.'} Envio para assinatura (Clicksign): depois.</div></div>` : ''}
+          <div style="font-size:12px;margin-top:4px">${em.rascunho ? chip(false, 'não pode ir para assinatura') + ' <span style="color:var(--muted)">resolva as pendências e emita de novo.</span>' : chip(true, 'pode ir para assinatura') + ' <span style="color:var(--muted)">confira a minuta (texto em amarelo) e apague o aviso do topo antes de enviar.</span>'} <span style="color:var(--muted)">Envio pela Clicksign: depois.</span></div></div>` : ''}
         ${compA.length > 2 ? `<details style="margin-top:6px"><summary style="cursor:pointer;font-size:12px;color:var(--muted)">Emissões anteriores (${compA.length})</summary>${compA.map(a => `<div style="font-size:12px">${esc(a.nome_arquivo)} ${quando(a)} ${btnMini(`PACompr.verAnexo('${a.id}')`, 'Abrir')}</div>`).join('')}</details>` : ''}
       </div>
       <div id="cp-dados"></div>
@@ -865,8 +884,8 @@
     if (b) b.disabled = true;
     try {
       msg('Preenchendo o Word…');
-      const rascunho = r.faltas.length > 0;
-      const avisoW = rascunho ? `RASCUNHO COM PENDÊNCIAS: faltam ${r.faltas.length} dado(s): ${r.faltas.join('; ')}. Complete no sistema e emita de novo antes da assinatura. Apagar este aviso antes de enviar.` : AVISO;
+      const pend = pendenciasAnalise(), todas = pend.concat(r.faltas), rascunho = todas.length > 0;
+      const avisoW = rascunho ? `RASCUNHO COM PENDÊNCIAS (${todas.length}): ${todas.join('; ')}. Resolva no sistema e emita de novo antes da assinatura. Apagar este aviso antes de enviar.` : AVISO;
       const { blob, desconhecidos } = await preencherDocx(arq, r.val, avisoW);
       const avisos = r.avisos.slice(); if (desconhecidos.size) avisos.unshift('O modelo tem campos que o portal não conhece (ficaram como estão): ' + [...desconhecidos].sort().join(', '));
       const quandoTxt = new Date().toLocaleString('pt-BR').replace(/[/:]/g, '-').replace(', ', ' ');
@@ -876,10 +895,10 @@
       msg('Guardando na venda…');
       const fx = new File([blob], base + '.docx', { type: DOCX_MIME }); const ax = await anexar('compromisso', fx);
       let ap = null; if (pdf) ap = await anexar('compromisso', new File([pdf], base + '.pdf', { type: 'application/pdf' }));
-      S.M.emitido = { por: quem(), em: new Date().toISOString(), modelo: (window.PAAcomp.VERSOES[S.v.versao_contrato] || t), arquivo_modelo: arq, docx_id: ax.id, pdf_id: ap ? ap.id : null, avisos, rascunho, faltas: r.faltas.slice() };
-      await salvarM(); await evento('emitiu o compromisso', `${S.M.emitido.modelo}: Word${ap ? ' e PDF' : ''}${rascunho ? ` (rascunho, ${r.faltas.length} pendência(s))` : ''}`);
+      S.M.emitido = { por: quem(), em: new Date().toISOString(), modelo: (window.PAAcomp.VERSOES[S.v.versao_contrato] || t), arquivo_modelo: arq, docx_id: ax.id, pdf_id: ap ? ap.id : null, avisos, rascunho, faltas: todas, faltas_dados: r.faltas.slice(), pendencias_analise: pend, pode_assinar: !rascunho };
+      await salvarM(); await evento('emitiu o compromisso', `${S.M.emitido.modelo}: Word${ap ? ' e PDF' : ''}${rascunho ? ` (rascunho, ${todas.length} pendência(s))` : ''}`);
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = base + '.docx'; document.body.appendChild(a); a.click(); a.remove();
-      U().aviso(rascunho ? `Compromisso emitido como RASCUNHO (${r.faltas.length} pendência(s)): complete os dados e emita de novo antes da assinatura.` : 'Compromisso emitido: Word e PDF prontos. Confira a minuta (amarelo) e ajuste se precisar.', 'ok'); recarregar();
+      U().aviso(rascunho ? `Compromisso emitido como RASCUNHO (${todas.length} pendência(s)): resolva e emita de novo antes da assinatura.` : 'Compromisso emitido: Word e PDF prontos. Confira a minuta (amarelo) e ajuste se precisar.', 'ok'); recarregar();
     } catch (e) { msg(''); if (b) b.disabled = false; U().aviso('Não consegui emitir: ' + e.message, 'err'); }
   }
 
@@ -954,11 +973,75 @@
     try { const b = lerDecisao('todos'); await gravarDecisoes(pend, b); U().aviso(`Decisão registrada para ${pend.length} apontamento(s).` + (b.decisao === 'seguir' ? ' A venda segue sem o jurídico.' : ' A venda vai para a revisão jurídica.'), 'ok'); recarregar(); }
     catch (e) { U().aviso(e.message, 'err'); }
   }
-  // para o parecer (impressão/PDF): uma linha por apontamento com a decisão
+  // ══════════════ "ENVIAR AO JURÍDICO?" — decisão do gerente sobre a VENDA INTEIRA (18/11/2026) ══════════════
+  function liberacaoTexto(lg) {
+    if (!lg) return '';
+    const mot = [lg.motivo, lg.obs].filter(Boolean).join(' — ');
+    return (lg.decisao === 'juridico' ? 'Enviada ao jurídico (consulta: a venda segue)' : 'Seguir sem o jurídico') + (mot ? ' — ' + mot : '') + ` (por ${lg.por || ''}, ${U().dt(lg.em)}${lg.status_no_momento ? '; análise: ' + ((U().STATUS[lg.status_no_momento] || {}).lb || lg.status_no_momento) : ''})`;
+  }
+  function liberacaoHTML() {
+    if (!S || !conferida()) return '';
+    if (S.v.status === 'liberado' && !S.v.liberacao_gerente) return '';
+    const lg = S.v.liberacao_gerente, pode = podeDecidir(), emitido = !!(S.M.emitido || {}).em, ant = S.v.liberacoes_anteriores || [];
+    const ist2 = 'padding:6px 8px;border:1.5px solid var(--borda);border-radius:7px;font-size:12.5px;max-width:100%';
+    const rev = lg && lg.decisao === 'juridico' ? (S.v.revisao_status ? `<div style="font-size:12.5px;color:#047857">Revisão do jurídico registrada: ${esc(((U().REV || {})[S.v.revisao_status]) || S.v.revisao_status)}${S.v.revisado_por ? ' — ' + esc(S.v.revisado_por) : ''}</div>`
+      : '<div style="font-size:12.5px;color:#b45309">O jurídico ainda não registrou a revisão. Não trava a venda.</div>') : '';
+    const form = pode ? `<details style="margin-top:6px" ${lg ? '' : 'open'}><summary style="cursor:pointer;font-size:12.5px;color:var(--pri,#0088CC)">${lg ? 'Mudar a decisão' : 'Decidir'}</summary>
+      <div style="margin-top:6px;display:flex;flex-direction:column;gap:6px">
+        <div style="font-size:13px"><label><input type="radio" name="cpl-dec" value="seguir" ${!lg || lg.decisao === 'seguir' ? 'checked' : ''}> Seguir sem o jurídico</label> &nbsp;
+          <label><input type="radio" name="cpl-dec" value="juridico" ${lg && lg.decisao === 'juridico' ? 'checked' : ''}> Enviar ao jurídico (consulta)</label></div>
+        <select id="cpl-mot" style="${ist2}"><option value="">Motivo padrão (opcional)</option>${MOTIVOS_LIBERAR.map(m => `<option ${lg && lg.motivo === m ? 'selected' : ''}>${esc(m)}</option>`).join('')}</select>
+        <textarea id="cpl-obs" rows="2" style="${ist2}" placeholder="Para seguir sem o jurídico: motivo (obrigatório se não escolher um padrão). Para o jurídico: o que pedir.">${esc((lg && lg.obs) || '')}</textarea>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-p bsm" onclick="PACompr.decidirVenda()">Registrar decisão</button>
+          ${lg ? '<button class="btn btn-o bsm" onclick="PACompr.desfazerVenda()">Desfazer a decisão</button>' : ''}</div></div></details>`
+      : '<div style="font-size:12px;color:var(--muted);margin-top:6px">Só o gerente (ou o administrador) decide.</div>';
+    return `<div class="card" style="margin-bottom:12px;border-left:4px solid ${lg ? '#047857' : '#b45309'}" id="cp-liberacao"><div class="cb">
+      <div style="font-weight:700;font-size:15px">⚖️ Enviar ao jurídico?</div>
+      <div style="font-size:12.5px;color:var(--muted);margin:2px 0 8px">Análise das certidões: <b>${esc(statusTxt())}</b>. O gerente decide: seguir sem o jurídico (com motivo) ou enviar ao jurídico.
+        Nenhuma das duas trava a venda; sem decisão, a minuta sai como rascunho e não vai para assinatura.${!emitido && !lg ? ' Dica: emita a minuta primeiro e decida em seguida.' : ''}</div>
+      ${lg ? `<div style="font-size:13px;color:${lg.decisao === 'juridico' ? '#b45309' : '#047857'}"><b>${esc(liberacaoTexto(lg))}</b></div>${rev}` : '<div style="font-size:13px;color:#b91c1c">Sem decisão do gerente.</div>'}
+      ${form}
+      ${ant.length ? `<details style="margin-top:6px"><summary style="cursor:pointer;font-size:12px;color:var(--muted)">Decisões anteriores (${ant.length})</summary>${ant.slice().reverse().map(a => `<div style="font-size:12px;color:var(--muted)">${esc(liberacaoTexto(a))} · desfeita por ${esc(a.desfeita_por || '')} em ${U().dt(a.desfeita_em)}</div>`).join('')}</details>` : ''}
+    </div></div>`;
+  }
+  async function decidirVenda() {
+    if (!podeDecidir()) { U().aviso('Só o gerente (ou o administrador) decide.', 'err'); return; }
+    const dec = (document.querySelector('input[name="cpl-dec"]:checked') || {}).value || '';
+    let motivo = (document.getElementById('cpl-mot') || {}).value || ''; const obs = ((document.getElementById('cpl-obs') || {}).value || '').trim();
+    if (!['seguir', 'juridico'].includes(dec)) { U().aviso('Escolha: seguir sem o jurídico ou enviar ao jurídico.', 'err'); return; }
+    if (motivo && !MOTIVOS_LIBERAR.includes(motivo)) motivo = '';
+    if (dec === 'seguir') {
+      if (S.v.status === 'bloqueado' && !GERENTE_LIBERA_BLOQUEADO) { U().aviso('Venda com conteúdo Bloqueado: pela configuração, depende do jurídico.', 'err'); return; }
+      if (!motivo && !obs) { U().aviso('Para seguir sem o jurídico, informe o motivo (escolha um padrão ou escreva no campo).', 'err'); return; }
+      if (/^Outro/.test(motivo) && !obs) { U().aviso('Descreva o motivo no campo de texto.', 'err'); return; }
+    }
+    const lg = { decisao: dec, motivo: dec === 'seguir' ? motivo : '', obs: obs || (dec === 'juridico' ? motivo : ''), por: quem(), em: new Date().toISOString(), status_no_momento: S.v.status || '' };
+    const extra = { liberacao_gerente: lg };
+    if (S.v.liberacao_gerente) extra.liberacoes_anteriores = (S.v.liberacoes_anteriores || []).concat([{ ...S.v.liberacao_gerente, desfeita_por: quem(), desfeita_em: lg.em }]);
+    // jurídico: entra na fila de revisão do jurídico (consulta) — a venda segue
+    if (dec === 'juridico' && !S.v.encaminhado_juridico) Object.assign(extra, { encaminhado_juridico: true, encaminhado_em: lg.em, encaminhado_por: quem() });
+    try {
+      await db.patch('preanalise_venda', S.v.id, extra); Object.assign(S.v, extra);
+      await evento('decisão do gerente sobre a venda', dec === 'seguir' ? 'seguir sem jurídico — ' + [motivo, obs].filter(Boolean).join(' — ') : 'enviar ao jurídico (consulta)' + (obs ? ' — ' + obs : ''));
+      U().aviso(dec === 'seguir' ? 'Decisão registrada: a venda segue sem o jurídico.' : 'Decisão registrada: a venda foi para a fila do jurídico e segue sem esperar a revisão.', 'ok');
+      recarregar();
+    } catch (e) { U().aviso('Não gravou: ' + e.message + (/liberacao/.test(e.message) ? ' (falta rodar o SQL 2026-11-18-preanalise-liberacao-gerente.sql)' : ''), 'err'); }
+  }
+  async function desfazerVenda() {
+    if (!podeDecidir() || !S.v.liberacao_gerente) return;
+    if (!confirm('Desfazer a decisão do gerente? A minuta volta a sair como rascunho até uma nova decisão.')) return;
+    const extra = { liberacao_gerente: null, liberacoes_anteriores: (S.v.liberacoes_anteriores || []).concat([{ ...S.v.liberacao_gerente, desfeita_por: quem(), desfeita_em: new Date().toISOString() }]) };
+    try { await db.patch('preanalise_venda', S.v.id, extra); Object.assign(S.v, extra); await evento('decisão do gerente sobre a venda', 'decisão desfeita'); U().aviso('Decisão desfeita.', 'ok'); recarregar(); }
+    catch (e) { U().aviso('Não gravou: ' + e.message, 'err'); }
+  }
+
+  // para o parecer (impressão/PDF): a decisão sobre a venda + uma linha por apontamento com a decisão
   function decisoesParecer() {
-    if (!S) return ''; const ap = apontamentos(); if (!ap.length) return '';
+    if (!S) return '';
+    const lg = S.v.liberacao_gerente, linhaLg = lg ? `<div><b>Decisão do gerente sobre a venda:</b> ${esc(liberacaoTexto(lg))}</div>` : '';
+    const ap = apontamentos(); if (!ap.length) return linhaLg;
     const d = S.v.decisoes_apontamentos || {};
-    return `<div><b>Apontamentos das certidões (decisão do gerente):</b><ul style="margin:2px 0 0;padding-left:18px">${ap.map(a => `<li>${esc(a.nome)}${a.pessoa ? ' — ' + esc(a.pessoa) : ''}: ${d[a.id] ? esc(decisaoTexto(d[a.id])) : '<b style="color:#b45309">sem decisão</b>'}</li>`).join('')}</ul></div>`;
+    return linhaLg + `<div><b>Apontamentos das certidões (decisão do gerente):</b><ul style="margin:2px 0 0;padding-left:18px">${ap.map(a => `<li>${esc(a.nome)}${a.pessoa ? ' — ' + esc(a.pessoa) : ''}: ${d[a.id] ? esc(decisaoTexto(d[a.id])) : '<b style="color:#b45309">sem decisão</b>'}</li>`).join('')}</ul></div>`;
   }
 
   // ══════════════ BIBLIOTECA DE MODELOS ══════════════
@@ -988,7 +1071,7 @@
   }
 
   const caminhosAnexos = () => S ? S.anexos.map(a => a.caminho) : [];
-  window.PACompr = { carregar, cardHTML, caminhosAnexos, apontamentosHTML, decidir, decidirTodos, decisoesParecer, liberada: () => !!S && liberada(), subirProposta, aplicarProposta, subirDoc, subirPessoais, definirPessoa, verAnexo, tirarAnexo, abrirDados, fecharDados, redesenhar,
+  window.PACompr = { carregar, cardHTML, caminhosAnexos, apontamentosHTML, liberacaoHTML, decidirVenda, desfazerVenda, decidir, decidirTodos, decisoesParecer, liberada: () => !!S && liberada(), subirProposta, aplicarProposta, subirDoc, subirPessoais, definirPessoa, verAnexo, tirarAnexo, abrirDados, fecharDados, redesenhar,
     addPessoa, tirarPessoa, addLinha, tirarLinha, salvarDados, preencherAuto, preVisualizar, emitir, modelos, copiarClausula,
     _t: { montar, extrairProposta, versaoSugerida, preencherDocx, pdfDoDocx, textoDocx, cent, moeda, extensoReais, nomeIgual, normEC, normRegime, qualificarM1, _ctx: s => { S = s; } } };
 })();

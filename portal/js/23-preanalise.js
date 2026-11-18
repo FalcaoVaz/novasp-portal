@@ -100,8 +100,10 @@
     if (mi && mi.vencida) return 'Pedir matrícula atualizada';
     if (ci && (ci.vencidas || ci.faltando)) return `Emitir/refazer ${ci.vencidas + ci.faltando} certidão(ões)`;
     if (v.status === 'incompleto') return 'Completar o que falta (ver dossiê)';
-    if (v.status !== 'liberado' && !v.encaminhado_juridico) return 'Encaminhar ao jurídico';
-    if (v.encaminhado_juridico && !v.revisao_status) return 'Aguardando revisão jurídica';
+    // 18/11/2026: o jurídico é consulta — a decisão do gerente sobre a venda destrava (seguir ou enviar ao jurídico)
+    const lg = v.liberacao_gerente && v.liberacao_gerente.decisao;
+    if (v.status !== 'liberado' && !v.encaminhado_juridico && !lg) return 'Decisão do gerente: enviar ou não ao jurídico';
+    if (v.encaminhado_juridico && !v.revisao_status && !lg) return 'Aguardando revisão jurídica';
     if (v.revisao_status === 'nao_aprovado') return 'Jurídico não aprovou (ver nota)';
     const pp = proximoPrazo(v); return pp ? `${pp.titulo} em ${dia(pp.data)}` : 'Seguir para o compromisso';
   }
@@ -320,6 +322,7 @@
       ${ac ? PAAcomp.etapasHTML() : acErro ? `<div class="card" style="margin-bottom:12px"><div class="cb" style="font-size:13px;color:#b45309">Acompanhamento (etapas, protocolos, pós-venda) indisponível: ${esc(acErro)}. O SQL 2026-11-06-preanalise-acompanhamento.sql já rodou?</div></div>` : ''}
       <div id="pa-prazos">${prazosHTML()}</div>
       ${ac ? PAAcomp.emissaoHTML() : ''}
+      ${cp ? PACompr.liberacaoHTML() : ''}
       ${cp || cpErro ? PACompr.cardHTML(cpErro) : ''}
       <details class="card" style="margin-bottom:12px" ${_docs.length ? '' : 'open'}><summary class="cb" style="cursor:pointer;font-weight:700">Documentos (PDF) · ${_docs.length}</summary><div class="cb" style="padding-top:0">
         ${_docs.length ? `<table style="width:100%;border-collapse:collapse;font-size:13px"><tbody>${_docs.map(d => `<tr style="border-top:1px solid var(--borda,#e2e8f0)">
@@ -363,7 +366,7 @@
       ['Leitura conferida', !!(ult && v.leitura_conferida_exec === ult.id)],
       ['Matrícula em dia', !!(mi && !mi.vencida)],
       ['Certidões em dia', !!(ci && v.escopo === 'completo' && !ci.vencidas && !ci.faltando)]];
-    if (v.status && v.status !== 'liberado') et.push(['Revisão jurídica', !!v.revisao_status]);
+    if (v.status && v.status !== 'liberado') et.push(v.liberacao_gerente && v.liberacao_gerente.decisao ? ['Decisão do gerente', true] : ['Revisão jurídica', !!v.revisao_status]);
     if (v.data_compromisso && v.prazo_escritura_dias) et.push(['Escritura', !!v.escritura_feita]);
     return `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${et.map(([t, ok]) => `<span style="font-size:12px;padding:3px 9px;border-radius:99px;border:1px solid ${ok ? '#04785744' : '#cbd5e1'};color:${ok ? '#047857' : '#64748b'};background:${ok ? '#ecfdf5' : '#f8fafc'}">${ok ? '✓' : '○'} ${t}</span>`).join('')}</div>
       <div style="font-size:13px;margin-top:8px"><b>Próxima ação:</b> ${esc(proximaAcao(v, e, _docs.length))}${pp ? ` · <b>Próximo prazo:</b> ${esc(pp.titulo)} em ${dia(pp.data)} (${diaSem(pp.data)}) — ${falta(pp.data)}${fimDeSemana(pp.data) ? ' · <span style="color:#b45309">cai no fim de semana</span>' : ''}` : ''}</div>`;
@@ -631,7 +634,7 @@
     } catch (e) { aviso('Erro no PDF: ' + e.message + '. Use "Imprimir" → Salvar como PDF.', 'err'); }
   }
 
-  const _u = { BUCKET, STATUS, badge, esc, dia, dt, hojeIso, diasEntre, somaDias, diaSem, falta, fimDeSemana, aviso, quem, uuid, linkPdf, apagarPdfs, carregarHtml2pdf,
+  const _u = { BUCKET, STATUS, REV, badge, esc, dia, dt, hojeIso, diasEntre, somaDias, diaSem, falta, fimDeSemana, aviso, quem, uuid, linkPdf, apagarPdfs, carregarHtml2pdf,
     prazosDe, proximoPrazo, matInfo, certInfo };
   window.PreAnalise = { _u, abrir, filtrar, semana, nova, criar, venda, salvar, excluir, subir, ver, tirar, analisar, encaminhar, imprimir, baixarPdf,
     calcEscritura, addPrazo, tirarPrazo, salvarPrazos, confirmarLeitura, refazerMsgs, copiar, csvEquipe, revisar };
