@@ -189,6 +189,64 @@
     } catch (e) { if (w) w.close(); alert('Não consegui abrir o documento: ' + e.message); }
   }
 
+  // ── fotos do NIDO (19/11/2026): ficam só no Skybox (pacotes zip do backup de 06/11); a função nido-foto lê só os
+  //    bytes de cada foto, com o login de quem consulta (mesma regra do Acervo). Índice em nido_fotos.
+  const FOTO_FN = 'https://falcaovaz.netlify.app/.netlify/functions/nido-foto';
+  const FOTOS_INI = 12;
+  const _fotos = new Map();                       // 'REF|n' -> Promise<objectURL>
+  function fotoURL(ref, o) {
+    const k = ref + '|' + o; if (_fotos.has(k)) return _fotos.get(k);
+    const p = fetch(`${FOTO_FN}?ref=${encodeURIComponent(ref)}&o=${o}`, { headers: { Authorization: hdr().Authorization } })
+      .then(r => { if (!r.ok) throw new Error(r.status === 404 ? 'sem acesso ou foto inexistente' : 'erro ' + r.status); return r.blob(); })
+      .then(b => URL.createObjectURL(b));
+    _fotos.set(k, p); p.catch(() => _fotos.delete(k)); return p;
+  }
+  function fotosHTML(fotos) {
+    if (fotos === undefined) return '<div style="font-size:13px;color:var(--muted)">Fotos do Nido ainda não disponíveis no acervo.</div>';
+    if (!fotos.length) return '<div style="font-size:13px;color:var(--muted)">Nenhuma foto deste imóvel no backup do Nido.</div>';
+    const cel = o => `<div class="an-foto" data-o="${o}" onclick="AcervoNido.verFoto(${o})" style="aspect-ratio:4/3;border-radius:8px;background:var(--borda,#e5e7eb) center/cover no-repeat;cursor:zoom-in;position:relative;overflow:hidden"></div>`;
+    return `<div class="an-fotos" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px">${fotos.slice(0, FOTOS_INI).map(cel).join('')}</div>`
+      + (fotos.length > FOTOS_INI ? `<button class="btn btn-o bsm an-fotos-mais" style="margin-top:8px" onclick="AcervoNido.maisFotos()">Ver todas as ${fotos.length} fotos</button>` : '')
+      + '<div style="font-size:12px;color:var(--muted);margin-top:4px">Fotos do backup do Nido de 06/11/2026, lidas do Skybox. Clique para ampliar.</div>';
+  }
+  let _fRef = null, _fLista = [];
+  function pintarFotos(raiz) {
+    raiz.querySelectorAll('.an-foto:not([data-ok])').forEach(el => {
+      el.dataset.ok = '1'; const o = +el.dataset.o, ref = _fRef;
+      fotoURL(ref, o).then(u => { if (_fRef === ref) el.style.backgroundImage = `url("${u}")`; })
+        .catch(e => { el.innerHTML = `<small style="position:absolute;inset:auto 6px 6px 6px;color:#b91c1c">${esc(e.message)}</small>`; });
+    });
+  }
+  function maisFotos() {
+    const g = document.querySelector('#m-an-ficha .an-fotos'); if (!g) return;
+    g.insertAdjacentHTML('beforeend', _fLista.slice(FOTOS_INI).map(o => `<div class="an-foto" data-o="${o}" onclick="AcervoNido.verFoto(${o})" style="aspect-ratio:4/3;border-radius:8px;background:var(--borda,#e5e7eb) center/cover no-repeat;cursor:zoom-in;position:relative;overflow:hidden"></div>`).join(''));
+    const b = document.querySelector('#m-an-ficha .an-fotos-mais'); if (b) b.remove();
+    pintarFotos(g);
+  }
+  function verFoto(o) {
+    let i = _fLista.indexOf(o); if (i < 0) return;
+    const old = document.getElementById('m-an-foto'); if (old) old.remove();
+    const ov = document.createElement('div'); ov.id = 'm-an-foto';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:10050;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;user-select:none';
+    ov.innerHTML = `<img style="max-width:94vw;max-height:86vh;object-fit:contain;border-radius:6px">
+      <div class="t" style="position:absolute;top:14px;left:18px;color:#fff;font-size:14px"></div>
+      <div style="position:absolute;top:10px;right:14px;display:flex;gap:8px"><a class="dl btn bsm" style="background:#fff;color:#111">Baixar</a><button class="x btn bsm" style="background:#fff;color:#111">Fechar ✕</button></div>
+      <button class="p" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:34px;background:none;border:0;color:#fff;cursor:pointer;padding:10px">‹</button>
+      <button class="n" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:34px;background:none;border:0;color:#fff;cursor:pointer;padding:10px">›</button>`;
+    document.body.appendChild(ov);
+    const img = ov.querySelector('img'), t = ov.querySelector('.t'), dl = ov.querySelector('.dl');
+    const mostra = () => { const oo = _fLista[i], ref = _fRef; t.textContent = `${ref} · foto ${i + 1} de ${_fLista.length}`; img.style.opacity = .3;
+      fotoURL(ref, oo).then(u => { if (_fLista[i] === oo) { img.src = u; img.style.opacity = 1; dl.href = u; dl.download = `${ref}-${String(oo).padStart(3, '0')}.jpg`; } })
+        .catch(e => { t.textContent = 'Não consegui abrir a foto: ' + e.message; });
+      [i + 1, i - 1].forEach(j => { if (_fLista[j]) fotoURL(ref, _fLista[j]).catch(() => 0); }); };
+    const fecha = () => { ov.remove(); document.removeEventListener('keydown', tecla); };
+    const anda = d => { i = (i + d + _fLista.length) % _fLista.length; mostra(); };
+    const tecla = e => { if (e.key === 'Escape') fecha(); else if (e.key === 'ArrowRight') anda(1); else if (e.key === 'ArrowLeft') anda(-1); };
+    ov.querySelector('.x').onclick = fecha; ov.querySelector('.p').onclick = e => { e.stopPropagation(); anda(-1); }; ov.querySelector('.n').onclick = e => { e.stopPropagation(); anda(1); };
+    ov.onclick = e => { if (e.target === ov) fecha(); };
+    document.addEventListener('keydown', tecla); mostra();
+  }
+
   async function abrirFicha(chave) {
     const old = document.getElementById('m-an-ficha'); if (old) old.remove();
     const ov = document.createElement('div'); ov.className = 'mo open'; ov.id = 'm-an-ficha';
@@ -204,6 +262,8 @@
         db.get('nido_fechamentos', `?select=${COLS_F}&chave_imovel=eq.${encodeURIComponent(chave)}&order=data_fechamento.desc&limit=50`),
         db.get('nido_captadores', `?select=captadores&chave_imovel=eq.${encodeURIComponent(chave)}&limit=1`).then(r => (r && r[0] && r[0].captadores) || null).catch(() => undefined),
       ]);
+      const fotos = await db.get('nido_fotos', `?select=ordem&ref=eq.${encodeURIComponent(chave)}&order=ordem.asc&limit=5000`).then(r => Array.isArray(r) ? r.map(x => x.ordem) : undefined).catch(() => undefined);
+      _fRef = chave; _fLista = fotos || [];
       const anexos = await db.get('nido_anexos', `?select=caminho,origem,chave,tipo,descricao,nome_arquivo,data_inclusao,situacao,protegido,tamanho&chave_imovel=eq.${encodeURIComponent(chave)}&order=data_inclusao.desc`).catch(() => undefined);
       const chavesProp = [...new Set((props || []).map(p => p.chave_pessoa_fj).filter(Boolean))];
       const proponentes = chavesProp.length ? await db.get('nido_pessoas', `?select=${COLS_P}&chave_pessoa_fj=in.(${chavesProp.map(c => '"' + c + '"').join(',')})`) : [];
@@ -214,15 +274,17 @@
         secao('Características e valores pedidos', grade(i, ['area_util_construida', 'area_total_terreno', 'dormitorio', 'suite', 'vaga', 'banheiro', 'sala', 'disponivel_venda', 'valor_venda', 'disponivel_locacao', 'valor_locacao', 'valor_condominio', 'valor_iptu', 'exclusividade', 'placa', 'contribuinte', 'matricula', 'registro'])) +
         secao('Captação', capt ? `<div style="font-size:14px"><strong>${esc(capt)}</strong></div><div style="font-size:12px;color:var(--muted);margin-top:4px">Captador (angariador) registrado no Nido, com a equipe da época.</div>`
           : `<div style="font-size:13px;color:var(--muted)">${capt === undefined ? 'Captadores ainda não carregados no acervo.' : 'Sem captador registrado no Nido.'}</div>`) +
+        secao(`Fotos${fotos ? ' (' + fotos.length + ')' : ''}`, fotosHTML(fotos)) +
         secao(`Documentos${anexos ? ' (' + anexos.length + ')' : ''}`, docsHTML(anexos)) +
         secao('Proprietário', pessoaHTML(prop)) +
         secao(`Propostas (${(props || []).length})`, tabela(['Data', 'Tipo', 'Negócio', 'Proponente', 'Valor', 'Situação', 'Encerrada em', 'Motivo'], props || [], p =>
           `<tr><td style="white-space:nowrap">${fmtData(p.data_cadastro)}</td><td>${esc(p.tipo_proposta || '')}</td><td>${esc(p.tipo_negocio || '')}</td><td>${nomeDe(p.chave_pessoa_fj)}</td><td style="white-space:nowrap">${fmtVal(p.valor_atual_proposta || p.valor_proposta)}</td><td>${esc(p.situacao || '')}${p.detalhe_situacao ? '<br><small>' + esc(p.detalhe_situacao) + '</small>' : ''}</td><td style="white-space:nowrap">${fmtData(p.data_encerramento)}</td><td><small>${esc(p.motivo_recusa || '')}</small></td></tr>`)) +
         secao(`Negócios fechados (${(fechs || []).length})`, tabela(['Data', 'Negócio', 'Valor fechado', 'Comissão', 'Situação', 'Pós-venda', 'Parceria', 'Obs.'], fechs || [], f =>
           `<tr><td style="white-space:nowrap">${fmtData(f.data_fechamento)}</td><td>${esc(f.negocio || '')}</td><td style="white-space:nowrap;font-weight:600">${fmtVal(f.valor_fechamento)}</td><td style="white-space:nowrap">${fmtVal(f.valor_comissao)}</td><td>${esc(f.situacao || '')}</td><td>${esc(f.situacao_posvenda || '')}</td><td>${esc(f.parceria || '')}</td><td><small>${esc(f.obs || '')}</small></td></tr>`)) +
-        `<div style="font-size:12px;color:var(--muted);margin-top:14px">Telefones, e-mails e endereço das pessoas ficam fora da consulta até a regra de retenção e acesso do Jurídico. Fotos originais: Skybox, pasta “arquivos fotos nido”, pelo código do imóvel.</div>`;
+        `<div style="font-size:12px;color:var(--muted);margin-top:14px">Telefones, e-mails e endereço das pessoas ficam fora da consulta até a regra de retenção e acesso do Jurídico.</div>`;
+      pintarFotos(mb);
     } catch (e) { mb.innerHTML = `<span style="color:#dc2626">Erro: ${esc(e.message)}</span>`; }
   }
 
-  window.AcervoNido = { abrir, buscar, abrirFicha, abrirDoc };
+  window.AcervoNido = { abrir, buscar, abrirFicha, abrirDoc, verFoto, maisFotos };
 })();
