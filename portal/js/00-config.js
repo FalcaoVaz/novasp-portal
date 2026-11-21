@@ -61,6 +61,7 @@ async function _planDb(params){
 
 async function gasGet(url, params={}, opts={}) {
   if (url === GAS_CALENDAR && _planTabela(params.sheet)) return _planDb(params);
+  if (url === GAS_MANUTENCAO && typeof window._manDb === 'function') return window._manDb(params);   // manutenção no banco (21/11/2026)
   const q = new URLSearchParams({...params, t: Date.now()}).toString();
   const timeoutMs = opts.timeoutMs || 20000;
   const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
@@ -88,6 +89,7 @@ async function gasGet(url, params={}, opts={}) {
 const _gasCache = new Map();
 async function gasGetCached(url, params={}, ttlMs=60000){
   if (url === GAS_CALENDAR && _planTabela(params.sheet)) return _planDb(params);   // banco: sem cache
+  if (url === GAS_MANUTENCAO && typeof window._manDb === 'function') return window._manDb(params);
   const k = url + '::' + JSON.stringify(params);
   const hit = _gasCache.get(k);
   if (hit && (Date.now() - hit.ts) < ttlMs) return hit.data;
