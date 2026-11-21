@@ -2,14 +2,16 @@
 //  GAS_MANUTENCAO — Chamados de manutenção (Web App)
 //  Ações: abrir · listar_chamados · buscar_chamado ·
 //         atribuir_responsabilidade · atualizar_status
-//  Emails vão pro solicitante COM replyTo pra Mikaeli + Simone,
-//  pra as respostas chegarem nas gestoras, não no Rodrigo.
+//  Emails vão pro solicitante COM cópia pro gestor (João) e replyTo
+//  pra Mikaely (contato@) + João — as respostas não chegam no Rodrigo.
+//  21/11/2026: Simone saiu; cópias passam a ir pro João.
 // ═══════════════════════════════════════════════════════════════
 
 var SHEET_NAMES = ['Chamados', 'Manutencao', 'Manutenção', 'Página1', 'Pagina1', 'Sheet1'];
 var REMETENTE_NOME = 'Nova São Paulo Imobiliária';
-// Copiadas + Reply-To vão pras gestoras
-var EMAIL_GESTORAS = 'contato@novasaopaulo.com.br, simone@novasaopaulo.com.br';
+// Cópia (cc) vai pro gestor; respostas (Reply-To) vão pra Mikaely (contato@) e pro gestor
+var EMAIL_COPIA    = 'joao@novasaopaulo.com.br';
+var EMAIL_GESTORAS = 'contato@novasaopaulo.com.br, joao@novasaopaulo.com.br';
 
 // ── ENTRY POINT ──────────────────────────────────────────────
 function doGet(e) {
@@ -62,7 +64,7 @@ function abrir(p) {
     try {
       MailApp.sendEmail({
         to:       d.email,
-        cc:       EMAIL_GESTORAS,
+        cc:       EMAIL_COPIA,
         replyTo:  EMAIL_GESTORAS,
         name:     REMETENTE_NOME,
         subject:  'Chamado ' + d.protocolo + ' recebido - Nova São Paulo',
@@ -181,7 +183,7 @@ function _notificarSolicitante(headers, linha, protocolo, tituloEtapa, mensagem)
   try {
     MailApp.sendEmail({
       to:       email,
-      cc:       EMAIL_GESTORAS,
+      cc:       EMAIL_COPIA,
       replyTo:  EMAIL_GESTORAS,
       name:     REMETENTE_NOME,
       subject:  'Chamado ' + protocolo + ' - ' + tituloEtapa,

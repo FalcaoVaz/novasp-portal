@@ -16,6 +16,10 @@
 
 var SHEET_NAMES = ['Processos', 'Entrega', 'Entrega de Chaves', 'ENTREGA', 'Página1', 'Pagina1', 'Sheet1'];
 var DE_NOME = 'Nova São Paulo Imobiliária';
+// 21/11/2026: as respostas iam pro Rodrigo (o script roda na conta dele e não tinha Reply-To).
+// Agora: respostas vão pra Mikaely (contato@) e pro gestor João; o João recebe 1 cópia oculta de cada aviso.
+var REPLY_TO    = 'contato@novasaopaulo.com.br, joao@novasaopaulo.com.br';
+var EMAIL_COPIA = 'joao@novasaopaulo.com.br';
 
 // Mapa de status -> nome de coluna padrão (fallback quando o frontend
 // não envia &col= no atualizar_status).
@@ -243,7 +247,9 @@ function registrarVistoria(p) {
             '\nSolicitamos o envio de 2 (dois) orçamentos para cobrança do locatário.\n\n' +
             'A imobiliária pode indicar profissionais (sem responsabilidade pela indicação) caso seja de seu interesse.\n\n' +
             DE_NOME,
-          name: DE_NOME
+          name: DE_NOME,
+          replyTo: REPLY_TO,
+          bcc: EMAIL_COPIA
         });
       } catch(e){}
     });
@@ -276,12 +282,9 @@ function notificarPartes(opts) {
       return;
     }
     try {
-      MailApp.sendEmail({
-        to: addr,
-        subject: opts.assunto,
-        body: opts.corpo,
-        name: DE_NOME
-      });
+      var msg = { to: addr, subject: opts.assunto, body: opts.corpo, name: DE_NOME, replyTo: REPLY_TO };
+      if (enviados === 0) msg.bcc = EMAIL_COPIA;      // 1 cópia por aviso pro gestor
+      MailApp.sendEmail(msg);
       enviados++;
     } catch(err) {
       falhas.push({email: addr, erro: String(err && err.message || err)});
