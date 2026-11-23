@@ -613,7 +613,16 @@ async function carregarLideresDoUsuario(){
 // Só a Avaliação: corretor que entrou pela Área do Corretor do site (perfil "corretor" ou modo site) — 14/10/2026
 function ehSoAvaliacao(){
   if (!CUR) return false;
-  return CUR.perfil === 'corretor' || ((typeof ehModoSite === 'function') && ehModoSite());
+  if (CUR.perfil === 'corretor') return true;
+  if (!((typeof ehModoSite === 'function') && ehModoSite())) return false;
+  // 23/11/2026: quem é da equipe interna (admin, acesso total, jurídico/interno/agenda, assistente, líder, gerente)
+  // vê o portal completo mesmo entrando pelo botão "Avaliação" do site — antes o Rodrigo ficava preso só na Avaliação.
+  if (CUR.admin || (typeof ehAcessoTotal === 'function' && ehAcessoTotal())) return false;
+  if (CUR.acesso_juridico || CUR.acesso_interno || CUR.acesso_calendar) return false;
+  if (/assistente/i.test(CUR.dept || '')) return false;
+  if (typeof ehLiderGestao === 'function' && ehLiderGestao()) return false;
+  if (typeof ehGerenteVendas === 'function' && ehGerenteVendas()) return false;
+  return true;
 }
 function ehCorretor(){
   if (CUR && CUR.perfil === 'corretor') return true;
