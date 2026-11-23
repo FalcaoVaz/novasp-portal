@@ -83,68 +83,47 @@
   </div>
 </div>
 <script>
-var SURL='https://script.google.com/macros/s/AKfycbyMjypc0XTMs_RR6I9GMyuOkguE7u-QXDJjczMQoSayduM1_AAhmUfe2GDJdXujsqpa6w/exec';
-var ETAPAS=['Entrega de chaves agendada','Entrega de chaves realizada','Vistoria realizada','Débitos quitados','Chaves liberadas'];
-var COL_DATA=['Data Agendada','Data Entrega','Data Vistoria','Data Débitos','Data Liberação'];
-
+// 23/11/2026: consulta pela função do servidor (sem planilha pública). Mostra só endereço, garantia, etapas e reparo — sem nomes nem e-mails.
+var FN='https://falcaovaz.netlify.app/.netlify/functions/chaves-consulta';
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function br(s){var m=String(s||'').match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+'/'+m[2]+'/'+m[1]:'';}
 function buscar(){
   var proto=document.getElementById('proto').value.trim().toUpperCase();
   if(!proto){alert('Digite o protocolo.');return;}
   var el=document.getElementById('res');var btn=document.getElementById('btn');
   el.innerHTML='<div class="loading"><div class="spin"></div>Buscando...</div>';
   btn.disabled=true;
-  fetch(SURL+'?acao=buscar&protocolo='+encodeURIComponent(proto)+'&t='+Date.now())
-    .then(function(r){return r.json();})
-    .then(function(data){
-      btn.disabled=false;
-      if(!data||data.status==='nao_encontrado'){
-        el.innerHTML='<div class="erro">Protocolo não encontrado.<br><small>Verifique o número e tente novamente.</small></div>';return;
-      }
-      if(data.status==='erro'){el.innerHTML='<div class="erro">Erro ao buscar. Tente novamente.</div>';return;}
-      mostrar(data.processo,data.andamentos||[]);
-    })
-    .catch(function(){btn.disabled=false;el.innerHTML='<div class="erro">Erro de conexão. Tente novamente.</div>';});
+  fetch(FN+'?p='+encodeURIComponent(proto)).then(function(r){return r.json();}).then(function(d){
+    btn.disabled=false;
+    if(!d||!d.ok){el.innerHTML='<div class="erro">Protocolo não encontrado.<br><small>Verifique o número (ex.: CHV-20261123-1234) e tente novamente.</small></div>';return;}
+    mostrar(d);
+  }).catch(function(){btn.disabled=false;el.innerHTML='<div class="erro">Erro de conexão. Tente novamente.</div>';});
 }
-
-function etapaIdx(status){var i=ETAPAS.indexOf((status||'').trim());return i<0?0:i;}
-
-function mostrar(c,andamentos){
+function mostrar(d){
   var el=document.getElementById('res');
-  var idx=etapaIdx(c['Status']);
-  var cls=idx>=4?'sc-c':idx===0?'sc-a':'sc-p';
-  var html='<div class="sc '+cls+'"><div class="sc-lbl">Etapa Atual</div><div class="sc-st">'+(c['Status']||ETAPAS[0])+'</div><div class="sc-proto">'+(c['Protocolo']||'')+'</div></div>';
-
-  html+='<div class="det">';
-  html+='<div class="dr"><strong>Imóvel</strong><span>'+(c['Endereço']||'-')+'</span></div>';
-  html+='<div class="dr"><strong>Locador</strong><span>'+(c['Locador']||'-')+'</span></div>';
-  html+='<div class="dr"><strong>Locatário</strong><span>'+(c['Locatário']||'-')+'</span></div>';
-  html+='<div class="dr"><strong>Tipo de fiança</strong><span>'+(c['Tipo Fiança']||'-')+'</span></div>';
-  html+='</div>';
-
+  var req=d.etapas.filter(function(e){return !e.opcional;});
+  var idx=req.findIndex(function(e){return !e.data;}); var fim=idx<0;
+  var atual=d.cancelado?'Processo cancelado':fim?'Processo concluído':req[idx].label;
+  var cls=d.cancelado?'sc-a':fim?'sc-c':idx===0?'sc-a':'sc-p';
+  var html='<div class="sc '+cls+'"><div class="sc-lbl">Etapa atual</div><div class="sc-st">'+esc(atual)+'</div><div class="sc-proto">'+esc(d.protocolo)+'</div></div>';
+  html+='<div class="det"><div class="dr"><strong>Imóvel</strong><span>'+esc(d.endereco||'-')+'</span></div><div class="dr"><strong>Garantia</strong><span>'+esc(d.garantia||'-')+'</span></div></div>';
   html+='<div class="prog-title">Progresso</div><div class="steps">';
-  ETAPAS.forEach(function(et,i){
-    var sc=i<idx?'done':(i===idx?'curr':'');
-    var data=c[COL_DATA[i]]||'';
-    var ico=i<idx?'&#10003;':(i+1);
-    html+='<div class="stp '+sc+'"><div class="stp-dot">'+ico+'</div><div><div class="stp-nome">'+et+'</div>'+(data?'<div class="stp-data">'+data+'</div>':'')+'</div></div>';
+  d.etapas.forEach(function(e,i){
+    if(e.opcional&&!e.data)return;
+    var feita=!!e.data, cur=!feita&&!d.cancelado&&req.indexOf(e)===idx;
+    html+='<div class="stp '+(feita?'done':cur?'curr':'')+'"><div class="stp-dot">'+(feita?'&#10003;':(i+1))+'</div><div><div class="stp-nome">'+esc(e.label)+'</div>'+(e.data?'<div class="stp-data">'+br(e.data)+'</div>':'')+'</div></div>';
   });
   html+='</div>';
-
-  if((c['Necessita Reparo']||'')==='Sim'){
-    html+='<div class="reparo"><b>Reparos identificados na vistoria:</b><br>'+(c['Descrição Reparo']||'-')
-      +(c['Valor Reparo']?'<br>Valor estimado: <b>'+c['Valor Reparo']+'</b>':'')
-      +(c['Responsável Reparo']?'<br>Responsável: <b>'+c['Responsável Reparo']+'</b>':'')+'</div>';
-  }
-
-  if(andamentos&&andamentos.length>0){
+  if(d.reparo){html+='<div class="reparo"><b>Reparos identificados na vistoria:</b><br>'+esc(d.reparo.descricao||'-')+(d.reparo.valor?'<br>Valor estimado: <b>'+esc(d.reparo.valor)+'</b>':'')+(d.reparo.por?'<br>Por conta de: <b>'+esc(d.reparo.por)+'</b>':'')+'</div>';}
+  if(d.historico&&d.historico.length){
     html+='<div class="hist-title">Histórico</div><div class="timeline">';
-    andamentos.slice().reverse().forEach(function(a){
-      html+='<div class="t-item"><div class="t-dot"></div><div class="t-status">'+(a.status||'')+'</div>'+(a.mensagem?'<div class="t-msg">'+a.mensagem+'</div>':'')+'<div class="t-data">'+(a.data||'')+'</div></div>';
-    });
+    d.historico.slice().reverse().forEach(function(a){html+='<div class="t-item"><div class="t-dot"></div><div class="t-status">'+esc(a.etapa)+'</div><div class="t-data">'+new Date(a.em).toLocaleDateString('pt-BR')+'</div></div>';});
     html+='</div>';
   }
+  html+='<div style="font-size:12px;color:#64748b;margin-top:12px">Dúvidas? Responda ao e-mail que você recebeu com este protocolo.</div>';
   el.innerHTML=html;
 }
+(function(){var q=new URLSearchParams(location.search).get('p');if(q){document.getElementById('proto').value=q;buscar();}})();
 </script>
 </body>
 </html>

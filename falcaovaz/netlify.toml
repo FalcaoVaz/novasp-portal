@@ -11,6 +11,13 @@
 [functions."tjsp-esaj"]
   timeout = 26
 
+# Entrega de chaves (23/11/2026): cópia do Imoview de hora em hora; resumo ao gestor seg–sex 8h (11h UTC), só com CHAVES_RESUMO_ATIVO=1
+[functions."imoview-sync"]
+  schedule = "7 * * * *"
+
+[functions."chaves-resumo"]
+  schedule = "0 11 * * 1-5"
+
 [[headers]]
   for = "/*"
   [headers.values]

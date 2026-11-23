@@ -194,6 +194,7 @@ function goTo(pg){
   const n=document.getElementById('n-'+pg);if(n)n.classList.add('active');
   document.getElementById('tbt').textContent=TITLES[pg]||pg;
   if(pg==='manutencao')loadMan();
+  if(pg==='entrega' && window.EntregaChaves) EntregaChaves.abrir();   // entrega de chaves no banco (23/11/2026)
   if(pg==='requisicoes'){ _reqModoFixo=null; loadReq(); }
   if(pg==='req-ti'){      _reqModoFixo='ti';      loadReq(); }
   if(pg==='req-manut'){   _reqModoFixo='manut';   loadReq(); }
