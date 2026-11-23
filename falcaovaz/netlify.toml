@@ -18,6 +18,10 @@
 [functions."chaves-resumo"]
   schedule = "0 11 * * 1-5"
 
+# Cafés de parceria do site → Agenda do portal (23/11/2026)
+[functions."cafes-sync"]
+  schedule = "*/20 * * * *"
+
 [[headers]]
   for = "/*"
   [headers.values]

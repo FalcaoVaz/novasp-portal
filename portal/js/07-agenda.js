@@ -362,6 +362,7 @@ async function renderAg(){
       .filter(e=>{
         if (_agEhPessoal(e)) { e._ocupado = !_agEhDono(e); return true; }
         e._ocupado = false;
+        if (e.origem_id) return _agParticipa(e) || (typeof CUR!=='undefined' && CUR && CUR.admin);   // café de parceria (site): só os participantes — 23/11/2026
         if ((e.agenda||'nsp') === 'nsp') return true;
         return _agVeDuasAgendas() && _agParticipa(e);   // do jurídico, só os dele
       })
@@ -451,6 +452,10 @@ async function renderAg(){
           ${horario?`<b>${horario}</b> `:''}🔒 Ocupado · ${_agDonoPrimeiroNome(e)}</div>` };
       }
       const ehJur = (e.agenda||'nsp') === 'juridico';
+      if (e.origem_id) {   // café de parceria marcado pelo site: só leitura, clique abre o detalhe/site
+        return { hora: hi || '99:99', html: `<div style="padding:5px 7px;border-radius:6px;font-size:11.5px;margin-bottom:4px;background:#fdf6ec;border-left:3px solid #92400e;cursor:pointer" onclick="abrirEditarEv('${eid}')" title="Café de parceria — marcado pelo site (Área do Corretor → Parcerias)">
+          ${horario?`<b>${horario}</b> `:''}${e.titulo||'☕ Café de parceria'}<div style="font-size:10px;color:#92400e;margin-top:2px">marcado pelo site</div></div>` };
+      }
       const bgEv = ehPessoal ? '#f5f3ff' : (ehJur ? '#fff7ed' : 'var(--bg)');
       return { hora: hi || '99:99', html: `<div style="padding:5px 7px;border-radius:6px;font-size:11.5px;margin-bottom:4px;background:${bgEv};cursor:pointer${ehJur?';border-left:3px solid #d97706':''}" onclick="abrirEditarEv('${eid}')" title="${ehPessoal?'Compromisso pessoal (os outros veem só Ocupado)':(ehJur?'Agenda do jurídico (edite no Sistema Jurídico)':'Clique para editar')}">
         ${horario?`<b>${horario}</b> `:''}${ehPessoal?'🔒 ':''}${ehJur?'<span style="font-size:9px;background:#d97706;color:#fff;padding:1px 5px;border-radius:8px;margin-right:3px">⚖️ JURÍDICO</span>':''}${e.titulo||''}
@@ -638,6 +643,11 @@ async function abrirEditarEv(id){
   if(!ev){ toast('Evento nao encontrado.','err'); return; }
   if(_agEhPessoal(ev) && !_agEhDono(ev)){ toast('Horário ocupado: compromisso pessoal de '+_agDonoPrimeiroNome(ev)+'.',''); return; }
   if((ev.agenda||'nsp')==='juridico'){ toast('Este compromisso é da agenda do jurídico — abra e edite no Sistema Jurídico (Agenda).',''); return; }
+  if(ev.origem_id){   // café de parceria: a fonte é o site
+    const abrirSite = confirm((ev.titulo||'Café de parceria')+'\n'+String(ev.data||'').slice(0,10).split('-').reverse().join('/')+' · '+(ev.hora_inicio||'')+(ev.hora_fim?'–'+ev.hora_fim:'')+'\n\n'+(ev.descricao||'')+'\n\nParticipantes: '+(ev.responsavel||'—')+'\n\nPara remarcar ou cancelar, use o site (Área do Corretor → Parcerias).\n\nAbrir o site agora?');
+    if(abrirSite && ev.link) window.open(ev.link,'_blank');
+    return;
+  }
   _editEvId = id;
   _popularHorasSelects();
   // Preenche o modal
