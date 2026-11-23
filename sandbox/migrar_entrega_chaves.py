@@ -5,6 +5,7 @@ nome do locatário e pelo endereço — só quando há UM contrato que bate.
 
     python3 sandbox/migrar_entrega_chaves.py            # só confere
     python3 sandbox/migrar_entrega_chaves.py --gravar   # grava (só protocolos que ainda não existem)
+    python3 sandbox/migrar_entrega_chaves.py --religar  # depois da cópia do Imoview: liga ao contrato os processos que ficaram sem
 """
 import json, os, re, sys, unicodedata, urllib.request, datetime
 
@@ -27,7 +28,24 @@ def dia(v):
 
 nn = lambda s: {w for w in unicodedata.normalize('NFD', str(s or '')).encode('ascii', 'ignore').decode().upper().replace(',', ' ').split() if len(w) > 2}
 
+def religar():
+    try:
+        import psycopg2
+    except ImportError:
+        import site; sys.path.append(site.getusersitepackages()); import psycopg2
+    con = psycopg2.connect(open(os.path.expanduser('~/.config/novasp/prod-pooler.dsn')).read().strip()); cur = con.cursor()
+    cur.execute('select codigo, locatario_nome, endereco from imoview_contratos'); ctr = cur.fetchall()
+    if not ctr: sys.exit('A cópia do Imoview ainda está vazia: rode antes sandbox/sync_imoview_cache.py --gravar')
+    cur.execute('select protocolo, locatario, endereco from chaves_processos where contrato_imoview is null'); n = 0; tot = 0
+    for proto, lta, end in cur.fetchall():
+        tot += 1; a, e = nn(lta), nn(end)
+        cand = {c for c, ln, en in ctr if (a and len(a & nn(ln)) >= 2) and (not e or len(e & nn(en)) >= 2)}
+        if len(cand) == 1:
+            cur.execute('update chaves_processos set contrato_imoview=%s where protocolo=%s and contrato_imoview is null', (cand.pop(), proto)); n += cur.rowcount
+    con.commit(); print(f'Processos sem contrato: {tot}; ligados agora: {n}.')
+
 def main():
+    if '--religar' in sys.argv: return religar()
     with urllib.request.urlopen(GAS + '?acao=listar', timeout=90) as r:
         d = json.loads(r.read())
     cab, linhas = d[0], d[1:]
