@@ -216,6 +216,7 @@
     <button class="fbtn" onclick="setF('liberado',this)">Liberados</button>
     <input type="text" class="sbx" id="sbx" placeholder="Buscar por protocolo, parte ou imóvel..." oninput="render()">
   </div>
+  <div id="atrasoBox" style="display:none;margin:0 0 12px;padding:10px 14px;border-radius:10px;background:rgba(240,165,0,.12);border:1px solid rgba(240,165,0,.35);color:#fcd34d;font-size:13px"></div>
   <div class="sech"><div class="sectitle">Processos</div><div class="secbadge" id="cnt">0</div></div>
   <div class="grid" id="lista"><div class="loading"><div class="lspin"></div><p style="color:#475569;font-size:13px">Carregando...</p></div></div>
 </div>
@@ -265,6 +266,7 @@ function load(){
     else processos=[];
     var now=new Date();
     document.getElementById('lupd').textContent='Atualizado às '+now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    if(!window._abriuMes){ window._abriuMes=true; mesFiltro=_mesAtualKey(); }   // tela inicial: só o mês corrente
     renderKPIs();render();
   }).catch(function(){document.getElementById('lupd').textContent='Erro ao carregar';});
 }
@@ -392,7 +394,25 @@ function _ultMeses(n){
   return arr;
 }
 
-function _entMesRef(p){ return p['Data Entrega']||p['Data Agendada']||''; }
+// 23/11/2026: sem entrega nem agendamento, vale a data do cadastro (antes esses processos sumiam do mês)
+function _entMesRef(p){ return p['Data Entrega']||p['Data Agendada']||p['Data Cadastro']||''; }
+function _mesAtualKey(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+// processos de meses anteriores que ainda não foram encerrados (não podem sumir só porque a tela abre no mês atual)
+function abertosAnteriores(){ var m=_mesAtualKey(); return processos.filter(function(p){ var k=_mesKey(_entMesRef(p)); return k && k<m && !processoEncerrado(p); }); }
+function renderAtrasos(){
+  var box=document.getElementById('atrasoBox'); if(!box) return;
+  var n=abertosAnteriores().length;
+  if(!n || !mesFiltro){ box.style.display='none'; return; }
+  box.style.display='block';
+  box.innerHTML='&#9888;&#65039; <b>'+n+' processo(s) de meses anteriores ainda não foram encerrados.</b> '
+    +'<a href="#" onclick="verAbertosAnteriores();return false;" style="color:#fbbf24;text-decoration:underline;margin-left:6px">Ver esses processos</a>'
+    +' · <a href="#" onclick="setMesFiltro(\'\');return false;" style="color:#fbbf24;text-decoration:underline">Ver todos os meses</a>';
+}
+function verAbertosAnteriores(){
+  mesFiltro=''; filtro='andamento';
+  document.querySelectorAll('.fbtn').forEach(function(b){ b.classList.toggle('on', /andamento/i.test(b.getAttribute('onclick')||'')); });
+  renderPorMes(); render();
+}
 
 function renderPorMes(){
   var meses=_ultMeses(6); // 6 meses
@@ -458,6 +478,7 @@ function render(){
     return mf&&mb&&mm;
   });
   document.getElementById('cnt').textContent=rows.length;
+  renderAtrasos();
   var el=document.getElementById('lista');
   if(!rows.length){el.innerHTML='<div class="empty">&#128273; Nenhum processo encontrado.</div>';return;}
   el.innerHTML=rows.map(cardHtml).join('');
