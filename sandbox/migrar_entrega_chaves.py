@@ -8,8 +8,8 @@ nome do locatário e pelo endereço — só quando há UM contrato que bate.
 """
 import json, os, re, sys, unicodedata, urllib.request, datetime
 
-PAINEL = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'portal', 'entregaapp', 'painel.html')
-GAS = re.search(r"var SURL='([^']+)'", open(PAINEL, encoding='utf-8').read()).group(1)
+# Apps Script antigo da Entrega de Chaves (o painel.html antigo, que tinha o endereço, virou página de aviso)
+GAS = 'https://script.google.com/macros/s/AKfycbyMjypc0XTMs_RR6I9GMyuOkguE7u-QXDJjczMQoSayduM1_AAhmUfe2GDJdXujsqpa6w/exec'
 TXT = {'Locador': 'locador', 'Email Locador': 'email_locador', 'Locatário': 'locatario', 'Email Locatário': 'email_locatario', 'Endereço': 'endereco',
        'Tipo Fiança': 'tipo_fianca', 'Status': 'status', 'Necessita Reparo': 'necessita_reparo', 'Descrição Reparo': 'descricao_reparo',
        'Valor Reparo': 'valor_reparo', 'Responsável Reparo': 'responsavel_reparo', 'Observações': 'observacoes'}
