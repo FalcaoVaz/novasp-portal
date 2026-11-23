@@ -19,11 +19,11 @@ exports.handler = async () => {
   const H = { apikey: key, Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' };
   const t0 = Date.now(), inicio = new Date(), res = {};
   const est = await fetch(`${sb}/rest/v1/imoview_sync_estado?select=chave,ultimo`, { headers: H }).then(r => r.json());
-  for (const [chave, rota, tab, f] of [['contratos', 'ContratoAluguel/RetornarContratos?ordenacao=1', 'imoview_contratos', contrato], ['pessoas', 'Cliente/RetornarClientes?tipoRelacionamento=2', 'imoview_pessoas', pessoa]]) {
+  for (const [chave, rota, tab, f, porPag] of [['contratos', 'ContratoAluguel/RetornarContratos?ordenacao=1', 'imoview_contratos', contrato, 50], ['pessoas', 'Cliente/RetornarClientes?tipoRelacionamento=2', 'imoview_pessoas', pessoa, 20]]) {   // clientes: máx. 20 por página
     const ult = (est.find(e => e.chave === chave) || {}).ultimo; if (!ult) { res[chave] = 'sem carga inicial'; continue; }
     const desde = brt(new Date(new Date(ult).getTime() - 15 * 60e3)); let p = 1, n = 0, completo = false;
     while (Date.now() - t0 < 22000) {
-      const r = await fetch(`${API}${rota}&dataHoraInicialUltimaAlteracao=${encodeURIComponent(desde)}&numeroPagina=${p}&numeroRegistros=50`, { headers: { chave: imv, Accept: 'application/json' } });
+      const r = await fetch(`${API}${rota}&dataHoraInicialUltimaAlteracao=${encodeURIComponent(desde)}&numeroPagina=${p}&numeroRegistros=${porPag}`, { headers: { chave: imv, Accept: 'application/json' } });
       if (!r.ok) { console.error('[imoview-sync]', chave, r.status); break; }
       const lista = ((await r.json()) || {}).lista || [];
       if (lista.length) {
@@ -31,7 +31,7 @@ exports.handler = async () => {
         if (!w.ok) { console.error('[imoview-sync] gravar', chave, w.status, (await w.text()).slice(0, 200)); break; }
         n += lista.length;
       }
-      if (lista.length < 50) { completo = true; break; }
+      if (lista.length < porPag) { completo = true; break; }
       p++;
     }
     if (completo) await fetch(`${sb}/rest/v1/imoview_sync_estado?chave=eq.${chave}`, { method: 'PATCH', headers: { ...H, Prefer: 'return=minimal' }, body: JSON.stringify({ ultimo: inicio.toISOString() }) });

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Cópia leve de contratos de locação e pessoas do Imoview para o banco (imoview_contratos / imoview_pessoas) — 23/11/2026.
 Usada pela Entrega de chaves (cadastro pelo código do contrato e "rescisões sem processo").
-A carga inicial roda aqui (demora ~10 min, 17 mil pessoas); depois a função falcaovaz imoview-sync mantém atualizado de hora em hora.
+A carga inicial roda aqui (demora ~20 min, 17 mil pessoas a 20 por página); depois a função falcaovaz imoview-sync mantém atualizado de hora em hora.
 
     python3 sandbox/sync_imoview_cache.py            # só conta o que viria
     python3 sandbox/sync_imoview_cache.py --gravar   # grava tudo (carga completa)
@@ -37,19 +37,19 @@ def pessoa(c):
     em = ', '.join(dict.fromkeys(e.get('email', '').strip() for e in (c.get('emails') or []) if '@' in (e.get('email') or '')))
     return {'codigo': c['codigo'], 'nome': c.get('nome') or '', 'emails': em}
 
-def paginas(k, base, f):
+def paginas(k, base, f, n=50):
     out, p = [], 1
     while True:
-        d = get(k, f'{base}&numeroPagina={p}&numeroRegistros=50')
+        d = get(k, f'{base}&numeroPagina={p}&numeroRegistros={n}')
         out += [f(x) for x in d.get('lista') or []]
-        if len(d.get('lista') or []) < 50: return out
+        if len(d.get('lista') or []) < n: return out
         p += 1
         if p % 50 == 0: print(f'  … {len(out)}', flush=True)
 
 def main():
     k = chave(); inicio = datetime.datetime.now(datetime.timezone.utc)
     cs = paginas(k, 'ContratoAluguel/RetornarContratos?ordenacao=1', contrato); print('contratos', len(cs))
-    ps = paginas(k, 'Cliente/RetornarClientes?tipoRelacionamento=2', pessoa); print('pessoas', len(ps), 'com e-mail', sum(1 for p in ps if p['emails']))
+    ps = paginas(k, 'Cliente/RetornarClientes?tipoRelacionamento=2', pessoa, 20)   # clientes: no máximo 20 por página; print('pessoas', len(ps), 'com e-mail', sum(1 for p in ps if p['emails']))
     if '--gravar' not in sys.argv: print('Só conferência. Para gravar: --gravar'); return
     try:
         import psycopg2, psycopg2.extras
