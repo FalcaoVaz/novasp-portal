@@ -83,6 +83,7 @@
         <div class="pst">Do primeiro contato à integração na equipe</div></div>
         <div class="flex" style="gap:8px;flex-wrap:wrap">
           <button class="btn btn-o" id="rh-importar">Importar lista</button>
+          <button class="btn btn-o" id="rh-relatorio">Relatório</button>
           <button class="btn btn-o" id="rh-exportar">Exportar CSV</button>
           <button class="btn btn-p" id="rh-novo">+ Novo candidato</button></div></div>
       <div class="flex" style="gap:6px;margin-bottom:14px;flex-wrap:wrap">${abas.map(([k, l]) => `<button class="btn ${_aba === k ? 'btn-p' : 'btn-o'}" data-aba="${k}">${l}</button>`).join('')}</div>
@@ -94,13 +95,15 @@
     el.querySelector('#rh-novo').onclick = () => ficha(null);
     el.querySelector('#rh-importar').onclick = importar;
     el.querySelector('#rh-exportar').onclick = exportar;
+    el.querySelector('#rh-relatorio').onclick = relatorio;
     if (_aba === 'funil') renderFunil(); else if (_aba === 'entrevistas') renderEntrevistas(); else renderRoteiro();
   }
 
   // ── filtros ──
   function noPeriodo(c) {
     if (!_f.periodo) return true;
-    const d = c.data_entrada || '', h = new Date(), ini = new Date(h);
+    const d = c.data_entrada || String(c.criado_em || '').slice(0, 10), h = new Date(), ini = new Date(h);
+    if (_f.periodo.startsWith('m:')) return d.slice(0, 7) === _f.periodo.slice(2);   // mês específico (24/11/2026)
     if (_f.periodo === 'mes') return d.slice(0, 7) === hojeIso().slice(0, 7);
     if (_f.periodo === 'mes_ant') { const m = new Date(h.getFullYear(), h.getMonth() - 1, 1); return d.slice(0, 7) === `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}`; }
     if (_f.periodo === 'ano') return d.slice(0, 4) === String(h.getFullYear());
@@ -157,7 +160,7 @@
         <div class="fg" style="flex:2;min-width:200px;margin:0"><label>Buscar</label><input id="rh-busca" placeholder="Nome, telefone ou e-mail" value="${esc(_f.busca)}"></div>
         <div class="fg" style="margin:0"><label>Origem</label><select id="rh-f-origem"><option value="">Todas</option>${opt(origens, _f.origem)}</select></div>
         <div class="fg" style="margin:0"><label>Responsável</label><select id="rh-f-resp"><option value="">Todos</option>${opt(resps, _f.resp)}</select></div>
-        <div class="fg" style="margin:0"><label>Período de entrada</label><select id="rh-f-periodo">${[['', 'Todo o período'], ['mes', 'Este mês'], ['mes_ant', 'Mês passado'], ['30', 'Últimos 30 dias'], ['90', 'Últimos 90 dias'], ['ano', 'Este ano']].map(([k, l]) => `<option value="${k}" ${k === _f.periodo ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+        <div class="fg" style="margin:0"><label>Período de entrada</label><select id="rh-f-periodo">${[['', 'Todo o período'], ['mes', 'Este mês'], ['mes_ant', 'Mês passado'], ['30', 'Últimos 30 dias'], ['90', 'Últimos 90 dias'], ['ano', 'Este ano']].map(([k, l]) => `<option value="${k}" ${k === _f.periodo ? 'selected' : ''}>${l}</option>`).join('')}<optgroup label="Mês específico">${mesesDisponiveis().map(m => `<option value="m:${m}" ${'m:' + m === _f.periodo ? 'selected' : ''}>${mesNome(m)}</option>`).join('')}</optgroup></select></div>
         <div class="fg" style="margin:0"><label>Situação</label><select id="rh-f-status">${[['', 'Todas'], ['andamento', 'Em andamento'], ['aprovado', 'Aprovados'], ['nao_aprovado', 'Não aprovados'], ['desistiu', 'Desistiram'], ['parados', `Parados há ${PARADO_DIAS}+ dias`], ['talentos', 'Banco de talentos']].map(([k, l]) => `<option value="${k}" ${k === _f.status ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
       </div></div>
       <div class="flex" style="gap:10px;flex-wrap:wrap;margin:12px 0">
@@ -466,6 +469,59 @@
       try { const r = await db.post(T, linhas); _lista = (r || []).concat(_lista); aviso(`${linhas.length} candidato${linhas.length > 1 ? 's' : ''} importado${linhas.length > 1 ? 's' : ''}.`, 'ok'); fechar(); render(); }
       catch (e) { aviso('Não importou: ' + e.message, 'err'); }
     };
+  }
+
+  // ── meses e relatório (24/11/2026, pedido do Rodrigo: relatório filtrável por mês) ──
+  const MESES_PT = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+  const mesNome = m => MESES_PT[+m.slice(5, 7) - 1] + '/' + m.slice(0, 4);
+  const mesDe = c => (c.data_entrada || String(c.criado_em || '').slice(0, 10)).slice(0, 7);
+  function mesesDisponiveis() {
+    const ms = new Set(_lista.map(mesDe).filter(Boolean)); ms.add(hojeIso().slice(0, 7));
+    return [...ms].sort().reverse();
+  }
+  function rotuloPeriodo() {
+    const p = _f.periodo;
+    if (!p) return 'Todo o período';
+    if (p.startsWith('m:')) return mesNome(p.slice(2));
+    return { mes: 'Este mês (' + mesNome(hojeIso().slice(0, 7)) + ')', mes_ant: 'Mês passado', ano: 'Este ano', 30: 'Últimos 30 dias', 90: 'Últimos 90 dias' }[p] || p;
+  }
+  function relatorio() {
+    const L = filtrados(), n = L.length;
+    const cnt = f => L.filter(f).length;
+    const linha = (rot, v, base) => `<tr><td>${rot}</td><td class="n">${v}</td><td class="n">${base ? pct(v, base) + '%' : ''}</td></tr>`;
+    const tabela = (cab, linhas) => `<table><thead><tr>${cab.map((h, i) => `<th${i ? ' class="n"' : ''}>${h}</th>`).join('')}</tr></thead><tbody>${linhas.join('') || `<tr><td colspan="${cab.length}" style="color:#64748b">—</td></tr>`}</tbody></table>`;
+    const agrupa = chave => { const o = {}; L.forEach(c => { const k = chave(c) || '—'; const x = o[k] = o[k] || { t: 0, a: 0, r: 0, d: 0 }; x.t++; if (c.resultado === 'aprovado') x.a++; if (c.resultado === 'nao_aprovado') x.r++; if (c.resultado === 'desistiu') x.d++; }); return Object.entries(o).sort((a, b) => b[1].t - a[1].t); };
+    const apr = cnt(c => c.resultado === 'aprovado');
+    const tempos = L.filter(c => c.resultado === 'aprovado' && c.aprovado_em && c.data_entrada).map(c => (new Date(c.aprovado_em) - new Date(c.data_entrada)) / 86400000);
+    const tMedio = tempos.length ? Math.round(tempos.reduce((a, b) => a + b, 0) / tempos.length) + ' dias' : '—';
+    const motivos = {}; L.filter(c => ['nao_aprovado', 'desistiu'].includes(c.resultado) && c.motivo).forEach(c => { const k = c.motivo.trim(); motivos[k] = (motivos[k] || 0) + 1; });
+    // evolução mês a mês (últimos 6 meses, sem o filtro de período; respeita origem/responsável)
+    const base6 = _lista.filter(c => (!_f.origem || (c.origem || '') === _f.origem) && (!_f.resp || (c.responsavel || '') === _f.resp));
+    const meses6 = []; { const h = new Date(); for (let i = 5; i >= 0; i--) { const d = new Date(h.getFullYear(), h.getMonth() - i, 1); meses6.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`); } }
+    const filtrosTxt = [rotuloPeriodo(), _f.origem && 'origem: ' + _f.origem, _f.resp && 'responsável: ' + _f.resp, _f.status && 'situação: ' + _f.status, _f.busca && 'busca: ' + _f.busca].filter(Boolean).join(' · ');
+    const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Recrutamento — ${esc(rotuloPeriodo())}</title>
+<style>body{font-family:Arial,Helvetica,sans-serif;color:#0f172a;margin:28px;font-size:13px}h1{font-size:20px;margin:0}h2{font-size:15px;margin:22px 0 6px;border-bottom:2px solid #1e3a8a;padding-bottom:3px}
+.sub{color:#64748b;margin:4px 0 14px}.kpis{display:flex;gap:10px;flex-wrap:wrap}.k{border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;min-width:120px}.k b{display:block;font-size:22px}
+table{border-collapse:collapse;width:100%;margin-top:4px}th,td{border-bottom:1px solid #e2e8f0;padding:5px 6px;text-align:left}th{background:#f1f5f9}.n{text-align:right}
+.bt{position:fixed;top:14px;right:14px}@media print{.bt{display:none}body{margin:10mm}}</style></head><body>
+<button class="bt" onclick="print()">Imprimir / salvar PDF</button>
+<h1>Recrutamento de corretores — ${esc(rotuloPeriodo())}</h1>
+<div class="sub">Nova São Paulo · gerado em ${new Date().toLocaleString('pt-BR')} por ${esc((typeof CUR !== 'undefined' && CUR && CUR.nome) || '')}${filtrosTxt ? ' · filtros: ' + esc(filtrosTxt) : ''}</div>
+<div class="kpis"><div class="k"><b>${n}</b>candidatos que entraram</div><div class="k"><b>${apr}</b>aprovados (${pct(apr, n)}%)</div>
+<div class="k"><b>${cnt(c => c.resultado === 'andamento')}</b>em andamento</div><div class="k"><b>${cnt(c => c.resultado === 'nao_aprovado')}</b>não aprovados</div>
+<div class="k"><b>${cnt(c => c.resultado === 'desistiu')}</b>desistiram</div><div class="k"><b>${tMedio}</b>tempo médio até aprovar</div></div>
+<h2>Funil</h2>${tabela(['Etapa', 'Qtde', '% dos que entraram'], [linha('Entraram', n, n), linha('Contato feito', cnt(c => c.contato === 'sim'), n), linha('Responderam', cnt(c => c.resposta === 'sim'), n),
+  linha('Entrevista online realizada', cnt(c => c.online === 'realizada'), n), linha('Entrevista presencial realizada', cnt(c => c.presencial === 'realizada'), n), linha('Aprovados', apr, n), linha('Faltaram em alguma entrevista', cnt(c => c.online === 'faltou' || c.presencial === 'faltou'), n)])}
+<h2>Por origem</h2>${tabela(['Origem', 'Entraram', 'Aprovados', 'Não aprovados', 'Desistiram'], agrupa(c => c.origem).map(([k, x]) => `<tr><td>${esc(k)}</td><td class="n">${x.t}</td><td class="n">${x.a}</td><td class="n">${x.r}</td><td class="n">${x.d}</td></tr>`))}
+<h2>Por responsável</h2>${tabela(['Responsável', 'Entraram', 'Aprovados', 'Não aprovados', 'Desistiram'], agrupa(c => c.responsavel).map(([k, x]) => `<tr><td>${esc(k)}</td><td class="n">${x.t}</td><td class="n">${x.a}</td><td class="n">${x.r}</td><td class="n">${x.d}</td></tr>`))}
+<h2>Aprovados por equipe</h2>${tabela(['Equipe', 'Aprovados'], Object.entries(L.filter(c => c.resultado === 'aprovado').reduce((o, c) => { const k = c.equipe || '—'; o[k] = (o[k] || 0) + 1; return o; }, {})).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="n">${v}</td></tr>`))}
+<h2>Motivos (não aprovados e desistências)</h2>${tabela(['Motivo', 'Qtde'], Object.entries(motivos).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="n">${v}</td></tr>`))}
+<h2>Evolução — últimos 6 meses</h2>${tabela(['Mês', 'Entraram', 'Aprovados'], meses6.map(m => { const x = base6.filter(c => mesDe(c) === m); return `<tr><td>${mesNome(m)}</td><td class="n">${x.length}</td><td class="n">${x.filter(c => c.resultado === 'aprovado').length}</td></tr>`; }))}
+<h2>Candidatos (${n})</h2>${tabela(['Entrada', 'Nome', 'Origem', 'Responsável', 'Etapa', 'Resultado'], L.slice().sort((a, b) => String(a.data_entrada || '').localeCompare(String(b.data_entrada || ''))).map(c => `<tr><td>${diaBr(c.data_entrada)}</td><td>${esc(c.nome)}</td><td>${esc(c.origem || '—')}</td><td>${esc(c.responsavel || '—')}</td>
+  <td>${c.presencial === 'realizada' ? 'Presencial feita' : c.presencial === 'marcada' ? 'Presencial marcada' : c.online === 'realizada' ? 'Online feita' : c.online === 'marcada' ? 'Online marcada' : c.resposta === 'sim' ? 'Respondeu' : c.contato === 'sim' ? 'Contato feito' : 'A contatar'}</td><td>${esc(rot('resultado', c.resultado))}</td></tr>`))}
+</body></html>`;
+    const w = window.open('', '_blank'); if (!w) { aviso('Libere as janelas (pop-up) do portal para abrir o relatório.', 'err'); return; }
+    w.document.open(); w.document.write(html); w.document.close();
   }
 
   // ── exportar CSV (abre no Excel) ──
