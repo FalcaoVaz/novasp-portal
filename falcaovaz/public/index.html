@@ -84,6 +84,9 @@
     <div class="nav-item" id="nav-agenda-jur" style="display:none" onclick="goTo('agenda')">
       <span class="icon">📅</span> Agenda
     </div>
+    <div class="nav-item" id="nav-chaves-jur" style="display:none" onclick="goTo('chaves')">
+      <span class="icon">🔑</span> Entrega de chaves
+    </div>
     <div class="nav-item" id="nav-prazos" style="display:none" onclick="goTo('prazos')">
       <span class="icon">⏰</span> Controle de Prazos
     </div>
@@ -373,6 +376,13 @@
             <div id="dash-token-list"></div>
           </div>
         </div>
+      </div>
+
+      <!-- ══ ENTREGA DE CHAVES (só leitura, 25/11/2026 — js/21-entrega-chaves.js) ══ -->
+      <div class="page" id="page-chaves">
+        <div class="page-header"><div><h1>Entrega de chaves</h1>
+          <p>Acompanhamento dos processos de devolução de imóvel registrados no portal NovaSP (só leitura).</p></div></div>
+        <div id="chv-lista"></div>
       </div>
 
       <!-- ══ PRAZOS ══ -->
@@ -2180,14 +2190,14 @@
 <!-- Cachebuster: bump pra forcar pull do JS novo apos cada deploy -->
 <script src="js/00-config.js?v=20261116b"></script>
 <script src="js/01-auth.js?v=20261116b"></script>
-<script src="js/02-init.js?v=20261113a"></script>
+<script src="js/02-init.js?v=20261125a"></script>
 <script src="js/03-planilhas.js?v=20260805b"></script>
 <script src="js/04-processos.js?v=20261118a"></script>
 <script src="js/05-email.js?v=20260805b"></script>
 <script src="js/06-listas.js?v=20261118a"></script>
 <script src="js/07-meus-docs.js?v=20261118a"></script>
 <script src="js/08-chamados.js?v=20260805b"></script>
-<script src="js/09-nav.js?v=20261113a"></script>
+<script src="js/09-nav.js?v=20261125a"></script>
 <script src="js/10-dashboard.js?v=20261016a"></script>
 <script src="js/11-documentos.js?v=20260805b"></script>
 <script src="js/12-uploads.js?v=20260805b"></script>
@@ -2199,5 +2209,6 @@
 <script src="js/18-indicadores.js?v=20261118a"></script>
 <script src="js/17-relatorio-andamentos.js?v=20261118a"></script>
 <script src="js/19-agenda.js?v=20261116b"></script>
+<script src="js/21-entrega-chaves.js?v=20261125a"></script>
 </body>
 </html>
