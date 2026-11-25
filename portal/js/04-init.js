@@ -32,6 +32,8 @@ function _initAppTela(){
   // Gestao de Vendas: gerentes + assistentes + admin
   const tAvl = document.getElementById('t-avl');
   if (tAvl) tAvl.classList.toggle('off', false);   // Avaliação: todo usuário logado, inclusive representantes do fórum (01/10/2026)
+  const tCob = document.getElementById('t-cob');   // Cobrança: financeiro, jurídico e administrativo (25/11/2026)
+  if (tCob) tCob.classList.toggle('off', !(typeof podeAcessarCobranca === 'function' && podeAcessarCobranca()));
   const tAcv = document.getElementById('t-acv');
   if (tAcv) tAcv.classList.toggle('off', !(typeof podeAcessarAcervo === 'function' && podeAcessarAcervo()));
   if (typeof verificarAcessoAcervo === 'function') verificarAcessoAcervo().then(ok => {
@@ -105,6 +107,7 @@ function renderHome(){
     {id:'reg',tone:'slate',  ic:'book',     ti:'Regras e Processos', ds:'Diretrizes padronizadas de Vendas, Locação, Financeiro e RH.',                      ac:!ehRepPuro,                 mod:'regras'},
     {id:'vnd',tone:'blue',   ic:'briefcase',ti:'Gestão de Vendas',   ds:'Seleção de imóveis, presença em atividades, cotas de anúncios e agenda do fotógrafo.', ac:(typeof podeAcessarVendas==='function') && (podeAcessarVendas() || (typeof ehParticipantePiloto==='function' && ehParticipantePiloto())), mod:'vendas'},
     {id:'avl',tone:'emerald',ic:'target',   ti:'Avaliação de Imóveis', ds:'Avaliação por endereço em minutos: mercado, ITBI, zoneamento, potencial de incorporação e dossiê em PDF.', ac:true, mod:'avaliacao'},
+    {id:'cob',tone:'amber',  ic:'dollar',   ti:'Cobrança',           ds:'Locatários inadimplentes em tempo real (Imoview), com o responsável pela cobrança: extrajudicial, judicial ou seguro fiança.', ac:(typeof podeAcessarCobranca==='function') && podeAcessarCobranca(), mod:'cobranca'},
     {id:'acv',tone:'slate',  ic:'archive',  ti:'Acervo',             ds:'Histórico dos sistemas antigos, só consulta: Nido (vendas e locação até 2026) e Guess (locação).', ac:(typeof podeAcessarAcervo==='function') && podeAcessarAcervo() && !ehRepPuro, mod:'acervo'}
   ];
   if (ehCor) {   // corretor: Avaliação, feedback do líder, Regras (só Vendas) e Fórum se for representante
@@ -126,7 +129,7 @@ function renderHome(){
 // Botão "Início" do menu lateral: fecha o módulo aberto e volta aos cards
 function voltarInicio(){
   if (typeof ehSoAvaliacao === 'function' && ehSoAvaliacao()) { setMod('avaliacao'); return; }
-  ['jur','int','cal','ges','reg','vnd','acv','avl'].forEach(k=>{ const el=document.getElementById('t-'+k); if(el) el.classList.remove('active'); });
+  ['jur','int','cal','ges','reg','vnd','acv','avl','cob'].forEach(k=>{ const el=document.getElementById('t-'+k); if(el) el.classList.remove('active'); });
   const nav=document.getElementById('nav'); if(nav) nav.innerHTML='';
   const tHome=document.getElementById('t-home'); if(tHome) tHome.classList.add('active');
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -157,8 +160,9 @@ function setMod(mod){
   const soPreanalise = mod==='vendas' && typeof podeAcessarVendas==='function' && !podeAcessarVendas() && typeof ehParticipantePiloto==='function' && ehParticipantePiloto();
   if(mod==='vendas'&&typeof podeAcessarVendas==='function'&&!podeAcessarVendas()&&!soPreanalise)return;
   if(mod==='acervo'&&typeof podeAcessarAcervo==='function'&&!podeAcessarAcervo())return;
+  if(mod==='cobranca'&&!(typeof podeAcessarCobranca==='function'&&podeAcessarCobranca()))return;
   // regras: liberado para todos os usuarios autenticados
-  const modAbreviada = {juridico:'jur', interno:'int', calendar:'cal', gestao:'ges', regras:'reg', vendas:'vnd', acervo:'acv', avaliacao:'avl'}[mod] || mod;
+  const modAbreviada = {juridico:'jur', interno:'int', calendar:'cal', gestao:'ges', regras:'reg', vendas:'vnd', acervo:'acv', avaliacao:'avl', cobranca:'cob'}[mod] || mod;
   ['jur','int','cal','ges','reg','vnd','acv','avl'].forEach(k=>{
     const el = document.getElementById('t-'+k);
     if(el) el.classList.remove('active');
@@ -194,6 +198,7 @@ function goTo(pg){
   const n=document.getElementById('n-'+pg);if(n)n.classList.add('active');
   document.getElementById('tbt').textContent=TITLES[pg]||pg;
   if(pg==='manutencao')loadMan();
+  if(pg==='inadimplentes' && window.Cobranca) Cobranca.abrir();   // cobrança (25/11/2026)
   if(pg==='entrega' && window.EntregaChaves) EntregaChaves.abrir();   // entrega de chaves no banco (23/11/2026)
   if(pg==='requisicoes'){ _reqModoFixo=null; loadReq(); }
   if(pg==='req-ti'){      _reqModoFixo='ti';      loadReq(); }

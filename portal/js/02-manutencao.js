@@ -499,6 +499,9 @@ const MENUS={
     {ic:'clipboard', lb:'Cotas de parecer',     pg:'aval-cotas', soAdmin:true}
   ],
   // Acervo — histórico dos sistemas antigos, só consulta (gerentes). Acesso real = banco (guess_acesso).
+  cobranca:[
+    {ic:'dollar',    lb:'Inadimplentes',          pg:'inadimplentes'}
+  ],
   acervo:[
     {ic:'home',      lb:'Acervo Nido (vendas)',   pg:'acervo-nido'},
     {ic:'key',       lb:'Acervo Guess (locação)', pg:'acervo-guess'}
@@ -857,6 +860,7 @@ async function carregarCorretoresDoBanco(force){
   }
 }
 const TITLES={
+  inadimplentes:'Inadimplentes',
   home:'Portal',juridico:'Sistema Jurídico','interno-home':'Sistema Interno',
   manutencao:'Manutenção Predial',requisicoes:'Requisições Internas',
   'req-ti':'Chamados T.I. (Fabio)','req-manut':'Manutenção Interna (Marcelo)',

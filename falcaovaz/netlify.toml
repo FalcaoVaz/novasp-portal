@@ -26,6 +26,10 @@
 [functions."prazos-vendas"]
   schedule = "0 12 * * *"
 
+# Cobrança: inadimplentes do Imoview a cada 30 min (25/11/2026)
+[functions."inadimplencia-sync"]
+  schedule = "*/30 * * * *"
+
 [[headers]]
   for = "/*"
   [headers.values]
