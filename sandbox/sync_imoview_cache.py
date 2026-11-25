@@ -11,11 +11,27 @@ import json, os, re, subprocess, sys, time, urllib.request, datetime
 def chave():
     return subprocess.run(['security', 'find-generic-password', '-s', 'imoview', '-a', 'nsp', '-w'], capture_output=True, text=True).stdout.strip()
 
+_SESS = {}
+def sessao(k, forcar=False):
+    # 25/11/2026: Contratos/Financeiro exigem o login do usuário de integração (senha no Keychain: imoview-integ)
+    if _SESS and not forcar: return _SESS
+    email = 'integracao@novasaopaulo.com.br'
+    senha = subprocess.run(['security', 'find-generic-password', '-s', 'imoview-integ', '-a', email, '-w'], capture_output=True, text=True).stdout.strip()
+    req = urllib.request.Request('https://api.imoview.com.br/Usuario/Integracao_ValidarAcesso', data=json.dumps({'email': email, 'senha': senha}).encode(),
+                                 headers={'chave': k, 'Accept': 'application/json', 'Content-Type': 'application/json'}, method='POST')
+    with urllib.request.urlopen(req, timeout=60) as r: d = json.loads(r.read())
+    _SESS.clear(); _SESS.update(codigousuario=str(d['codigousuario']), codigoacesso=str(d['codigoacesso']))
+    return _SESS
+
 def get(k, path):
     for t in range(5):
         try:
-            req = urllib.request.Request('https://api.imoview.com.br/' + path, headers={'chave': k, 'Accept': 'application/json'})
+            req = urllib.request.Request('https://api.imoview.com.br/' + path, headers={'chave': k, 'Accept': 'application/json', **sessao(k)})
             with urllib.request.urlopen(req, timeout=180) as r: return json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            err = e
+            if e.code == 401: sessao(k, True)   # sessão expirou ou foi tomada: refaz o login
+            else: time.sleep(3 + 5 * t)
         except Exception as e:
             err = e; time.sleep(3 + 5 * t)
     raise err
