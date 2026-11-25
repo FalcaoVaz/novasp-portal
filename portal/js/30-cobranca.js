@@ -17,8 +17,12 @@
   const diasDe = s => { const d = new Date(String(s).slice(0, 10) + 'T12:00:00'); return Math.floor((Date.now() - d) / 864e5); };
   const quem = () => (typeof CUR !== 'undefined' && CUR && CUR.nome) || '';
 
+  // 25/11/2026: só o admin vê até a limpeza da base do Imoview terminar (números ainda inflados por pagamentos feitos no Guess).
+  // Para liberar para financeiro, jurídico e administrativo: trocar para true e publicar o portal.
+  const COBRANCA_LIBERADA = false;
   function podeAcessarCobranca() {
     if (typeof CUR === 'undefined' || !CUR) return false;
+    if (!COBRANCA_LIBERADA) return !!CUR.admin;
     return !!(CUR.admin || CUR.judicial || CUR.acesso_juridico || /(financeiro|encargos|jur[ií]dico|administra|diretoria|superintend)/i.test(CUR.dept || ''));
   }
   window.podeAcessarCobranca = podeAcessarCobranca;
