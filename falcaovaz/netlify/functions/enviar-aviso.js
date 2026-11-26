@@ -65,8 +65,10 @@ MODELOS.chaves = async ({ sb, anon, auth, protocolo, titulo, mensagem, modelo })
   else if (modelo === 'vistoria') corpo = `<p>Olá!</p><p>A vistoria do imóvel <b>${esc(p.endereco)}</b> foi registrada.</p>` +
     `<p><b>Data:</b> ${dataBR(p.data_vistoria)}<br><b>Necessita reparos:</b> ${esc(p.necessita_reparo || 'Não')}` +
     (p.necessita_reparo === 'Sim' ? `${p.descricao_reparo ? '<br><b>Reparos:</b> ' + esc(p.descricao_reparo) : ''}${p.valor_reparo ? '<br><b>Valor estimado:</b> ' + esc(p.valor_reparo) : ''}${p.responsavel_reparo ? '<br><b>Por conta de:</b> ' + esc(p.responsavel_reparo) : ''}` : '') + '</p>';
+  else if (modelo === 'vistoria_agendada') corpo = `<p>Olá!</p><p>A vistoria do imóvel <b>${esc(p.endereco)}</b> foi agendada.</p>` +
+    `<p><b>Data marcada:</b> ${dataBR(p.data_vistoria_agendada) || '—'}</p>`;
   else corpo = `<p>Olá!</p><p>O processo de entrega das chaves do imóvel <b>${esc(p.endereco)}</b> teve uma atualização:</p><p><b>Etapa:</b> ${esc(titulo || p.status)}</p>`;
-  const assunto = modelo === 'cadastro' ? `🔑 ${p.protocolo} — Processo de entrega de chaves aberto` : modelo === 'vistoria' ? `🔍 ${p.protocolo} — Vistoria realizada` : `🔑 ${p.protocolo} — ${titulo || p.status}`;
+  const assunto = modelo === 'cadastro' ? `🔑 ${p.protocolo} — Processo de entrega de chaves aberto` : modelo === 'vistoria' ? `🔍 ${p.protocolo} — Vistoria realizada` : modelo === 'vistoria_agendada' ? `📅 ${p.protocolo} — Vistoria agendada para ${dataBR(p.data_vistoria_agendada)}` : `🔑 ${p.protocolo} — ${titulo || p.status}`;
   return { para, assunto, html: htmlBase(corpo + msg + link) };
 };
 

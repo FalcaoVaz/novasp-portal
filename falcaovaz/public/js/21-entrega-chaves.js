@@ -6,7 +6,7 @@
 // ═══════════════════════════════════════════════════════════════
 (function () {
   'use strict';
-  const BASE = [['data_agendada', 'Agendamento'], ['data_entrega', 'Entrega das chaves'], ['data_vistoria', 'Vistoria'], ['data_liberacao', 'Chaves liberadas p/ locação']];
+  const BASE = [['data_agendada', 'Agendamento'], ['data_entrega', 'Entrega das chaves'], ['data_vistoria_agendada', 'Vistoria agendada'], ['data_vistoria', 'Vistoria realizada'], ['data_liberacao', 'Chaves liberadas p/ locação']];
   const FINAIS = { 'Caução': [['data_debitos', 'Débitos quitados'], ['data_devolucao', 'Devolução da caução']],
     'Título de capitalização': [['data_resgate', 'Resgate do título'], ['data_debitos', 'Débitos quitados']],
     'Seguro fiança': [['data_sinistro', 'Entrada no sinistro', true], ['data_debitos', 'Débitos quitados']],
@@ -17,8 +17,9 @@
   const hoje = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
   const dias = s => { const d = D(s); return d ? Math.round((hoje() - d) / 864e5) : null; };
   const etapas = p => BASE.concat(FINAIS[p.tipo_fianca] || FINAIS['Fiador']);
-  const encerrado = p => p.cancelado || etapas(p).every(([c, , o]) => o || p[c]);
-  const atual = p => (etapas(p).find(([c, , o]) => !o && !p[c]) || [])[1] || (p.cancelado ? 'Cancelado' : 'Encerrado');
+  const temData = (p, c) => p[c] || (c === 'data_vistoria_agendada' ? p.data_vistoria : null);
+  const encerrado = p => p.cancelado || etapas(p).every(([c, , o]) => o || temData(p, c));
+  const atual = p => (etapas(p).find(([c, , o]) => !o && !temData(p, c)) || [])[1] || (p.cancelado ? 'Cancelado' : 'Encerrado');
 
   // pontos de atenção jurídica
   function alertas(p) {
@@ -82,7 +83,7 @@
       </div>
       ${p.observacoes ? `<div style="font-size:13px;margin-top:8px"><b>Observações:</b> ${esc(p.observacoes)}</div>` : ''}
       <h4 style="margin:14px 0 4px">Etapas</h4>
-      ${etapas(p).map(([c, l, o]) => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid #f1f5f9;font-size:13px"><span>${p[c] ? '✅' : '⬜'} ${esc(l)}${o ? ' <small style="color:#64748b">(se houver débito)</small>' : ''}</span><b>${p[c] ? br(p[c]) : ''}</b></div>`).join('')}
+      ${etapas(p).map(([c, l, o]) => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid #f1f5f9;font-size:13px"><span>${temData(p, c) ? '✅' : '⬜'} ${esc(l)}${o ? ' <small style="color:#64748b">(se houver débito)</small>' : ''}</span><b>${temData(p, c) ? br(temData(p, c)) : ''}</b></div>`).join('')}
       <h4 style="margin:14px 0 4px">Histórico</h4><div id="chv-hist" style="font-size:13px;color:#64748b">Carregando…</div></div>`;
     document.body.appendChild(ov);
     const h = await db.get('chaves_andamentos', `?select=em,etapa,mensagem,autor&protocolo=eq.${encodeURIComponent(proto)}&order=em.desc`);

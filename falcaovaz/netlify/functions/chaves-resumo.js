@@ -4,7 +4,7 @@
 const PARA = ['joao@novasaopaulo.com.br'], CC = ['entrega.chaves@novasaopaulo.com.br'];
 const RESCISOES_DESDE = '2026-11-01';
 const BASE = [['agendada', 'data_agendada', 'Agendamento', 'data_cadastro', 3], ['entregue', 'data_entrega', 'Entrega das chaves', 'data_agendada', 1],
-  ['vistoria', 'data_vistoria', 'Vistoria', 'data_entrega', 3], ['liberada', 'data_liberacao', 'Chaves liberadas', 'data_vistoria', p => p.necessita_reparo === 'Sim' ? 20 : 2]];
+  ['vagendada', 'data_vistoria_agendada', 'Agendar vistoria', 'data_entrega', 1], ['vistoria', 'data_vistoria', 'Vistoria', 'data_vistoria_agendada', 1], ['liberada', 'data_liberacao', 'Chaves liberadas', 'data_vistoria', p => p.necessita_reparo === 'Sim' ? 20 : 2]];
 const FINAIS = { 'Caução': [['debitos', 'data_debitos', 'Débitos quitados', 'data_entrega', 30], ['devolucao', 'data_devolucao', 'Devolução da caução', 'data_debitos', 10]],
   'Título de capitalização': [['resgate', 'data_resgate', 'Resgate do título', 'data_entrega', 30], ['debitos', 'data_debitos', 'Débitos quitados', 'data_entrega', 30]],
   'Seguro fiança': [['debitos', 'data_debitos', 'Débitos quitados', 'data_entrega', 30]], 'Fiador': [['debitos', 'data_debitos', 'Débitos quitados', 'data_entrega', 30]] };
@@ -23,7 +23,7 @@ exports.handler = async () => {
   const atras = [], prox = [];
   for (const p of proc) {
     const ets = BASE.concat(FINAIS[p.tipo_fianca] || FINAIS['Fiador']);
-    const et = ets.find(e => !p[e[1]]); if (!et) continue;
+    const et = ets.find(e => !p[e[1]] && !(e[0] === 'vagendada' && p.data_vistoria)); if (!et) continue;
     const base = D(p[et[3]]), dias = typeof et[4] === 'function' ? et[4](p) : et[4];
     if (base) { const atraso = Math.round((hoje - base) / 864e5) - dias; if (atraso > 0) atras.push({ p, etapa: et[2], atraso }); }
     if (p.tipo_fianca === 'Seguro fiança' && p.data_entrega && !p.data_sinistro && !p.data_debitos) { const d = Math.round((hoje - D(p.data_entrega)) / 864e5); if (d > 15) atras.push({ p, etapa: 'Sinistro do seguro fiança', atraso: d - 15 }); }

@@ -17,7 +17,9 @@
   const ETAPAS_BASE = [
     { key: 'agendada', col: 'data_agendada',  status: 'Entrega de chaves agendada',  label: 'Agendamento',        prazo: { de: 'data_cadastro', dias: 3 } },
     { key: 'entregue', col: 'data_entrega',   status: 'Entrega de chaves realizada', label: 'Entrega das chaves', prazo: { de: 'data_agendada', dias: 1 } },
-    { key: 'vistoria', col: 'data_vistoria',  status: 'Vistoria realizada',          label: 'Vistoria',           prazo: { de: 'data_entrega', dias: 3 } },
+    // 26/11/2026 (João): etapa intermediária — a data é a MARCADA para a vistoria (pode ser futura); registrar até 1 dia após a entrega
+    { key: 'vagendada', col: 'data_vistoria_agendada', status: 'Vistoria agendada', label: 'Vistoria agendada', prazo: { de: 'data_entrega', dias: 1 } },
+    { key: 'vistoria', col: 'data_vistoria',  status: 'Vistoria realizada',          label: 'Vistoria realizada', prazo: { de: 'data_vistoria_agendada', dias: 1 } },
     { key: 'liberada', col: 'data_liberacao', status: 'Chaves liberadas',            label: 'Chaves liberadas p/ locação', prazo: { de: 'data_vistoria', dias: p => (p.necessita_reparo === 'Sim' ? 20 : 2) } },
   ];
   const ETAPAS_FINAIS = {
@@ -35,7 +37,8 @@
   };
   const GARANTIAS = ['Caução', 'Seguro fiança', 'Fiador', 'Título de capitalização', 'Sem garantia'];
   const etapasDe = p => ETAPAS_BASE.concat(ETAPAS_FINAIS[p.tipo_fianca] || ETAPAS_FINAIS['Fiador']);
-  const feita = (p, et) => !!p[et.col];
+  // processos antigos (antes da etapa "Vistoria agendada"): vistoria já realizada conta como agendada
+  const feita = (p, et) => !!p[et.col] || (et.key === 'vagendada' && !!p.data_vistoria);
   const encerrado = p => !!p.cancelado || etapasDe(p).every(et => et.opcional || feita(p, et));
   const etapaAtual = p => p.cancelado ? null : (etapasDe(p).find(et => !et.opcional && !feita(p, et)) || null);
 
@@ -100,7 +103,7 @@
         <div id="ec-resc"></div>
         <div style="display:flex;gap:8px;margin:14px 0 10px;flex-wrap:wrap;align-items:center" id="ec-filtros"></div>
         <div class="tw tbl"><table><thead><tr><th>Imóvel</th><th>Locatário</th><th>Garantia</th><th>Etapa atual</th><th>Prazo</th><th>Responsável</th><th>Mês</th></tr></thead><tbody id="ec-lista"><tr><td colspan="7" style="text-align:center;padding:24px;color:#94a3b8">Carregando…</td></tr></tbody></table></div>
-        <div style="font-size:12px;color:var(--muted,#64748b);margin-top:8px">Prazos: agendar em até 3 dias do cadastro · vistoria até 3 dias após a entrega · liberação até 2 dias após a vistoria (20 se houver reparo) · débitos quitados até 30 dias · devolução da caução até 10 dias após os débitos · sinistro do seguro fiança até 15 dias após a entrega.</div>`;
+        <div style="font-size:12px;color:var(--muted,#64748b);margin-top:8px">Prazos: agendar em até 3 dias do cadastro · agendar a vistoria até 1 dia após a entrega · vistoria até 1 dia após a data marcada · liberação até 2 dias após a vistoria (20 se houver reparo) · débitos quitados até 30 dias · devolução da caução até 10 dias após os débitos · sinistro do seguro fiança até 15 dias após a entrega.</div>`;
     }
     _mes = _mes || mesAtual();
     await atualizar();
@@ -191,7 +194,7 @@
       const pr = cur ? prazoDe(p, et) : null;
       return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-top:1px solid #f1f5f9;font-size:13px">
         <span>${ok ? '✅' : cur ? '⏳' : '⬜'} ${esc(et.label)}${et.opcional ? ' <small style="color:#64748b">(opcional)</small>' : ''}
-          ${ok ? `· <b>${br(p[et.col])}</b> <a href="#" title="Alterar data" onclick="EntregaChaves.etapa('${esc(proto)}','${et.key}',true);return false">✏️</a>` : ''}
+          ${ok ? `· <b>${br(p[et.col] || p.data_vistoria)}</b> <a href="#" title="Alterar data" onclick="EntregaChaves.etapa('${esc(proto)}','${et.key}',true);return false">✏️</a>` : ''}
           ${pr ? `<small style="color:${pr.atraso > 0 ? '#dc2626' : '#64748b'}"> · prazo ${pr.vence.toLocaleDateString('pt-BR')}${pr.atraso > 0 ? ' (' + pr.atraso + ' dia(s) de atraso)' : ''}</small>` : ''}</span>
         ${!ok && !p.cancelado && (cur || et.opcional) ? `<button class="btn ${cur ? 'btn-g' : 'btn-o'} bsm" onclick="EntregaChaves.${et.key === 'vistoria' ? 'vistoria' : 'etapa'}('${esc(proto)}','${et.key}')">Registrar</button>` : ''}</div>`;
     };
@@ -250,8 +253,8 @@
   function etapa(proto, key, editar) {
     const p = _proc.find(x => x.protocolo === proto); const et = etapasDe(p).find(e => e.key === key); if (!p || !et) return;
     modal('ec-et', (editar ? 'Alterar data — ' : 'Registrar — ') + esc(et.label), `
-      <div class="frow"><div class="fg"><label>Data</label><input type="date" class="fc" id="ec-et-data" value="${esc(String(p[et.col] || '').slice(0, 10) || iso(hoje()))}"></div></div>
-      <div class="fg"><label>Mensagem (vai no e-mail e no histórico)</label><textarea class="fc" id="ec-et-msg" rows="3" placeholder="Opcional"></textarea></div>
+      <div class="frow"><div class="fg"><label>${key === 'vagendada' ? 'Data marcada para a vistoria' : 'Data'}</label><input type="date" class="fc" id="ec-et-data" value="${esc(String(p[et.col] || '').slice(0, 10) || iso(hoje()))}"></div></div>
+      <div class="fg"><label>Mensagem (vai no e-mail e no histórico)</label><textarea class="fc" id="ec-et-msg" rows="3" placeholder="${key === 'vagendada' ? 'Ex.: às 10h; o vistoriador vai com as chaves' : 'Opcional'}"></textarea></div>
       <label style="display:flex;gap:8px;align-items:center;font-size:13px;margin:6px 0"><input type="checkbox" id="ec-et-av" ${editar ? '' : 'checked'}> Avisar locador e locatário por e-mail</label>
       <div style="text-align:right;margin-top:10px"><button class="btn btn-g" onclick="EntregaChaves.salvarEtapa('${esc(proto)}','${key}',${!!editar})">${editar ? 'Salvar data' : 'Registrar'}</button></div>`, 480);
   }
@@ -262,8 +265,8 @@
     try {
       const novo = Object.assign({}, p, { [et.col]: data });
       await patch(proto, { [et.col]: data, status: statusDe(novo) });
-      const ok = av ? await avisar(proto, 'etapa', et.status, msg) : false;
-      await andamento(proto, (editar ? 'Data alterada: ' : '') + et.status + ' (' + br(data) + ')', msg, ok);
+      const ok = av ? await avisar(proto, key === 'vagendada' ? 'vistoria_agendada' : 'etapa', et.status, msg) : false;
+      await andamento(proto, (editar ? 'Data alterada: ' : '') + et.status + (key === 'vagendada' ? ' para ' : ' (') + br(data) + (key === 'vagendada' ? '' : ')'), msg, ok);
       fechar('ec-et'); toast('✅ ' + et.label + ' registrada.', 'ok'); render(); detalhe(proto);
     } catch (e) { toast('Erro: ' + e.message, 'err'); }
   }
